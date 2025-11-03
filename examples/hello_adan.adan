@@ -1,0 +1,7 @@
+// Simple "Hello, world!" program written in ADAN.
+
+Store hello_message -> "Hello, world!"; // Local variable -- Used only in this scope/context
+
+Global global_message -> "ADAN says:"; // Global variable -- Can be used anywhere.
+
+>> "!{global_message} !{hello_message}"; // "ADAN says: Hello, world!"
