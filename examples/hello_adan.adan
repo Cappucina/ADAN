@@ -17,7 +17,7 @@
 
 */
 
-include adan.prelude.io;
+include adan.std.io;
 
 program -> main {
   local sample: String -> "Hello, world!";
