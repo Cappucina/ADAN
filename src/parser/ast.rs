@@ -73,7 +73,9 @@ pub enum Operation {
     Subtract,
     Multiply,
     Divide,
-    Modulo
+    Modulo,
+    Negate,             // Flips the sign of a Number. (e.g. 2 -> -2, -3 -> 3)
+    Not,                // Flips the value of a boolean. (e.g. false -> true, true -> false)
 }
 
 // ADANs Literals
@@ -100,11 +102,11 @@ pub enum Literal {
 pub enum Statement {
     Expression(Expr),
     Print(Expr),
-    VarDecl {
+    VarDecl {           // local <var> -> <val>;
         name: String,
         initializer: Option<Expr>,
     },
-    Block(Vec<Statement>),
+    Block(Vec<Statement>), // { }
     If {
         condition: Expr,
         then_branch: Box<Statement>,
@@ -125,6 +127,6 @@ pub enum Statement {
 #[derive(Debug, Clone)]
 pub struct FunctionDecl {
     pub name: String,
-    pub params: Vec<String>,
+    pub params: Vec<String>, // Params or Arguments
     pub body: Vec<Statement>,
 }

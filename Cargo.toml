@@ -2,3 +2,10 @@
 name = "adan"
 version = "0.1.0"
 edition = "2024"
+
+[dependencies]
+clearscreen = "4.0.2"
+inkwell = "0.6.0"
+num-traits = "0.2.19"
+rand = "0.9.2"
+reqwest = "0.12.24"

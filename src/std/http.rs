@@ -1,3 +1,5 @@
+use reqwest;
+
 pub enum HTTP {
     Get,
     Post,
@@ -6,19 +8,19 @@ pub enum HTTP {
 }
 
 impl HTTP {
-    pub fn get() {
+    pub async fn get(url: &str) -> Result<String, reqwest::Error> {
+       reqwest::get(url).await?.text().await
+    }
+
+    pub async fn post(url: &str) {
 
     }
 
-    pub fn post() {
+    pub fn get_sync(url: &str) {
 
     }
 
-    pub fn get_sync() {
-
-    }
-
-    pub fn post_sync() {
+    pub fn post_sync(url: &str) {
         
     }
-}
+}       
