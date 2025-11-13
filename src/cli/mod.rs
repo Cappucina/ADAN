@@ -1,3 +1,4 @@
+/*
 use clap::{Parser, Subcommand};
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -52,3 +53,4 @@ pub fn initialize() {
         }
     }
 }
+*/

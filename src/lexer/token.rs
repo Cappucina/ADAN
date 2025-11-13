@@ -48,6 +48,21 @@ pub enum Symbols {
     LCurlyBracket,
     RCurlyBracket,
 
+    Equal,          // NOT used for assignment! Used for checking the equality between two values.
+    Greater,        // Checks if x is > y, returns a boolean.
+    Lesser,         // Checks if x is < y, returns a boolean.
+    Gequal,         // Checks if x is < or equal to y, returns a boolean.
+    Lequal,         // Checks if x is > or equal to y, returns a boolean.
+
+    Add,            // x + y = z
+    Sub,            // x - y = z
+    Mul,            // x * y = z
+    Div,            // x / y = z
+    Mod,            // x % y = remainder of x / y
+   
+    Not,            // ! (or NOT) can be chained like -> !!x = not not x, or just x, it can also
+                    // just be !x, or not x. ! can be chained indefinitely. (!!!!!!x, or just x is passable)
+
     Quotation,      // ""
     SingleQuote,    // ''
     

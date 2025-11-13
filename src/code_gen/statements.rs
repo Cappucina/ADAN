@@ -129,30 +129,39 @@ pub fn codegen_statements<'ctx>(ctx: &mut CodeGenContext<'ctx>, stmt: &Statement
         },
 
         Statement::If { condition, then_branch, else_branch } => {
-            let cond_val = codegen_expressions(ctx, condition, registry)
-                .map_err(|e| format!("if condition failed: {:?}", e))?
-                .into_float_value();
-            let zero = ctx.context.f64_type().const_float(0.0);
-            let comparison = ctx.builder.build_float_compare(inkwell::FloatPredicate::ONE, cond_val, zero, "ifcond")
-                .map_err(|e| format!("float compare failed: {:?}", e))?;
+            let cond_val = codegen_expressions(ctx, condition, registry).map_err(|e| format!("if condition failed: {:?}", e))?;
+            //println!("Condition value: {:?}", cond_val);
+            let cond_i1 = match cond_val {
+                BasicValueEnum::IntValue(iv) => ctx.builder.build_int_compare(
+                    inkwell::IntPredicate::NE,
+                    iv,
+                    ctx.context.i32_type().const_zero(),
+                    "ifcond"
+                ),
+                BasicValueEnum::FloatValue(fv) => ctx.builder.build_float_compare(
+                    inkwell::FloatPredicate::ONE,
+                    fv,
+                    ctx.context.f64_type().const_float(0.0),
+                    "ifcond"
+                ),
+                _ => return Err("Cannot use this type in if condition".into()),
+            }.unwrap();
+
             let func = ctx.builder.get_insert_block().ok_or("No insert block")?.get_parent().ok_or("No parent function")?;
             let then_block = ctx.context.append_basic_block(func, "then");
             let else_block = else_branch.as_ref().map(|_| ctx.context.append_basic_block(func, "else"));
             let merge = ctx.context.append_basic_block(func, "ifcont");
             let target_block = else_block.unwrap_or(merge);
 
-            ctx.builder.build_conditional_branch(comparison, then_block, target_block)
-                .map_err(|e| format!("conditional branch failed: {:?}", e))?;
+            ctx.builder.build_conditional_branch(cond_i1, then_block, target_block).map_err(|e| format!("conditional branch failed: {:?}", e))?;
             ctx.builder.position_at_end(then_block);
             codegen_statements(ctx, then_branch, registry)?;
-            ctx.builder.build_unconditional_branch(merge)
-                .map_err(|e| format!("unconditional branch failed: {:?}", e))?;
-            
+            ctx.builder.build_unconditional_branch(merge).map_err(|e| format!("unconditional branch failed: {:?}", e))?;
+
             if let (Some(e), Some(else_block)) = (else_branch.as_ref(), else_block.as_ref()) {
                 ctx.builder.position_at_end(*else_block);
                 codegen_statements(ctx, &e, registry)?;
-                ctx.builder.build_unconditional_branch(merge)
-                    .map_err(|e| format!("unconditional branch in else failed: {:?}", e))?;
+                ctx.builder.build_unconditional_branch(merge).map_err(|e| format!("unconditional branch in else failed: {:?}", e))?;
             }
 
             ctx.builder.position_at_end(merge);

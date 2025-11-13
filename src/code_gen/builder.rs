@@ -6,9 +6,11 @@ use inkwell::{
     context::Context,
     module::Module,
     values::{BasicValueEnum, PointerValue},
-    types::{FloatType, IntType},
+    types::{FloatType, IntType, ArrayType, StructType, PointerType, BasicTypeEnum},
 };
 use crate::parser::ast::FunctionDecl;
+use inkwell::AddressSpace;
+use crate::lexer::token::Types;
 
 pub struct CodeGenContext<'ctx> {
     pub context: &'ctx Context,
@@ -17,6 +19,15 @@ pub struct CodeGenContext<'ctx> {
 
     pub f64_type: FloatType<'ctx>,
     pub bool_type: IntType<'ctx>,
+    pub i8_type: IntType<'ctx>,
+    pub i32_type: IntType<'ctx>,
+    pub i64_type: IntType<'ctx>,
+    pub u8_type: IntType<'ctx>,
+    pub u32_type: IntType<'ctx>,
+    pub u64_type: IntType<'ctx>,
+    pub array_of_i32: ArrayType<'ctx>,
+    pub my_object_type: StructType<'ctx>,
+    pub string_type: PointerType<'ctx>,
 
     pub variables: HashMap<String, PointerValue<'ctx>>,
     pub modules: HashMap<String, ModuleValue<'ctx>>,
@@ -50,6 +61,18 @@ impl<'ctx> CodeGenContext<'ctx> {
             module,
             f64_type: context.f64_type(),
             bool_type: context.bool_type(),
+            i8_type: context.i8_type(),
+            i32_type: context.i32_type(),
+            i64_type: context.i64_type(),
+            u8_type: context.i8_type(),
+            u32_type: context.i32_type(),
+            u64_type: context.i64_type(),
+            string_type: context.i8_type().ptr_type(AddressSpace::from(0)),
+            array_of_i32: context.i32_type().array_type(10),
+            my_object_type: context.struct_type(&[
+                context.i32_type().into(),
+                context.i8_type().ptr_type(AddressSpace::from(0)).into()
+            ], false),
             variables: HashMap::new(),
             modules: HashMap::new(),
         }
@@ -98,5 +121,23 @@ impl<'ctx> CodeGenContext<'ctx> {
             Some(v) => { let _ = self.builder.build_return(Some(&v)); },
             None => { let _ = self.builder.build_return(None); },
         };
+    }
+
+    pub fn get_llvm_type(&self, var_type: Types) -> BasicTypeEnum<'ctx> {
+        match var_type {
+            Types::i8 => self.i8_type.into(),
+            Types::i32 => self.i32_type.into(),
+            Types::i64 => self.i64_type.into(),
+            Types::u8 => self.u8_type.into(),
+            Types::u32 => self.u32_type.into(),
+            Types::u64 => self.u64_type.into(),
+            Types::f32 => self.context.f32_type().into(),
+            Types::f64 => self.f64_type.into(),
+            Types::Boolean => self.bool_type.into(),
+            Types::Char => self.i8_type.into(),
+            Types::String => self.string_type.into(),
+            Types::Array => self.array_of_i32.into(),
+            Types::Object => self.my_object_type.into(),
+        }
     }
 }

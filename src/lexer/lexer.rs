@@ -56,6 +56,10 @@ impl Lexer {
                 "local" => Token::Keyword(Keyword::Local),
                 "global" => Token::Keyword(Keyword::Global),
                 "program" => Token::Keyword(Keyword::Program),
+                "if" => Token::Keyword(Keyword::If),
+                "while" => Token::Keyword(Keyword::While),
+                "else" => Token::Keyword(Keyword::Else),
+                "return" => Token::Keyword(Keyword::Return),
 
                 "String" => Token::Types(Types::String),
                 "Boolean" => Token::Types(Types::Boolean),
@@ -109,14 +113,62 @@ impl Lexer {
             return self.next_token();
         }
 
+        if c == '>' && next == Some('=') {
+            self.advance();
+            self.advance();
+            return Token::Symbols(Symbols::Gequal);
+        }
+        
+        if c == '<' && next == Some('=') {
+            self.advance();
+            self.advance();
+            return Token::Symbols(Symbols::Lequal);
+        }
+
         if c == '"' {
             self.advance();
-            let string_content = self.read_while(|ch| ch != '"');
-            if self.preview() == Some('"') {
+            
+            let mut string_content = String::new();
+            while let Some(ch) = self.preview() {
+                if ch == '"' {
+                    self.advance(); // us closing "
+                    break;
+                }
+
+                if ch == '\\' {
+                    self.advance();
+                    match self.preview() {
+                        Some('n') => string_content.push('\n'),
+                        Some('t') => string_content.push('\t'),
+                        Some('"') => string_content.push('"'),
+                        Some('\\') => string_content.push('\\'),
+                        Some(other) => string_content.push(other), // Push the string literally
+                                                                   // like \q if they aren't
+                                                                   // supported.
+                        None => break,
+                    }
+                    self.advance();
+                } else {
+                    string_content.push(ch);
+                    self.advance();
+                }
+
+                //self.advance();
+            }
+
+            return Token::Literal(string_content);
+        }
+
+        if c == '\'' {
+            self.advance();
+            if let Some(ch) = self.preview() {
                 self.advance();
-                return Token::Literal(string_content);
-            } else {
-                return Token::Error("Unterminated string literal".to_string());
+                if self.preview() == Some ('\'') {
+                    self.advance();
+                    return Token::CharLiteral(ch);
+                } else {
+                    return Token::Error("Unterminated char literal".to_string());
+                }
             }
         }
 
@@ -131,6 +183,14 @@ impl Lexer {
             '\'' => Token::Symbols(Symbols::SingleQuote),
             '.' => Token::Symbols(Symbols::Period),
             ',' => Token::Symbols(Symbols::Comma),
+            '=' => Token::Symbols(Symbols::Equal),
+            '>' => Token::Symbols(Symbols::Greater),
+            '<' => Token::Symbols(Symbols::Lesser),
+            '+' => Token::Symbols(Symbols::Add),
+            '-' => Token::Symbols(Symbols::Sub),
+            '*' => Token::Symbols(Symbols::Mul),
+            '/' => Token::Symbols(Symbols::Div),
+            '%' => Token::Symbols(Symbols::Mod),
             _ => Token::Error(format!("Unexpected char: {}", c)),
         }
     }

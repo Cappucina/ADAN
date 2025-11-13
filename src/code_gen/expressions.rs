@@ -29,6 +29,7 @@ pub fn codegen_expressions<'ctx>(ctx: &mut CodeGenContext<'ctx>, expr: &Expr, re
             Literal::String(s) => {
                 let array = ctx.context.const_string(s.as_bytes(), true);
                 let global = ctx.module.add_global(array.get_type(), None, "str");
+
                 global.set_initializer(&array);
                 Ok(global.as_pointer_value().into())
             }
@@ -101,31 +102,76 @@ pub fn codegen_expressions<'ctx>(ctx: &mut CodeGenContext<'ctx>, expr: &Expr, re
             }
         }
 
-        Expr::Variable(var_name) => {
+        Expr::Variable { var_name, var_type } => {
             let var_pointer = ctx.variables
                 .get(var_name)
                 .ok_or_else(|| format!("Variable not declared: {}", var_name))?;
+            
+            let llvm_type = match var_type {
+                Some(t) => ctx.get_llvm_type(*t),
+                None => ctx.string_type.into(),
+            };
+
             let loaded = ctx.builder
-                .build_load(ctx.f64_type, *var_pointer, "loadtmp")
+                .build_load(llvm_type, *var_pointer, "loadtmp")
                 .map_err(|e| format!("load failed for variable '{}': {:?}", var_name, e))?;
+            
             Ok(loaded)
         }
 
         Expr::Binary { left, op, right } => {
-            let l = codegen_expressions(ctx, left, registry)?.into_float_value();
-            let r = codegen_expressions(ctx, right, registry)?.into_float_value();
+            let l_val = codegen_expressions(ctx, left, registry)?;
+            let r_val = codegen_expressions(ctx, right, registry)?;
 
-            match op {
-                Operation::Add => Ok(ctx.builder.build_float_add(l, r, "addtmp")
-                    .map_err(|e| format!("float add failed: {:?}", e))?.into()),
-                Operation::Subtract => Ok(ctx.builder.build_float_sub(l, r, "subtmp")
-                    .map_err(|e| format!("float sub failed: {:?}", e))?.into()),
-                Operation::Multiply => Ok(ctx.builder.build_float_mul(l, r, "multmp")
-                    .map_err(|e| format!("float mul failed: {:?}", e))?.into()),
-                Operation::Divide => Ok(ctx.builder.build_float_div(l, r, "divtmp")
-                    .map_err(|e| format!("float div failed: {:?}", e))?.into()),
-                Operation::Modulo => Ok(build_float_mod(ctx, l, r)?.into()),
-                _ => Err(format!("Binary op not implemented: {:?}", op)),
+            match (l_val, r_val) {
+                (BasicValueEnum::FloatValue(lf), BasicValueEnum::FloatValue(rf)) => {
+                    let res = match op {
+                        Operation::Add => ctx.builder.build_float_add(lf, rf, "addtmp").map_err(|e| e.to_string())?,
+                        Operation::Subtract => ctx.builder.build_float_sub(lf, rf, "subtmp").map_err(|e| e.to_string())?,
+                        Operation::Multiply => ctx.builder.build_float_mul(lf, rf, "multmp").map_err(|e| e.to_string())?,
+                        Operation::Divide => ctx.builder.build_float_div(lf, rf, "divtmp").map_err(|e| e.to_string())?,
+                        Operation::Modulo => build_float_mod(ctx, lf, rf).map_err(|e| e.to_string())?,
+                        _ => return Err(format!("Unsupported float binary op {:?}", op)),
+                    };
+                    Ok(res.into())
+                }
+                (BasicValueEnum::IntValue(li), BasicValueEnum::IntValue(ri)) => {
+                    let res = match op {
+                        Operation::Add => ctx.builder.build_int_add(li, ri, "addtmp").map_err(|e| e.to_string())?,
+                        Operation::Subtract => ctx.builder.build_int_sub(li, ri, "subtmp").map_err(|e| e.to_string())?,
+                        Operation::Multiply => ctx.builder.build_int_mul(li, ri, "multmp").map_err(|e| e.to_string())?,
+                        Operation::Divide => ctx.builder.build_int_signed_div(li, ri, "divtmp").map_err(|e| e.to_string())?,
+                        Operation::Modulo => ctx.builder.build_int_signed_rem(li, ri, "modtmp").map_err(|e| e.to_string())?,
+                        _ => return Err(format!("Unsupported int binary op {:?}", op)),
+                    };
+                    Ok(res.into())
+                }
+                (BasicValueEnum::PointerValue(lp), BasicValueEnum::PointerValue(rp)) => {
+                    let strcmp_fn = ctx.module.get_function("strcmp").unwrap_or_else(|| {
+                        let i8_ptr_type = ctx.context.i8_type().ptr_type(AddressSpace::from(0));
+                        let fn_type = ctx.context.i32_type().fn_type(&[i8_ptr_type.into(), i8_ptr_type.into()], false);
+        
+                        ctx.module.add_function("strcmp", fn_type, None)
+                    });
+
+                    let i8_ptr_type = ctx.context.i8_type().ptr_type(AddressSpace::from(0));
+                    let lp_cast = ctx.builder.build_bit_cast(lp, i8_ptr_type, "cast_lp").unwrap().into_pointer_value();
+                    let rp_cast = ctx.builder.build_bit_cast(rp, i8_ptr_type, "cast_rp").unwrap().into_pointer_value();
+
+                    let call = ctx.builder.build_call(strcmp_fn, &[lp_cast.into(), rp_cast.into()], "strcmpcall").map_err(|e| format!("strcmp call failed: {:?}", e))?; 
+                    let valkind = unsafe { std::mem::transmute::<_, BasicValueEnum>(call.try_as_basic_value()) };
+                    let int_res = match valkind {
+                        BasicValueEnum::IntValue(v) => v,
+                        _ => return Err("Expected IntValue from strcmp".to_string()),
+                    };  
+
+                    let cond = ctx.builder.build_int_compare(inkwell::IntPredicate::NE, int_res, ctx.context.i32_type().const_zero(), "strcmp_cond").unwrap();
+                    //let float_result = ctx.builder.build_unsigned_int_to_float(int_res, ctx.context.f64_type(), "strcmd_float").unwrap();
+
+                    Ok(BasicValueEnum::IntValue(cond))
+                }
+
+                _ => Err(format!("Type mismatch in binary operation")),
             }
         }
 

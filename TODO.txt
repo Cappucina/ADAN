@@ -1,1 +1,6 @@
+<<<<<<< HEAD
 Nothing listed to do for now
+=======
+[ ] Make IF, WHILE, and nested FUNCTIONS work in AdaN.
+ - @transicle is going to do this.
+>>>>>>> 5ead9fe (chore: do thing for latergit add .)

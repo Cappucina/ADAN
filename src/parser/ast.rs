@@ -23,7 +23,11 @@ pub enum Expr {
         args: Vec<Expr>,
     },
     Literal(Literal),
-    Variable(String),
+    Variable {
+        var_name: String,
+        var_type: Option<Types>,
+    },
+    Block(Vec<Expr>),
 }
 
 #[derive(Debug, Clone)]
@@ -35,6 +39,11 @@ pub enum Operation {
     Modulo,
     Negate,             // Flips the sign of a Number. (e.g. 2 -> -2, -3 -> 3)
     Not,                // Flips the value of a boolean. (e.g. false -> true, true -> false)
+    Greater,
+    Lesser,
+    Gequal,
+    Equal,
+    Lequal,
 }
 
 #[derive(Debug, Clone)]
@@ -43,6 +52,7 @@ pub enum Literal {
     String(String),
     Bool(bool),
     Nil,
+    Char(char)
 }
 
 #[derive(Debug, Clone)]

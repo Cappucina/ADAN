@@ -1,5 +1,3 @@
-#[allow(unused_variables)]
-
 use crate::lexer::token::*;
 use crate::parser::ast::*;
 
@@ -51,6 +49,7 @@ impl Parser {
     }
 
     fn expect_symbol(&mut self, sym: Symbols) -> Result<(), String> {
+        //println!("testing symbol: {:?}", sym);
         if self.match_symbol(sym) {
             Ok(())
         } else {
@@ -59,6 +58,7 @@ impl Parser {
     }
 
     fn expect_keyword(&mut self, kw: Keyword) -> Result<(), String> {
+        //println!("testing keyword: {:?}", kw);
         if self.match_keyword(kw) {
             Ok(())
         } else {
@@ -78,9 +78,16 @@ impl Parser {
     // ------------------------
     pub fn parse(&mut self) -> Result<Vec<Statement>, String> {
         let mut stmts = vec![];
+        //if self.match_keyword(Keyword::Program) {
+        //    stmts.push(self.parse_functions()?);
+        //} else {
+        //    return Err("Expected top-level 'program -> main'".into());
+        //}
+
         while self.peek().is_some() {
             stmts.push(self.parse_statement()?);
         }
+        
         Ok(stmts)
     }
 
@@ -113,7 +120,10 @@ impl Parser {
             return Ok(Statement::Block(self.parse_block()?));
         }
         let expr = self.parse_expr()?;
-        self.expect_symbol(Symbols::SemiColon)?;
+        //self.expect_symbol(Symbols::SemiColon)?;
+        if !matches!(expr, Expr::Block(_)) {
+            self.expect_symbol(Symbols::SemiColon)?;
+        }
         Ok(Statement::Expression(expr))
     }
 
@@ -134,7 +144,7 @@ impl Parser {
     }
 
     fn parse_return(&mut self) -> Result<Statement, String> {
-        self.expect_keyword(Keyword::Return)?;
+        //self.expect_keyword(Keyword::Return)?;
         let value = if !self.match_symbol(Symbols::SemiColon) {
             Some(self.parse_expr()?)
         } else {
@@ -170,7 +180,7 @@ impl Parser {
     }
 
     fn parse_while_loops(&mut self) -> Result<Statement, String> {
-        self.expect_keyword(Keyword::While)?;
+        //self.expect_keyword(Keyword::While)?;
         self.expect_symbol(Symbols::LParen)?;
 
         let condition = self.parse_expr()?;
@@ -187,10 +197,12 @@ impl Parser {
     }
 
     fn parse_if_statement(&mut self) -> Result<Statement, String> {
-        self.expect_keyword(Keyword::If)?;
+        //self.expect_keyword(Keyword::If)?;
+        //println!("a");
         self.expect_symbol(Symbols::LParen)?;
        
         let condition = self.parse_expr()?;
+        //println!("condition parsed: {:?}", condition);
        
         self.expect_symbol(Symbols::RParen)?;
         //self.expect_symbol(Symbols::LCurlyBracket)?;
@@ -205,6 +217,7 @@ impl Parser {
             None
         };
 
+        //println!("{:?}", then_branch);
         Ok(Statement::If { condition, then_branch, else_branch })
     }
 
@@ -239,63 +252,117 @@ impl Parser {
         Ok(Statement::VarDecl { name, var_type, initializer })
     }
 
-    // ------------------------
-    // Expressions
-    // ------------------------
-    fn parse_expr(&mut self) -> Result<Expr, String> {
-        self.parse_term()
-    }
+    // PEMDAS RULING
+    // parse_primary, parse_unary, parse_mul_div_mod,
+    // parse_add_sub, parse_comparisons, parse_equality,
 
-    fn parse_term(&mut self) -> Result<Expr, String> {
-        let expr = self.parse_factor()?;
-
-        while let Some(tok) = self.peek() {
-            let op = match tok {
-                Token::Symbols(Symbols::Period) => {
-                    break;
-                }
-                Token::Symbols(Symbols::Colon) => {
-                    break;
-                }
-                _ => break,
-            };
-
-            _ = op;
+    fn parse_equality(&mut self) -> Result<Expr, String> {
+        let mut left = self.parse_comparisons()?;
+        while let Some(Token::Symbols(Symbols::Equal)) = self.peek() {
+            self.next();
+            
+            let right = self.parse_comparisons()?;
+            left = Expr::Binary { left: Box::new(left), op: Operation::Equal, right: Box::new(right) };
         }
 
-        Ok(expr)
+        Ok(left)
     }
 
-    fn parse_factor(&mut self) -> Result<Expr, String> {
-        self.parse_unary()
+    fn parse_comparisons(&mut self) -> Result<Expr, String> {
+        let mut left = self.parse_add_sub()?;
+        while let Some(tok) = self.peek() {
+            let op = match tok {
+                Token::Symbols(Symbols::Greater) => Operation::Greater,
+                Token::Symbols(Symbols::Lesser) => Operation::Lesser,
+                Token::Symbols(Symbols::Gequal) => Operation::Gequal,
+                Token::Symbols(Symbols::Lequal) => Operation::Lequal,
+                _ => break,
+            };
+            self.next();
+
+            let right = self.parse_add_sub()?;
+            left = Expr::Binary { left: Box::new(left), op, right: Box::new(right) };
+        }
+
+        Ok(left)
+    }
+
+    fn parse_add_sub(&mut self) -> Result<Expr, String> {
+        let mut left = self.parse_mul_div_mod()?;
+        while let Some(tok) = self.peek() {
+            let op = match tok {
+                Token::Symbols(Symbols::Add) => Operation::Add,
+                Token::Symbols(Symbols::Sub) => Operation::Subtract,
+                _ => break,
+            };
+            self.next();
+
+            let right = self.parse_mul_div_mod()?;
+            left = Expr::Binary { left: Box::new(left), op, right: Box::new(right) };
+        }
+
+        Ok(left)
+    }
+
+    fn parse_mul_div_mod(&mut self) -> Result<Expr, String> {
+        let mut left = self.parse_unary()?;
+        while let Some(tok) = self.peek() {
+            let op = match tok {
+                Token::Symbols(Symbols::Mul) => Operation::Multiply,
+                Token::Symbols(Symbols::Div) => Operation::Divide,
+                Token::Symbols(Symbols::Mod) => Operation::Modulo,
+                _ => break,
+            };
+            self.next();
+
+            let right = self.parse_unary()?;
+            left = Expr::Binary { left: Box::new(left), op, right: Box::new(right) };
+        }
+
+        Ok(left)
     }
 
     fn parse_unary(&mut self) -> Result<Expr, String> {
-        self.parse_prim()
+        let next_token = self.peek();
+        match next_token {
+            Some(Token::Symbols(Symbols::Sub)) => {
+                self.next();
+                let right = self.parse_unary()?;
+                Ok(Expr::Unary { op: Operation::Negate, right: Box::new(right) })
+            }
+            Some(Token::Symbols(Symbols::Not)) => {
+                self.next();
+                let right = self.parse_unary()?;
+                Ok(Expr::Unary { op: Operation::Not, right: Box::new(right) })
+            }
+            _ => self.parse_primary(),
+        }
     }
 
-    fn parse_prim(&mut self) -> Result<Expr, String> {
-        let tok = match self.next() {
-            Some(t) => t.clone(),
-            None => return Err("Unexpected EOF while parsing primary expression".into()),
-        };
-
-        match tok {
-            Token::Number(num_str) => {
-                let val = num_str.parse::<f64>().unwrap_or(0.0);
-                Ok(Expr::Literal(Literal::Number(val)))
+    fn parse_primary(&mut self) -> Result<Expr, String> {
+        match self.peek().cloned() {
+            Some(Token::Number(n)) => {
+                let value = n.parse::<f64>().unwrap_or(0.0);
+                self.next();
+                Ok(Expr::Literal(Literal::Number(value)))
             }
-            Token::Literal(s) => {
+            Some(Token::Literal(s)) => {
+                self.next();
                 Ok(Expr::Literal(Literal::String(s)))
             }
-            Token::Ident(name) => {
-                let mut base = name;
+            Some(Token::CharLiteral(c)) => {
+                self.next();
+                Ok(Expr::Literal(Literal::Char(c)))
+            }
+            Some(Token::Ident(name)) => {
+                let mut base = name.clone();
+                self.next();
                 while self.match_symbol(Symbols::Period) {
                     let member = self.expect_ident()?;
                     base = format!("{}.{}", base, member);
                 }
 
-                if self.match_symbol(Symbols::LParen) {
+                if self.match_symbol(Symbols::LParen) { // (
                     let mut args = Vec::new();
                     if !self.match_symbol(Symbols::RParen) {
                         loop {
@@ -303,24 +370,35 @@ impl Parser {
                             if self.match_symbol(Symbols::RParen) {
                                 break;
                             }
-                            self.expect_symbol(Symbols::Comma)?;
+
+                            self.expect_symbol(Symbols::Comma)?; // (<param_1>, <param_2>, ...)
                         }
                     }
-                    
+
                     Ok(Expr::FCall { callee: base, args })
                 } else {
-                    Ok(Expr::Variable(base))
+                    Ok(Expr::Variable { var_name: base, var_type: None }) // `if (<var>) {}` instead of `if (<var>: String) {}`
                 }
             }
-            Token::Symbols(Symbols::LParen) => {
+            Some(Token::Symbols(Symbols::LParen)) => { // Opening part of the if statement
+                self.next();
                 let expr = self.parse_expr()?;
-                match self.next() {
-                    Some(Token::Symbols(Symbols::RParen)) => Ok(expr),
-                    other => Err(format!("Expected ')' to close grouping, found {:?}", other)),
-                }
+                self.expect_symbol(Symbols::RParen)?;
+                Ok(expr)
             }
-            
-            other => Err(format!("Unexpected token in expression: {:?}", other)),
+            other => Err(format!("Unexpected token in primary expression: {:?}", other))
         }
+    }
+
+    // ------------------------
+    // Expressions
+    // ------------------------
+    fn parse_expr(&mut self) -> Result<Expr, String> {
+        //self.parse_term()
+        self.parse_equality()
+    }
+
+    fn parse_factor(&mut self) -> Result<Expr, String> {
+        self.parse_unary()
     }
 }

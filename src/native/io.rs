@@ -17,27 +17,22 @@ fn add_printf_support<'ctx>(ctx: &mut CodeGenContext<'ctx>) -> inkwell::values::
 
 pub fn printf<'ctx>(ctx: &mut CodeGenContext<'ctx>, args: Vec<BasicValueEnum<'ctx>>) -> BasicValueEnum<'ctx> {
     let printf_fn = add_printf_support(ctx);
-    let fmt_str: PointerValue = match args[0] {
-        BasicValueEnum::FloatValue(_) => {
-            let s = ctx.context.const_string(b"%f\n\0", true);
-            let g = ctx.module.add_global(s.get_type(), None, "fmt_float");
-            
-            g.set_initializer(&s);
-            g.as_pointer_value()
-        },
-        BasicValueEnum::PointerValue(_) => {
-            let s = ctx.context.const_string(b"%s\n\0", true);
-            let g = ctx.module.add_global(s.get_type(), None, "fmt_str");
-            
-            g.set_initializer(&s);
-            g.as_pointer_value()
-        },
-        _ => panic!("Unsupported argument type for out()"),
-    };
+    let fmt_str = ctx.context.const_string(b"%s\n\0", true);
+    
+    let g_fmt = ctx.module.add_global(fmt_str.get_type(), None, "fmt_str");
+    g_fmt.set_initializer(&fmt_str);
+
+    let fmt_ptr = g_fmt.as_pointer_value();
+    let str_ptr = args[0].into_pointer_value();
+    let str_i8 = ctx.builder.build_pointer_cast(
+        str_ptr,
+        ctx.context.i8_type().ptr_type(AddressSpace::from(0)),
+        "cast_str"
+    ).expect("pointer casting failed");
 
     ctx.builder.build_call(
         printf_fn,
-        &[fmt_str.into(), args[0].into()],
+        &[fmt_ptr.into(), str_i8.into()],
         "call_printf",
     );
 

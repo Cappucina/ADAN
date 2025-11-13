@@ -11,7 +11,7 @@ use crate::lexer::lexer::Lexer;
 use crate::parser::parser::Parser;
 use crate::code_gen::statements::{codegen_statements, load_native_registry};
 use crate::code_gen::builder::CodeGenContext;
-use crate::cli::initialize;
+//use crate::cli::initialize;
 
 fn create_binary() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all("compiled")?;
@@ -53,7 +53,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ctx.module.print_to_file("compiled/output.ll")?;
     create_binary()?;
 
-
-    initialize();
+    //initialize();
     Ok(())
 }
