@@ -1,7 +1,10 @@
 use logos::Logos;
 
+use crate::lexer::lex::LexerError;
+
 #[derive(Logos, Debug, PartialEq, Clone)]
-pub enum Tokens {
+#[logos(error = LexerError)]
+pub enum Tokens<'source> {
     // Operands
     #[token("+")] Plus,
     #[token("-")] Minus,
@@ -43,9 +46,9 @@ pub enum Tokens {
     #[token("->")] Assign,
 
     // Literals
-    #[regex("[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())] Identifier(String),
-    #[regex("-?[0-9]+\\.[0-9]+", |lex| lex.slice().parse::<f64>().unwrap())] Float(f64),
-    #[regex("-?[0-9]+", |lex| lex.slice().parse::<i64>().unwrap())] Integer(i64),
+    #[regex("[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice())] Identifier(&'source str),
+    #[regex("-?[0-9]+\\.[0-9]+", |lex| lex.slice().parse::<f64>().ok())] Float(f64),
+    #[regex("-?[0-9]+", |lex| lex.slice().parse::<i64>().ok())] Integer(i64),
     #[regex("\"(\\\\.|[^\"])*\"", |lex| {
         let slice = lex.slice();
         let unquoted = &slice[1..slice.len() - 1];

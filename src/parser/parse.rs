@@ -1,72 +1,55 @@
-use std::vec;
+use std::cell::RefCell;
+use std::ops::Range;
+use crate::parser::ast::*;
+use bumpalo::Bump;
+use crate::lexer::lex::LexerResult;
+use crate::lexer::tokens::Tokens;
+use logos::Lexer;
 
-use crate::{lexer::tokens::Tokens, parser::ast::{Expr, Statement}};
+type Allocator = Bump;
+type Span = Range<usize>;
 
-pub struct Parser {
-    tokens: Vec<Tokens>,
-    position: usize,
+pub enum ParseError<'source> {
+    UnexpectedEof,
+    UnexpectedEol,
+
+    IllegalToken(Span),
+    MissingSemicolon(Span),
+    ExpectedIdentifier(Span),
+    MissingRightParen(Span),
+
+    MissingClosingBrace {
+        expected: Tokens<'source>,
+        opening_span: Span,
+        found: LexerResult<'source>,
+        span: Span,
+    },
 }
 
-impl Parser {
-    pub fn new(tokens: Vec<Tokens>) -> Self {
-        Parser {
-            tokens,
-            position: 0,
-        }
-    }
+pub type ParseResult<'source, T> = Result<T, ParseError<'source>>;
 
-    fn peek(&self) -> Option<&Tokens> {
-        self.tokens.get(self.position)
-    }
+pub struct Parser<'alloc, 'source> {
+    allocator: &'alloc Allocator,
+    source: &'source str,
+    tokens: Vec<(LexerResult<'source>, Span)>,
+    errors: RefCell<Vec<ParseError<'source>>>,
+    cursor: RefCell<usize>,
+}
 
-    fn advance(&mut self) -> Option<&Tokens> {
-        if self.position < self.tokens.len() {
-            let token = &self.tokens[self.position];
-            self.position += 1;
-            Some(token)
-        } else {
-            None
-        }
-    }
-
-    fn expect(&mut self, expected: &Tokens) -> Result<(), String> {
-        match self.advance() {
-            Some(token) if token == expected => Ok(()),
-            Some(token) => Err(format!("Expected {:?}, found {:?}", expected, token)),
-            None => Err(format!("Expected {:?}, found end of input", expected)),
-        }
-    }
-
-    fn expect_identifier(&mut self) -> Result<String, String> {
-        match self.advance() {
-            Some(Tokens::Identifier(name)) => Ok(name.clone()),
-            Some(token) => Err(format!("Expected identifier, found {:?}", token)),
-            None => Err("Expected identifier, found end of input".to_string()),
-        }
-    }
-
-    fn parse(&mut self) -> Result<Vec<Statement>, String> {
-        let mut statements = vec![];
-        while let Some(_) = self.peek() {
-            let stmt = self.parse_statement()?;
-            statements.push(stmt);
-        }
-
-        Ok(statements)
-    }
-
-    fn parse_statement(&mut self) -> Result<Statement, String> {
-        while let Some(Tokens::Comment) = self.peek() {
-            self.advance();
-        }
-
-        let expression = self.parse_expression();
-        self.expect(&Tokens::Semicolon);
-
-        Ok(Statement::Expr(expression))
-    }
-
-    fn parse_expression(&mut self) -> Result<Expr, String> {
+impl<'alloc, 'source> Parser<'alloc, 'source> {
+    pub fn new(lexer: Lexer<'source, Tokens<'source>>, allocator: &'alloc Allocator) -> Self {
+        let source = lexer.source();
+        let tokens = lexer.spanned().collect();
         
+        Parser {
+            allocator,
+            source,
+            tokens,
+            errors: RefCell::new(Vec::new()),
+            cursor: RefCell::new(0),
+        }
     }
+
+    // https://github.com/aatxe/witch-hazel/blob/primary/syntax/src/parser/mod.rs
+    // Inspiration for parser structure
 }
