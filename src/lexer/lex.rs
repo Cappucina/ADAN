@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::lexer::tokens::Tokens;
 use logos::Logos;
 

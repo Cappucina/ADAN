@@ -29,6 +29,7 @@ pub enum Tokens {
     #[token("//")] Comment,
 
     // Keywords
+    #[token("include")] Include,
     #[token("local")] Local,
     #[token("global")] Global,
     #[token("if")] If,

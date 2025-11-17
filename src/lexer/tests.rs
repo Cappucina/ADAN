@@ -36,9 +36,10 @@ mod tests {
 
     #[test]
     fn keywords() {
-        let input = "local global if else while for program return break pass ->";
+        let input = "include local global if else while for program return break pass ->";
         let mut lex = Tokens::lexer(input);
 
+        assert_eq!(lex.next(), Some(Ok(Tokens::Include)));
         assert_eq!(lex.next(), Some(Ok(Tokens::Local)));
         assert_eq!(lex.next(), Some(Ok(Tokens::Global)));
         assert_eq!(lex.next(), Some(Ok(Tokens::If)));
