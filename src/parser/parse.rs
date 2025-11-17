@@ -73,5 +73,9 @@ impl<'alloc, 'source> Parser<'alloc, 'source> {
         token
     }
 
-    
+    fn ignore_whitespace(&self) {
+        while let Some((Ok(Tokens::HorizontalWhitespace(_) | Tokens::VerticalWhitespace(_)), _)) = self.peek() {
+            self.advance();
+        }
+    }
 }
