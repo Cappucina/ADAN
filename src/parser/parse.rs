@@ -52,4 +52,26 @@ impl<'alloc, 'source> Parser<'alloc, 'source> {
 
     // https://github.com/aatxe/witch-hazel/blob/primary/syntax/src/parser/mod.rs
     // Inspiration for parser structure
+
+    fn no_errors(&self) -> bool {
+        self.errors.borrow().is_empty()
+    }
+
+    fn peek(&self) -> Option<(LexerResult<'source>, Span)> {
+        self.tokens.get(*self.cursor.borrow())
+            .cloned()
+    }
+
+    fn advance(&self) {
+        *self.cursor.borrow_mut() += 1;
+    }
+
+    // Identical to `advance` but returns the token during advancement.
+    fn bump(&self) -> Option<(LexerResult<'source>, Span)> {
+        let token = self.peek();
+        self.advance();
+        token
+    }
+
+    
 }
