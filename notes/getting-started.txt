@@ -14,6 +14,10 @@ I will try my best to avoid using artificial intelligence, as previously stated,
 tend to force Gemini upon you, and if, for whatever reason I happen to use artificial intelligence, I will
 try my best to not use any code provided to me.
 
+The usage of artificial intelligence MAY be permitted as long as little-to-no code is actively being generated,
+and/or it's being used for roadmaps, diagrams, research, or assistance with explaining a topic in further
+detail.
+
 ---------------------------------------------------------------------------------------------------------------
 
 Before I start coding anything I want to set up some resources that I think will speed up the development

@@ -1,0 +1,29 @@
+I want to try something new in the second version of the language, at least for the lexical analysis stage.
+To ensure my lexer is as optimized as-can-be, I will be using a crate for writing functional, efficient, and
+practical lexers.
+
+Alongside the new way of doing things, I decided I may slightly change up the syntax to ADAN to make it very
+slightly more user-and-developer-friendly.
+
+Aside from explaining that new things will be used for the new lexer, there is not much else to cover.
+
+---------------------------------------------------------------------------------------------------------------
+
+If you are not aware on what a lexer actually is, or if you've heard of it and want an explanation, read below:
+
+The process of lexical analysis can be broken up into a few very simple concepts:
+
+1. Source code: The way the code is *actually* written, the way YOU see it.
+```
+const my_var = 2 + 2;
+```
+2. The process of tokenizing: The process of turning things like "CONST" into their token-equivalents.
+```
+[
+    VAR, SYMBOL("my_var"), EQUALS,
+    INT(2), PLUS, INT(2),
+    SEMICOLON
+]
+```
+
+Pretty much, lexical analysis translates ASCII characters ("a") into tokens. (SYMBOL("a"))
