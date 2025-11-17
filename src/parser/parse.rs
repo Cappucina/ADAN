@@ -1,4 +1,6 @@
-use crate::lexer::tokens::Tokens;
+use std::vec;
+
+use crate::{lexer::tokens::Tokens, parser::ast::{Expr, Statement}};
 
 pub struct Parser {
     tokens: Vec<Tokens>,
@@ -43,5 +45,28 @@ impl Parser {
         }
     }
 
-    // Do soon
+    fn parse(&mut self) -> Result<Vec<Statement>, String> {
+        let mut statements = vec![];
+        while let Some(_) = self.peek() {
+            let stmt = self.parse_statement()?;
+            statements.push(stmt);
+        }
+
+        Ok(statements)
+    }
+
+    fn parse_statement(&mut self) -> Result<Statement, String> {
+        while let Some(Tokens::Comment) = self.peek() {
+            self.advance();
+        }
+
+        let expression = self.parse_expression();
+        self.expect(&Tokens::Semicolon);
+
+        Ok(Statement::Expr(expression))
+    }
+
+    fn parse_expression(&mut self) -> Result<Expr, String> {
+        
+    }
 }
