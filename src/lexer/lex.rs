@@ -19,7 +19,7 @@ impl<'source> Lexer<'source> {
         }
     }
 
-    pub fn next(&mut self) -> Option<Tokens> {
+    pub fn next(&mut self) -> Option<Tokens<'source>> {
         self.lexer.next().and_then(|result: Result<Tokens, LexerError>| result.ok())
     }
 }
