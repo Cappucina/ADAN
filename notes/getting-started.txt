@@ -1,0 +1,35 @@
+To get started with ADAN, I want to set a few rules for myself first.
+
+- I want to avoid using AS MUCH artificial intelligence as I possibly can. I must resort to using documentation
+and/or viewing (and not using) boilerplate code.
+- I want to write down and record this ENTIRE process from start to finish. No edits will be made during
+recording and I will be focused for the duration of each session.
+- I will ONLY be coding in sessions of 3 hours per day. I must never go beyong this limitation I've set for
+myself.
+
+Before I write code, I will hopefully think through everything and make sure all of this makes sense,
+and hopefully try and produce the most optimized outcome I can think of.
+
+I will try my best to avoid using artificial intelligence, as previously stated, however, Google search results
+tend to force Gemini upon you, and if, for whatever reason I happen to use artificial intelligence, I will
+try my best to not use any code provided to me.
+
+---------------------------------------------------------------------------------------------------------------
+
+Before I start coding anything I want to set up some resources that I think will speed up the development
+process for ADAN.
+
+DOCKER:
+To avoid installing software that the user may not want on their computer, I will instead use a Docker
+container. I will also be using Docker to ensure that things are always being ran inside of a Linux environment
+so we will have to deal with less cross-platform issues.
+
+The compiler will be ran inside of this container so that way, even on Windows systems, Linux environments are
+still being used and we will only be needing to write one script for any platform that is supported with
+Docker.
+
+MAKEFILE:
+For making commands quickly executable, we will be using Makefile. Although Makefile scripts are primarily used
+in C/C++ environments, they should be properly suited in our environment.
+
+We can write a few Makefile commands for base compiling and debugging ADAN.
