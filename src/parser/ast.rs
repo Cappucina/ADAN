@@ -46,11 +46,21 @@ pub struct Block<'alloc> {
 
 #[derive(Debug, PartialEq)]
 pub enum Expression<'alloc> {
-    Identifier { value: &'alloc str },
-    BooleanLiteral { value: bool },
-    IntegerLiteral { value: i64 },
-    StringLiteral { value: &'alloc str },
-    FloatLiteral { value: f64 },
+    Identifier {
+        value: &'alloc str,
+    },
+    BooleanLiteral {
+        value: bool,
+    },
+    IntegerLiteral {
+        value: i64,
+    },
+    StringLiteral {
+        value: &'alloc str,
+    },
+    FloatLiteral {
+        value: f64,
+    },
     NullLiteral,
 
     // io.printf(); <-- () is a function call on io.printf

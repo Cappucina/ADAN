@@ -1,9 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::lexer::{
-        tokens::Tokens,
-        lex::Lexer
-    };
+    use crate::lexer::{lex::Lexer, tokens::Tokens};
 
     fn next_non_whitespace<'source>(lex: &mut Lexer<'source>) -> Option<Tokens<'source>> {
         while let Some(token) = lex.next() {
@@ -17,14 +14,14 @@ mod tests {
 
     #[test]
     fn operands() {
-        let input = "+ - * / % ^ = ! && || < > <= >= != ( ) { } ; , . //";
+        let input = "+ - * / % ^ = ! && || < > <= >= != ( ) { } ; , . : .. //";
         let mut lex = Lexer::new(input);
 
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Plus));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Minus));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Asterisk));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Slash));
-        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Percent));
+        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Modulus));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Caret));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Equals));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Not));
@@ -42,7 +39,12 @@ mod tests {
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Semicolon));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Comma));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Dot));
-        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Comment("//".into())));
+        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Colon));
+        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::DoubleDot));
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::Comment("//".into()))
+        );
     }
 
     #[test]
@@ -69,11 +71,26 @@ mod tests {
         let input = "foo SAMPLE _var \"Escaped \\\"String\\\"\" \"String Literal\" 64 -64 0.0 -1.0 true false null";
         let mut lex = Lexer::new(input);
 
-        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Identifier("foo".into())));
-        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Identifier("SAMPLE".into())));
-        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Identifier("_var".into())));
-        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::String("Escaped \"String\"".into())));
-        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::String("String Literal".into())));
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::Identifier("foo".into()))
+        );
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::Identifier("SAMPLE".into()))
+        );
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::Identifier("_var".into()))
+        );
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::String("Escaped \"String\"".into()))
+        );
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::String("String Literal".into()))
+        );
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Integer(64)));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Integer(-64)));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Float(0.0)));
@@ -81,5 +98,91 @@ mod tests {
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Boolean(true)));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Boolean(false)));
         assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Null));
+    }
+
+    #[test]
+    fn string_escape_sequences() {
+        let input = r#""hello\nworld" "tab\there" "quote\"test""#;
+        let mut lex = Lexer::new(input);
+
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::String("hello\nworld".into()))
+        );
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::String("tab\there".into()))
+        );
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::String("quote\"test".into()))
+        );
+    }
+
+    #[test]
+    fn comments() {
+        let input = "// This is a comment\n42 // Another comment";
+        let mut lex = Lexer::new(input);
+
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::Comment("// This is a comment".into()))
+        );
+        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Integer(42)));
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::Comment("// Another comment".into()))
+        );
+    }
+
+    #[test]
+    fn bitwise_operators() {
+        let input = "| !~ << >> $";
+        let mut lex = Lexer::new(input);
+
+        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::BitWiseOr));
+        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::BitWiseNot));
+        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::ShiftLeft));
+        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::ShiftRight));
+        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::BitWiseAnd));
+    }
+
+    #[test]
+    fn whitespace_handling() {
+        let input = "42\n\n\t  foo";
+        let mut lex = Lexer::new(input);
+
+        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::Integer(42)));
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::Identifier("foo".into()))
+        );
+    }
+
+    #[test]
+    fn large_numbers() {
+        let input = "999999999 -999999999 3.141592653589793";
+        let mut lex = Lexer::new(input);
+
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::Integer(999999999))
+        );
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::Integer(-999999999))
+        );
+        assert_eq!(
+            next_non_whitespace(&mut lex),
+            Some(Tokens::Float(3.141592653589793))
+        );
+    }
+
+    #[test]
+    fn empty_string() {
+        let input = r#""""#;
+        let mut lex = Lexer::new(input);
+
+        assert_eq!(next_non_whitespace(&mut lex), Some(Tokens::String("".into())));
     }
 }
