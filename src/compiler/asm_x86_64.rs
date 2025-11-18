@@ -237,37 +237,33 @@ impl X86_64CodeGen {
                         self.output.push("    push rax        ; Save left string".to_string());
 
                         // Get lengths of both strings
-                        self.output.push("    mov rdi, rax    ; Left string for strlen".to_string());
-                        self.output.push("    extern strlen".to_string());
-                        self.output.push("    call strlen".to_string());
+                        self.output.push("    mov rdi, rax    ; Left string for _strlen".to_string());
+                        self.output.push("    call _strlen".to_string());
                         self.output.push("    mov r12, rax    ; Save left length in r12".to_string());
 
                         self.output.push("    pop rax         ; Restore left string".to_string());
                         self.output.push("    push rax        ; Save left string again".to_string());
-                        self.output.push("    mov rdi, rbx    ; Right string for strlen".to_string());
-                        self.output.push("    call strlen".to_string());
+                        self.output.push("    mov rdi, rbx    ; Right string for _strlen".to_string());
+                        self.output.push("    call _strlen".to_string());
                         self.output.push("    mov r13, rax    ; Save right length in r13".to_string());
 
                         // Allocate memory for result (left_len + right_len + 1)
                         self.output.push("    mov rdi, r12    ; Left length".to_string());
                         self.output.push("    add rdi, r13    ; + right length".to_string());
                         self.output.push("    add rdi, 1      ; + null terminator".to_string());
-                        self.output.push("    extern malloc".to_string());
-                        self.output.push("    call malloc".to_string());
+                        self.output.push("    call _malloc".to_string());
                         self.output.push("    mov r14, rax    ; Save result buffer in r14".to_string());
 
                         // Copy left string to result
                         self.output.push("    mov rdi, r14    ; Destination".to_string());
                         self.output.push("    pop rsi         ; Source (left string)".to_string());
                         self.output.push("    push rsi        ; Save left string again".to_string());
-                        self.output.push("    extern strcpy".to_string());
-                        self.output.push("    call strcpy".to_string());
+                        self.output.push("    call _strcpy".to_string());
 
                         // Concatenate right string to result
                         self.output.push("    mov rdi, r14    ; Destination".to_string());
                         self.output.push("    mov rsi, rbx    ; Source (right string)".to_string());
-                        self.output.push("    extern strcat".to_string());
-                        self.output.push("    call strcat".to_string());
+                        self.output.push("    call _strcat".to_string());
 
                         self.output.push("    pop rax         ; Clean up stack".to_string());
                         self.output.push("    mov rax, r14    ; Result pointer in rax".to_string());
@@ -364,20 +360,22 @@ impl X86_64CodeGen {
                         ValueType::Float => "fmt_float",
                         ValueType::String => "fmt_str",
                         ValueType::Boolean => {
+                            let false_label = self.new_label();
+                            let print_label = self.new_label();
                             self.output.push("    cmp rax, 0".to_string());
-                            self.output.push("    je .Lfalse".to_string());
-                            self.output.push("    mov rdi, fmt_bool_true".to_string());
-                            self.output.push("    jmp .Lprint".to_string());
-                            self.output.push(".Lfalse:".to_string());
-                            self.output.push("    mov rdi, fmt_bool_false".to_string());
-                            self.output.push(".Lprint:".to_string());
+                            self.output.push(format!("    je {}", false_label));
+                            self.output.push("    lea rdi, [rel fmt_bool_true]".to_string());
+                            self.output.push(format!("    jmp {}", print_label));
+                            self.output.push(format!("{}:", false_label));
+                            self.output.push("    lea rdi, [rel fmt_bool_false]".to_string());
+                            self.output.push(format!("{}:", print_label));
                             self.output.push("    xor rax, rax".to_string());
-                            self.output.push("    call printf".to_string());
+                            self.output.push("    call _printf".to_string());
 
                             if i < arguments.len() - 1 {
-                                self.output.push("    mov rdi, fmt_space".to_string());
+                                self.output.push("    lea rdi, [rel fmt_space]".to_string());
                                 self.output.push("    xor rax, rax".to_string());
-                                self.output.push("    call printf".to_string());
+                                self.output.push("    call _printf".to_string());
                             }
                             continue;
                         }
@@ -386,23 +384,23 @@ impl X86_64CodeGen {
 
                     // Print the value
                     self.output.push("    push rax".to_string());
-                    self.output.push(format!("    mov rdi, {}", fmt));
+                    self.output.push(format!("    lea rdi, [rel {}]", fmt));
                     self.output.push("    mov rsi, rax".to_string());
                     self.output.push("    xor rax, rax".to_string());
-                    self.output.push("    call printf".to_string());
+                    self.output.push("    call _printf".to_string());
                     self.output.push("    pop rax".to_string());
 
                     if i < arguments.len() - 1 {
-                        self.output.push("    mov rdi, fmt_space".to_string());
+                        self.output.push("    lea rdi, [rel fmt_space]".to_string());
                         self.output.push("    xor rax, rax".to_string());
-                        self.output.push("    call printf".to_string());
+                        self.output.push("    call _printf".to_string());
                     }
                 }
 
                 // Print newline
-                self.output.push("    mov rdi, fmt_newline".to_string());
+                self.output.push("    lea rdi, [rel fmt_newline]".to_string());
                 self.output.push("    xor rax, rax".to_string());
-                self.output.push("    call printf".to_string());
+                self.output.push("    call _printf".to_string());
                 Ok(ValueType::Null)
             }
             "printf" => {
@@ -415,25 +413,27 @@ impl X86_64CodeGen {
                         ValueType::Float => "fmt_float",
                         ValueType::String => "fmt_str",
                         ValueType::Boolean => {
+                            let false_label = self.new_label();
+                            let print_label = self.new_label();
                             self.output.push("    cmp rax, 0".to_string());
-                            self.output.push("    je .Lfalse2".to_string());
-                            self.output.push("    mov rdi, fmt_bool_true".to_string());
-                            self.output.push("    jmp .Lprint2".to_string());
-                            self.output.push(".Lfalse2:".to_string());
-                            self.output.push("    mov rdi, fmt_bool_false".to_string());
-                            self.output.push(".Lprint2:".to_string());
+                            self.output.push(format!("    je {}", false_label));
+                            self.output.push("    lea rdi, [rel fmt_bool_true]".to_string());
+                            self.output.push(format!("    jmp {}", print_label));
+                            self.output.push(format!("{}:", false_label));
+                            self.output.push("    lea rdi, [rel fmt_bool_false]".to_string());
+                            self.output.push(format!("{}:", print_label));
                             self.output.push("    xor rax, rax".to_string());
-                            self.output.push("    call printf".to_string());
+                            self.output.push("    call _printf".to_string());
                             continue;
                         }
                         ValueType::Null => "fmt_null",
                     };
 
                     self.output.push("    push rax".to_string());
-                    self.output.push(format!("    mov rdi, {}", fmt));
+                    self.output.push(format!("    lea rdi, [rel {}]", fmt));
                     self.output.push("    mov rsi, rax".to_string());
                     self.output.push("    xor rax, rax".to_string());
-                    self.output.push("    call printf".to_string());
+                    self.output.push("    call _printf".to_string());
                     self.output.push("    pop rax".to_string());
                 }
                 Ok(ValueType::Null)

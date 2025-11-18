@@ -103,6 +103,7 @@ fn main() {
     }
 
     let mut format = OutputFormat::Bytecode; // Default format
+    let mut target = None; // Will auto-detect if not specified
     let mut disassemble = false;
     let mut save_asm = false;
     let mut output_file = None;
@@ -129,6 +130,22 @@ fn main() {
                     };
                 } else {
                     eprintln!("Error: --format requires an argument");
+                    process::exit(1);
+                }
+            }
+            "-t" | "--target" => {
+                i += 1;
+                if i < args.len() {
+                    match CompilationTarget::from_str(&args[i]) {
+                        Some(t) => target = Some(t),
+                        None => {
+                            eprintln!("Unknown target: {}", args[i]);
+                            eprintln!("Valid targets: x86_64-linux, x86_64-macos, aarch64-macos, aarch64-linux");
+                            process::exit(1);
+                        }
+                    }
+                } else {
+                    eprintln!("Error: --target requires an argument");
                     process::exit(1);
                 }
             }
@@ -189,13 +206,13 @@ fn main() {
             compile_and_run_vm(&expressions, &filename, disassemble);
         }
         OutputFormat::Native => {
-            compile_to_native(&expressions, &filename, output_file, save_asm);
+            compile_to_native(&expressions, &filename, output_file, save_asm, target);
         }
         OutputFormat::Assembly => {
-            generate_assembly(&expressions, &filename, output_file);
+            generate_assembly(&expressions, &filename, output_file, target);
         }
         OutputFormat::Object => {
-            generate_object(&expressions, &filename, output_file);
+            generate_object(&expressions, &filename, output_file, target);
         }
         OutputFormat::Ast => {
             output_ast(&expressions, output_file);
@@ -208,9 +225,14 @@ fn compile_to_native(
     input_file: &str,
     output_file: Option<String>,
     save_asm: bool,
+    target: Option<CompilationTarget>,
 ) {
-    // Detect target platform
-    let target = CompilationTarget::detect_host();
+    // Use provided target or detect host platform
+    let target = target.unwrap_or_else(CompilationTarget::detect_host);
+    let host = CompilationTarget::detect_host();
+
+    // Check if cross-compiling
+    let is_cross_compile = target != host;
 
     // Generate assembly code
     let mut codegen = X86_64CodeGen::new();
@@ -236,6 +258,22 @@ fn compile_to_native(
     if let Err(err) = fs::write(&asm_file, &assembly) {
         eprintln!("Error writing assembly file: {}", err);
         process::exit(1);
+    }
+
+    // Warn about cross-compilation
+    if is_cross_compile {
+        eprintln!("⚠️  Cross-compilation detected!");
+        eprintln!("    Host: {:?}, Target: {:?}", host, target);
+        eprintln!("    Cross-compilation requires the target platform's toolchain.");
+        eprintln!("");
+        eprintln!("Recommendation: Use --format assembly or --format object instead:");
+        eprintln!("    cargo run -- --format assembly --target {:?} {} -o {}.asm", target, input_file, base_name);
+        eprintln!("    cargo run -- --format object --target {:?} {} -o {}.o", target, input_file, base_name);
+        eprintln!("");
+        eprintln!("Then transfer the file to the target platform and link there.");
+        eprintln!("");
+        eprintln!("Attempting to link anyway (will likely fail)...");
+        eprintln!("");
     }
 
     // Platform-specific assembly and linking
@@ -409,7 +447,9 @@ fn generate_assembly(
     expressions: &[parser::ast::Expression],
     input_file: &str,
     output_file: Option<String>,
+    _target: Option<CompilationTarget>,
 ) {
+    // Note: target parameter reserved for future use when we support different architectures
     // Generate assembly code
     let mut codegen = X86_64CodeGen::new();
     let assembly = match codegen.compile(expressions) {
@@ -444,7 +484,9 @@ fn generate_object(
     expressions: &[parser::ast::Expression],
     input_file: &str,
     output_file: Option<String>,
+    _target: Option<CompilationTarget>,
 ) {
+    // Note: target parameter reserved for future use when we support different architectures
     // Generate assembly code
     let mut codegen = X86_64CodeGen::new();
     let assembly = match codegen.compile(expressions) {
