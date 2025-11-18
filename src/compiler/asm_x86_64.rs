@@ -68,14 +68,18 @@ impl X86_64CodeGen {
         self.output.push("LVAR_STORAGE: resq 1000    ; Storage for variables".to_string());
         self.output.push("".to_string());
         self.output.push("section .text".to_string());
-        self.output.push("    global _start".to_string());
-        self.output.push("    extern printf".to_string());
-        self.output.push("    extern exit".to_string());
+        self.output.push("    global _main".to_string());
+        self.output.push("    extern _printf".to_string());
+        self.output.push("    extern _exit".to_string());
+        self.output.push("    extern _strlen".to_string());
+        self.output.push("    extern _malloc".to_string());
+        self.output.push("    extern _strcpy".to_string());
+        self.output.push("    extern _strcat".to_string());
         self.output.push("".to_string());
     }
 
     fn emit_start(&mut self) {
-        self.output.push("_start:".to_string());
+        self.output.push("_main:".to_string());
         self.output.push("    push rbp".to_string());
         self.output.push("    mov rbp, rsp".to_string());
         self.output.push("".to_string());
@@ -87,7 +91,7 @@ impl X86_64CodeGen {
         self.output.push("    mov rsp, rbp".to_string());
         self.output.push("    pop rbp".to_string());
         self.output.push("    xor rdi, rdi        ; exit code 0".to_string());
-        self.output.push("    call exit".to_string());
+        self.output.push("    call _exit".to_string());
         self.output.push("".to_string());
     }
 
@@ -228,9 +232,47 @@ impl X86_64CodeGen {
                         ValueType::Boolean
                     }
                     BinaryOperator::Concatenate => {
-                        // String concatenation requires memory allocation
-                        // For now, return an error
-                        return Err("String concatenation (..) not yet supported in native compilation. Use VM mode for this feature.".to_string());
+                        // String concatenation: use extern strcat/malloc
+                        // Left string pointer is in rax, right string will be in rbx
+                        self.output.push("    push rax        ; Save left string".to_string());
+
+                        // Get lengths of both strings
+                        self.output.push("    mov rdi, rax    ; Left string for strlen".to_string());
+                        self.output.push("    extern strlen".to_string());
+                        self.output.push("    call strlen".to_string());
+                        self.output.push("    mov r12, rax    ; Save left length in r12".to_string());
+
+                        self.output.push("    pop rax         ; Restore left string".to_string());
+                        self.output.push("    push rax        ; Save left string again".to_string());
+                        self.output.push("    mov rdi, rbx    ; Right string for strlen".to_string());
+                        self.output.push("    call strlen".to_string());
+                        self.output.push("    mov r13, rax    ; Save right length in r13".to_string());
+
+                        // Allocate memory for result (left_len + right_len + 1)
+                        self.output.push("    mov rdi, r12    ; Left length".to_string());
+                        self.output.push("    add rdi, r13    ; + right length".to_string());
+                        self.output.push("    add rdi, 1      ; + null terminator".to_string());
+                        self.output.push("    extern malloc".to_string());
+                        self.output.push("    call malloc".to_string());
+                        self.output.push("    mov r14, rax    ; Save result buffer in r14".to_string());
+
+                        // Copy left string to result
+                        self.output.push("    mov rdi, r14    ; Destination".to_string());
+                        self.output.push("    pop rsi         ; Source (left string)".to_string());
+                        self.output.push("    push rsi        ; Save left string again".to_string());
+                        self.output.push("    extern strcpy".to_string());
+                        self.output.push("    call strcpy".to_string());
+
+                        // Concatenate right string to result
+                        self.output.push("    mov rdi, r14    ; Destination".to_string());
+                        self.output.push("    mov rsi, rbx    ; Source (right string)".to_string());
+                        self.output.push("    extern strcat".to_string());
+                        self.output.push("    call strcat".to_string());
+
+                        self.output.push("    pop rax         ; Clean up stack".to_string());
+                        self.output.push("    mov rax, r14    ; Result pointer in rax".to_string());
+
+                        ValueType::String
                     }
                     BinaryOperator::Equal | BinaryOperator::NotEqual |
                     BinaryOperator::LessThan | BinaryOperator::GreaterThan |
