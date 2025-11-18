@@ -1,10 +1,10 @@
-use std::cell::RefCell;
-use std::ops::Range;
-use crate::parser::ast::*;
-use bumpalo::Bump;
 use crate::lexer::lex::LexerResult;
 use crate::lexer::tokens::Tokens;
+use crate::parser::ast::*;
+use bumpalo::Bump;
 use logos::Lexer;
+use std::cell::RefCell;
+use std::ops::Range;
 
 type Allocator = Bump;
 type Span = Range<usize>;
@@ -40,7 +40,7 @@ impl<'alloc, 'source> Parser<'alloc, 'source> {
     pub fn new(lexer: Lexer<'source, Tokens<'source>>, allocator: &'alloc Allocator) -> Self {
         let source = lexer.source();
         let tokens = lexer.spanned().collect();
-        
+
         Parser {
             allocator,
             source,
@@ -58,8 +58,7 @@ impl<'alloc, 'source> Parser<'alloc, 'source> {
     }
 
     fn peek(&self) -> Option<(LexerResult<'source>, Span)> {
-        self.tokens.get(*self.cursor.borrow())
-            .cloned()
+        self.tokens.get(*self.cursor.borrow()).cloned()
     }
 
     fn advance(&self) {
@@ -74,8 +73,12 @@ impl<'alloc, 'source> Parser<'alloc, 'source> {
     }
 
     fn ignore_whitespace(&self) {
-        while let Some((Ok(Tokens::HorizontalWhitespace(_) | Tokens::VerticalWhitespace(_)), _)) = self.peek() {
+        while let Some((Ok(Tokens::HorizontalWhitespace(_) | Tokens::VerticalWhitespace(_)), _)) =
+            self.peek()
+        {
             self.advance();
         }
     }
+
+    pub fn parse_identifier(&self) -> Expr<'alloc> {}
 }
