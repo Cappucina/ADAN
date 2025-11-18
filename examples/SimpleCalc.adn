@@ -1,0 +1,13 @@
+// Simple Calculator Example
+// Shows compilation of arithmetic expressions
+
+program main() {
+    a -> 10;
+    b -> 5;
+
+    result -> (a + b) * 2;
+    io.print(result);
+
+    power -> 2 ^ 10;
+    io.print(power);
+}

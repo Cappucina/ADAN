@@ -1,0 +1,28 @@
+// Variables Example in ADAN
+// Demonstrates variable assignment and usage
+
+program main() {
+    // Assign values to variables
+    x -> 42;
+    name -> "ADAN";
+    pi -> 3.14159;
+
+    // Print variables
+    io.print("=== Variables ===");
+    io.print(x);
+    io.print(name);
+    io.print(pi);
+
+    // Use variables in expressions
+    io.print("=== Using Variables ===");
+    y -> x + 8;
+    io.print(y);
+
+    greeting -> "Hello, " .. name .. "!";
+    io.print(greeting);
+
+    // Reassignment
+    x -> 100;
+    io.print("New value of x:");
+    io.print(x);
+}

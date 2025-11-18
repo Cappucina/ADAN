@@ -1,0 +1,6 @@
+// Hello World Program in ADAN
+// This is a simple program that prints "Hello, World!" to the console
+
+program main() {
+    io.print("Hello, World!");
+}
