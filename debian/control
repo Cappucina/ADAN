@@ -1,0 +1,20 @@
+Source: adan
+Section: devel
+Priority: optional
+Maintainer: Your Name <your.email@example.com>
+Build-Depends: debhelper (>= 11), cargo, rustc, nasm
+Standards-Version: 4.5.0
+Homepage: https://github.com/yourusername/ADAN
+
+Package: adan
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, gcc, nasm
+Description: ADAN - A modern programming language compiler
+ ADAN is a modern programming language with native code generation
+ support for x86-64 Linux and macOS platforms.
+ .
+ Features:
+  - Native executable compilation
+  - Cross-platform assembly generation
+  - Fast bytecode VM execution
+  - Simple and expressive syntax

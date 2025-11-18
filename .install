@@ -1,0 +1,28 @@
+#!/bin/sh
+# Post-installation script for package managers
+
+post_install() {
+    cat << EOF
+
+==> ADAN Compiler installed successfully!
+
+    To get started:
+      adan --help
+      adan --native /usr/share/adan/examples/Math.adn
+
+    Examples are located in:
+      /usr/share/adan/examples/
+
+    Documentation:
+      /usr/share/doc/adan/
+
+EOF
+}
+
+post_upgrade() {
+    post_install
+}
+
+post_remove() {
+    echo "ADAN has been removed from your system."
+}

@@ -4,7 +4,7 @@ mod lexer;
 mod parser;
 
 use bumpalo::Bump;
-use compiler::{Compiler, VirtualMachine, X86_64CodeGen};
+use compiler::{Compiler, Platform, VirtualMachine, X86_64CodeGen};
 use lexer::lex::Lexer;
 use parser::parse::Parser;
 use std::env;
@@ -234,8 +234,14 @@ fn compile_to_native(
     // Check if cross-compiling
     let is_cross_compile = target != host;
 
-    // Generate assembly code
-    let mut codegen = X86_64CodeGen::new();
+    // Determine platform for code generation
+    let platform = match target {
+        CompilationTarget::X86_64MacOS | CompilationTarget::AArch64MacOS => Platform::MacOS,
+        CompilationTarget::X86_64Linux | CompilationTarget::AArch64Linux => Platform::Linux,
+    };
+
+    // Generate assembly code with platform-specific symbols
+    let mut codegen = X86_64CodeGen::new_with_platform(platform);
     let assembly = match codegen.compile(expressions) {
         Ok(asm) => asm,
         Err(err) => {
@@ -264,16 +270,36 @@ fn compile_to_native(
     if is_cross_compile {
         eprintln!("⚠️  Cross-compilation detected!");
         eprintln!("    Host: {:?}, Target: {:?}", host, target);
-        eprintln!("    Cross-compilation requires the target platform's toolchain.");
         eprintln!("");
-        eprintln!("Recommendation: Use --format assembly or --format object instead:");
+        eprintln!("ERROR: Native executable cross-compilation is not supported.");
+        eprintln!("The target platform's linker and system libraries are required.");
+        eprintln!("");
+        eprintln!("Use --format assembly or --format object instead:");
         eprintln!("    cargo run -- --format assembly --target {:?} {} -o {}.asm", target, input_file, base_name);
         eprintln!("    cargo run -- --format object --target {:?} {} -o {}.o", target, input_file, base_name);
         eprintln!("");
-        eprintln!("Then transfer the file to the target platform and link there.");
-        eprintln!("");
-        eprintln!("Attempting to link anyway (will likely fail)...");
-        eprintln!("");
+        eprintln!("Then transfer the file to the target platform and link there:");
+        match target {
+            CompilationTarget::X86_64MacOS => {
+                eprintln!("    On macOS:");
+                eprintln!("    nasm -f macho64 {}.asm -o {}.o", base_name, base_name);
+                eprintln!("    clang -arch x86_64 {}.o -o {}", base_name, base_name);
+            }
+            CompilationTarget::X86_64Linux => {
+                eprintln!("    On Linux:");
+                eprintln!("    nasm -f elf64 {}.asm -o {}.o", base_name, base_name);
+                eprintln!("    gcc -no-pie {}.o -o {}", base_name, base_name);
+            }
+            CompilationTarget::AArch64MacOS => {
+                eprintln!("    On macOS (ARM64):");
+                eprintln!("    (ARM64 assembly generation not yet implemented)");
+            }
+            CompilationTarget::AArch64Linux => {
+                eprintln!("    On Linux (ARM64):");
+                eprintln!("    (ARM64 assembly generation not yet implemented)");
+            }
+        }
+        process::exit(1);
     }
 
     // Platform-specific assembly and linking
@@ -447,11 +473,17 @@ fn generate_assembly(
     expressions: &[parser::ast::Expression],
     input_file: &str,
     output_file: Option<String>,
-    _target: Option<CompilationTarget>,
+    target: Option<CompilationTarget>,
 ) {
-    // Note: target parameter reserved for future use when we support different architectures
-    // Generate assembly code
-    let mut codegen = X86_64CodeGen::new();
+    // Determine platform for code generation
+    let target = target.unwrap_or_else(CompilationTarget::detect_host);
+    let platform = match target {
+        CompilationTarget::X86_64MacOS | CompilationTarget::AArch64MacOS => Platform::MacOS,
+        CompilationTarget::X86_64Linux | CompilationTarget::AArch64Linux => Platform::Linux,
+    };
+
+    // Generate assembly code with platform-specific symbols
+    let mut codegen = X86_64CodeGen::new_with_platform(platform);
     let assembly = match codegen.compile(expressions) {
         Ok(asm) => asm,
         Err(err) => {
@@ -484,11 +516,17 @@ fn generate_object(
     expressions: &[parser::ast::Expression],
     input_file: &str,
     output_file: Option<String>,
-    _target: Option<CompilationTarget>,
+    target: Option<CompilationTarget>,
 ) {
-    // Note: target parameter reserved for future use when we support different architectures
-    // Generate assembly code
-    let mut codegen = X86_64CodeGen::new();
+    // Determine platform for code generation
+    let target = target.unwrap_or_else(CompilationTarget::detect_host);
+    let platform = match target {
+        CompilationTarget::X86_64MacOS | CompilationTarget::AArch64MacOS => Platform::MacOS,
+        CompilationTarget::X86_64Linux | CompilationTarget::AArch64Linux => Platform::Linux,
+    };
+
+    // Generate assembly code with platform-specific symbols
+    let mut codegen = X86_64CodeGen::new_with_platform(platform);
     let assembly = match codegen.compile(expressions) {
         Ok(asm) => asm,
         Err(err) => {

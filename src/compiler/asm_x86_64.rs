@@ -10,20 +10,39 @@ enum ValueType {
     Null,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Platform {
+    Linux,
+    MacOS,
+}
+
 pub struct X86_64CodeGen {
     output: Vec<String>,
     label_counter: usize,
     string_literals: HashMap<String, String>,
     float_literals: HashMap<String, String>,
+    platform: Platform,
 }
 
 impl X86_64CodeGen {
     pub fn new() -> Self {
+        Self::new_with_platform(Platform::Linux)
+    }
+
+    pub fn new_with_platform(platform: Platform) -> Self {
         X86_64CodeGen {
             output: Vec::new(),
             label_counter: 0,
             string_literals: HashMap::new(),
             float_literals: HashMap::new(),
+            platform,
+        }
+    }
+
+    fn symbol(&self, name: &str) -> String {
+        match self.platform {
+            Platform::MacOS => format!("_{}", name),
+            Platform::Linux => name.to_string(),
         }
     }
 
@@ -68,18 +87,18 @@ impl X86_64CodeGen {
         self.output.push("LVAR_STORAGE: resq 1000    ; Storage for variables".to_string());
         self.output.push("".to_string());
         self.output.push("section .text".to_string());
-        self.output.push("    global _main".to_string());
-        self.output.push("    extern _printf".to_string());
-        self.output.push("    extern _exit".to_string());
-        self.output.push("    extern _strlen".to_string());
-        self.output.push("    extern _malloc".to_string());
-        self.output.push("    extern _strcpy".to_string());
-        self.output.push("    extern _strcat".to_string());
+        self.output.push(format!("    global {}", self.symbol("main")));
+        self.output.push(format!("    extern {}", self.symbol("printf")));
+        self.output.push(format!("    extern {}", self.symbol("exit")));
+        self.output.push(format!("    extern {}", self.symbol("strlen")));
+        self.output.push(format!("    extern {}", self.symbol("malloc")));
+        self.output.push(format!("    extern {}", self.symbol("strcpy")));
+        self.output.push(format!("    extern {}", self.symbol("strcat")));
         self.output.push("".to_string());
     }
 
     fn emit_start(&mut self) {
-        self.output.push("_main:".to_string());
+        self.output.push(format!("{}:", self.symbol("main")));
         self.output.push("    push rbp".to_string());
         self.output.push("    mov rbp, rsp".to_string());
         self.output.push("".to_string());
@@ -91,7 +110,7 @@ impl X86_64CodeGen {
         self.output.push("    mov rsp, rbp".to_string());
         self.output.push("    pop rbp".to_string());
         self.output.push("    xor rdi, rdi        ; exit code 0".to_string());
-        self.output.push("    call _exit".to_string());
+        self.output.push(format!("    call {}", self.symbol("exit")));
         self.output.push("".to_string());
     }
 
@@ -237,33 +256,33 @@ impl X86_64CodeGen {
                         self.output.push("    push rax        ; Save left string".to_string());
 
                         // Get lengths of both strings
-                        self.output.push("    mov rdi, rax    ; Left string for _strlen".to_string());
-                        self.output.push("    call _strlen".to_string());
+                        self.output.push("    mov rdi, rax    ; Left string for strlen".to_string());
+                        self.output.push(format!("    call {}", self.symbol("strlen")));
                         self.output.push("    mov r12, rax    ; Save left length in r12".to_string());
 
                         self.output.push("    pop rax         ; Restore left string".to_string());
                         self.output.push("    push rax        ; Save left string again".to_string());
-                        self.output.push("    mov rdi, rbx    ; Right string for _strlen".to_string());
-                        self.output.push("    call _strlen".to_string());
+                        self.output.push("    mov rdi, rbx    ; Right string for strlen".to_string());
+                        self.output.push(format!("    call {}", self.symbol("strlen")));
                         self.output.push("    mov r13, rax    ; Save right length in r13".to_string());
 
                         // Allocate memory for result (left_len + right_len + 1)
                         self.output.push("    mov rdi, r12    ; Left length".to_string());
                         self.output.push("    add rdi, r13    ; + right length".to_string());
                         self.output.push("    add rdi, 1      ; + null terminator".to_string());
-                        self.output.push("    call _malloc".to_string());
+                        self.output.push(format!("    call {}", self.symbol("malloc")));
                         self.output.push("    mov r14, rax    ; Save result buffer in r14".to_string());
 
                         // Copy left string to result
                         self.output.push("    mov rdi, r14    ; Destination".to_string());
                         self.output.push("    pop rsi         ; Source (left string)".to_string());
                         self.output.push("    push rsi        ; Save left string again".to_string());
-                        self.output.push("    call _strcpy".to_string());
+                        self.output.push(format!("    call {}", self.symbol("strcpy")));
 
                         // Concatenate right string to result
                         self.output.push("    mov rdi, r14    ; Destination".to_string());
                         self.output.push("    mov rsi, rbx    ; Source (right string)".to_string());
-                        self.output.push("    call _strcat".to_string());
+                        self.output.push(format!("    call {}", self.symbol("strcat")));
 
                         self.output.push("    pop rax         ; Clean up stack".to_string());
                         self.output.push("    mov rax, r14    ; Result pointer in rax".to_string());
@@ -370,12 +389,12 @@ impl X86_64CodeGen {
                             self.output.push("    lea rdi, [rel fmt_bool_false]".to_string());
                             self.output.push(format!("{}:", print_label));
                             self.output.push("    xor rax, rax".to_string());
-                            self.output.push("    call _printf".to_string());
+                            self.output.push(format!("    call {}", self.symbol("printf")));
 
                             if i < arguments.len() - 1 {
                                 self.output.push("    lea rdi, [rel fmt_space]".to_string());
                                 self.output.push("    xor rax, rax".to_string());
-                                self.output.push("    call _printf".to_string());
+                                self.output.push(format!("    call {}", self.symbol("printf")));
                             }
                             continue;
                         }
@@ -387,20 +406,20 @@ impl X86_64CodeGen {
                     self.output.push(format!("    lea rdi, [rel {}]", fmt));
                     self.output.push("    mov rsi, rax".to_string());
                     self.output.push("    xor rax, rax".to_string());
-                    self.output.push("    call _printf".to_string());
+                    self.output.push(format!("    call {}", self.symbol("printf")));
                     self.output.push("    pop rax".to_string());
 
                     if i < arguments.len() - 1 {
                         self.output.push("    lea rdi, [rel fmt_space]".to_string());
                         self.output.push("    xor rax, rax".to_string());
-                        self.output.push("    call _printf".to_string());
+                        self.output.push(format!("    call {}", self.symbol("printf")));
                     }
                 }
 
                 // Print newline
                 self.output.push("    lea rdi, [rel fmt_newline]".to_string());
                 self.output.push("    xor rax, rax".to_string());
-                self.output.push("    call _printf".to_string());
+                self.output.push(format!("    call {}", self.symbol("printf")));
                 Ok(ValueType::Null)
             }
             "printf" => {
@@ -423,7 +442,7 @@ impl X86_64CodeGen {
                             self.output.push("    lea rdi, [rel fmt_bool_false]".to_string());
                             self.output.push(format!("{}:", print_label));
                             self.output.push("    xor rax, rax".to_string());
-                            self.output.push("    call _printf".to_string());
+                            self.output.push(format!("    call {}", self.symbol("printf")));
                             continue;
                         }
                         ValueType::Null => "fmt_null",
@@ -433,7 +452,7 @@ impl X86_64CodeGen {
                     self.output.push(format!("    lea rdi, [rel {}]", fmt));
                     self.output.push("    mov rsi, rax".to_string());
                     self.output.push("    xor rax, rax".to_string());
-                    self.output.push("    call _printf".to_string());
+                    self.output.push(format!("    call {}", self.symbol("printf")));
                     self.output.push("    pop rax".to_string());
                 }
                 Ok(ValueType::Null)

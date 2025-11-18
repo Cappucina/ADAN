@@ -1,6 +1,16 @@
 # ADAN Makefile - Build, test, and development commands
 
-.PHONY: all build test run clean fmt lint check help docker-build docker-run docker-shell push
+.PHONY: all build test run clean fmt lint check help docker-build docker-run docker-shell push build-asm run-asm clean-asm install uninstall
+
+# Installation paths (follows FHS - Filesystem Hierarchy Standard)
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
+MANDIR ?= $(PREFIX)/share/man/man1
+DOCDIR ?= $(PREFIX)/share/doc/adan
+EXAMPLESDIR ?= $(PREFIX)/share/adan/examples
+
+# Version info
+VERSION = 0.1.0
 
 # Default target
 all: fmt lint test build
@@ -95,6 +105,30 @@ clean:
 	@echo "Cleaning build artifacts..."
 	@cargo clean
 	@echo "✓ Clean complete"
+
+# Assembly compilation targets
+build-asm:
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make build-asm FILE=yourfile.asm [OUTPUT=outputname]"; \
+		exit 1; \
+	fi
+	@./build_asm.sh $(FILE) $(OUTPUT)
+
+# Build and run assembly file
+run-asm:
+	@if [ -z "$(FILE)" ]; then \
+		echo "Usage: make run-asm FILE=yourfile.asm"; \
+		exit 1; \
+	fi
+	@./build_asm.sh $(FILE) temp_output
+	@./temp_output
+	@rm -f temp_output
+
+# Clean assembly build artifacts
+clean-asm:
+	@echo "Cleaning assembly artifacts..."
+	@rm -f *.o *_linux.asm output temp_output
+	@echo "✓ Assembly artifacts cleaned"
 
 # Watch for changes and rebuild
 watch:
@@ -247,6 +281,74 @@ loc:
 tree:
 	@tree -I 'target|.git' -L 3 || ls -R
 
+# Installation targets
+install: release
+	@echo "Installing ADAN $(VERSION)..."
+	@install -Dm755 target/release/ADAN "$(DESTDIR)$(BINDIR)/adan"
+	@install -Dm755 build_asm.sh "$(DESTDIR)$(BINDIR)/adan-build-asm"
+	@mkdir -p "$(DESTDIR)$(DOCDIR)"
+	@install -Dm644 README.md "$(DESTDIR)$(DOCDIR)/README.md" 2>/dev/null || echo "README.md not found, skipping..."
+	@mkdir -p "$(DESTDIR)$(EXAMPLESDIR)"
+	@if [ -d examples ]; then \
+		cp -r examples/* "$(DESTDIR)$(EXAMPLESDIR)/" 2>/dev/null || true; \
+	fi
+	@echo ""
+	@echo "✓ Installation complete!"
+	@echo ""
+	@echo "  Binary:    $(BINDIR)/adan"
+	@echo "  Helper:    $(BINDIR)/adan-build-asm"
+	@echo "  Docs:      $(DOCDIR)"
+	@echo "  Examples:  $(EXAMPLESDIR)"
+	@echo ""
+	@echo "Usage:"
+	@echo "  adan --help"
+	@echo "  adan --native examples/Math.adn"
+
+uninstall:
+	@echo "Uninstalling ADAN..."
+	@rm -f "$(DESTDIR)$(BINDIR)/adan"
+	@rm -f "$(DESTDIR)$(BINDIR)/adan-build-asm"
+	@rm -rf "$(DESTDIR)$(DOCDIR)"
+	@rm -rf "$(DESTDIR)$(EXAMPLESDIR)"
+	@echo "✓ ADAN has been uninstalled"
+
+# Create a distribution tarball
+dist: clean
+	@echo "Creating distribution tarball..."
+	@mkdir -p dist
+	@tar czf dist/adan-$(VERSION).tar.gz \
+		--exclude='.git' \
+		--exclude='target' \
+		--exclude='dist' \
+		--exclude='*.o' \
+		--exclude='*.asm' \
+		--transform 's,^,adan-$(VERSION)/,' \
+		.
+	@echo "✓ Created dist/adan-$(VERSION).tar.gz"
+
+# Show installation info
+install-info:
+	@echo "ADAN Installation Information"
+	@echo "============================="
+	@echo ""
+	@echo "Installation paths:"
+	@echo "  PREFIX:     $(PREFIX)"
+	@echo "  BINDIR:     $(BINDIR)"
+	@echo "  DOCDIR:     $(DOCDIR)"
+	@echo "  EXAMPLESDIR: $(EXAMPLESDIR)"
+	@echo ""
+	@echo "To install system-wide (requires root):"
+	@echo "  sudo make install"
+	@echo ""
+	@echo "To install to user directory:"
+	@echo "  make install PREFIX=~/.local"
+	@echo ""
+	@echo "To install to custom location:"
+	@echo "  make install PREFIX=/custom/path"
+	@echo ""
+	@echo "To uninstall:"
+	@echo "  sudo make uninstall"
+
 # Display help
 help:
 	@echo "ADAN Makefile - Available Commands"
@@ -255,6 +357,15 @@ help:
 	@echo "  make build          - Build the compiler"
 	@echo "  make release        - Build optimized release version"
 	@echo "  make clean          - Clean build artifacts"
+	@echo "  make build-asm FILE=file.asm [OUTPUT=name] - Compile assembly (cross-platform)"
+	@echo "  make run-asm FILE=file.asm - Compile and run assembly"
+	@echo "  make clean-asm      - Clean assembly artifacts"
+	@echo ""
+	@echo "Installation:"
+	@echo "  make install        - Install ADAN system-wide (requires root)"
+	@echo "  make uninstall      - Remove ADAN from system"
+	@echo "  make install-info   - Show installation information"
+	@echo "  make dist           - Create distribution tarball"
 	@echo ""
 	@echo "Testing:"
 	@echo "  make test           - Run all tests"

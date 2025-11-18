@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	cargo build --release
+
+override_dh_auto_test:
+	cargo test --release
+
+override_dh_auto_install:
+	$(MAKE) install DESTDIR=debian/adan PREFIX=/usr
+
+override_dh_auto_clean:
+	cargo clean
