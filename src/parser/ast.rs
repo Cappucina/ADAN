@@ -1,3 +1,6 @@
+use bumpalo::boxed::Box;
+use bumpalo::collections::{String, Vec};
+
 #[derive(Debug, Clone)]
 pub enum Expr {
     Literal(Literal),
@@ -110,3 +113,20 @@ pub enum Type {
     },
     Unknown,
 }
+
+#[derive(Debug, PartialEq)]
+pub enum Type<'alloc> {
+    Reference {
+        name: String<'alloc>
+    },
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Binding<'alloc> {
+    pub name: String<'alloc>,
+    pub ty: Option<Type<'alloc>>,
+}
+
+pub type Bindings<'alloc> = Vec<'alloc, Binding<'alloc>>;
+pub type Expressions<'alloc> = Vec<'alloc, Expr<'alloc>>;
+pub type BoxedExpression<'alloc> = Box<'alloc, Expression<'alloc>>;
