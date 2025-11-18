@@ -284,8 +284,9 @@ tree:
 # Installation targets
 install: release
 	@echo "Installing ADAN $(VERSION)..."
-	@install -Dm755 target/release/ADAN "$(DESTDIR)$(BINDIR)/adan"
-	@install -Dm755 build_asm.sh "$(DESTDIR)$(BINDIR)/adan-build-asm"
+	mkdir -p "$(DESTDIR)$(BINDIR)"
+	install -m 755 target/release/ADAN "$(DESTDIR)$(BINDIR)/adan"
+	install -m 755 build_asm.sh "$(DESTDIR)$(BINDIR)/adan-build-asm"
 	@mkdir -p "$(DESTDIR)$(DOCDIR)"
 	@install -Dm644 README.md "$(DESTDIR)$(DOCDIR)/README.md" 2>/dev/null || echo "README.md not found, skipping..."
 	@mkdir -p "$(DESTDIR)$(EXAMPLESDIR)"

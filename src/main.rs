@@ -68,7 +68,7 @@ impl CompilationTarget {
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() < 2 {
+    if args.len() < 2 || args[1] == "-h" || args[1] == "--help" {
         eprintln!("Usage: {} [options] <script.adn>", args[0]);
         eprintln!("");
         eprintln!("Options:");
