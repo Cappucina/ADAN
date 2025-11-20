@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #ifndef LEXER_H
 #define LEXER_H
 
@@ -51,5 +53,37 @@ typedef struct {
     char *text;
     int line;
 } Token;
+
+typedef struct {
+    const char *src;
+    int position;
+    int line;
+} Lexer;
+
+bool is_digit(char c) {
+    return (c >= '0' && c <= '9');
+}
+
+bool is_whitespace(char c) {
+
+}
+
+// 
+//  Preview the next upcoming token without advancing to it. Returns the
+//   token that's ahead.
+// 
+int peek(Lexer *lexer) {
+    return lexer->src[lexer->position + 1];
+}
+
+// 
+//  Bumps cursor +1 space to go to the next token.
+// 
+void advance(Lexer *lexer) {
+    if (lexer->src[lexer->position] == '\n') {
+        lexer->line++;
+    }
+    lexer->position++;
+}
 
 #endif
