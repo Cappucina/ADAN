@@ -65,7 +65,7 @@ bool is_digit(char c) {
 }
 
 bool is_whitespace(char c) {
-
+    return c == ' ' || c == '\n' || c == '\t' || c == '\r';
 }
 
 // 
