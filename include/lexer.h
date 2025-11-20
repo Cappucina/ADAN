@@ -2,17 +2,17 @@
 #define LEXER_H
 
 typedef enum {
-    TOKEN_IDENTIFIER,   // For variable, function, or any kind of declaration.
+    TOKEN_IDENTIFIER,    // For variable, function, or any kind of declaration.
 
     // Types
-    TOKEN_INT,      // A whole number where the limit is your CPU's bit limit. (x32, x64, ...)
-    TOKEN_FLOAT,    // A more specific number allowing for decimal placements.
-    TOKEN_STRING,   // A collection of characters wrapped inside of quotation marks. ("")
-    TOKEN_BOOLEAN,  // Simply a true or false statement. Typically used to check conditions.
-    TOKEN_ARRAY,    // Statically sized object of values. Cannot mix different types into the same array.
-    TOKEN_CHAR,     // A single character, typically represented in ASCII or UNICODE.
-    TOKEN_NULL,     // Represents an invalid or a non-existant return value. Unlike `void`, `null` is a valid return type and can be matched.
-    TOKEN_VOID,     // Represents the act of returning nothing. Matching will `null` will return false.
+    TOKEN_INT,        // A whole number where the limit is your CPU's bit limit. (x32, x64, ...)
+    TOKEN_FLOAT,      // A more specific number allowing for decimal placements.
+    TOKEN_STRING,     // A collection of characters wrapped inside of quotation marks. ("")
+    TOKEN_BOOLEAN,    // Simply a true or false statement. Typically used to check conditions.
+    TOKEN_ARRAY,      // Statically sized object of values. Cannot mix different types into the same array.
+    TOKEN_CHAR,       // A single character, typically represented in ASCII or UNICODE.
+    TOKEN_NULL,       // Represents an invalid or a non-existant return value. Unlike `void`, `null` is a valid return type and can be matched.
+    TOKEN_VOID,       // Represents the act of returning nothing. Matching will `null` will return false.
 
     // Operands
     TOKEN_PLUS,
@@ -31,11 +31,11 @@ typedef enum {
     TOKEN_PERIOD,
 
     // Keywords
-    TOKEN_IF,       // Comparison between two values.
-    TOKEN_WHILE,    // Loops until the condition provided is true.
-    TOKEN_FOR,      // Loops specific code for a certain amount of times.
-    TOKEN_INCLUDE,  // Import third party libraries into your project to get more functionality.
-    TOKEN_BREAK,    // Stops a loop regardless if the condition is met.
+    TOKEN_IF,         // Comparison between two values.
+    TOKEN_WHILE,      // Loops until the condition provided is true.
+    TOKEN_FOR,        // Loops specific code for a certain amount of times.
+    TOKEN_INCLUDE,    // Import third party libraries into your project to get more functionality.
+    TOKEN_BREAK,      // Stops a loop regardless if the condition is met.
     TOKEN_TRUE,
     TOKEN_FALSE,
     TOKEN_PROGRAM,
@@ -43,7 +43,7 @@ typedef enum {
     TOKEN_MULTI_COMMENT,
 
     // Special
-    TOKEN_EOF,          // Used when representing the lack of any more tokens in a file.
+    TOKEN_EOF,    // Used when representing the lack of any more tokens in a file.
 } TokenType;
 
 typedef struct {
