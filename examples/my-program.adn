@@ -1,0 +1,10 @@
+include adan.garden.io;
+
+// Create a new function block named `main` with no return type.
+void program main() {
+    declare string my_message; // Declare new `string` variable.
+
+    my_message = "Hello world from ADAN"; // Assign value to `my_message`.
+
+    printf(my_message); // Included from the `io` library.
+}
