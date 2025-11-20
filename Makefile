@@ -1,30 +1,21 @@
 .SILENT:
-MAKEFLAGS += -s
 
-EXECUTABLE := compiled/output_exec
+PROJECT_DIR := $(shell pwd)
 
-RELEASE_OUTPUT := target/release/adan
-DEBUG_OUTPUT := target/debug/adan
+docker:
+	@docker rm adan-c --force >/dev/null 2>&1
+	@if [ -z "$$(docker ps -a -q -f name=^/adan-c$$)" ]; then \
+		docker run -dit --name adan-c -v $(PROJECT_DIR):/workspace adan_c /bin/sh >/dev/null 2>&1; \
+	else \
+		if [ -z "$$(docker ps -q -f name=^/adan-c$$)" ]; then \
+			docker start adan-c >/dev/null 2>&1; \
+		fi \
+	fi
 
-DOCKER_INSTALLER := util/docker.py
-DOCKER_MOUNT := scripts/mount_docker.sh
-DOCKER_CONTAINER_NAME := rust_llvm15
+compile: docker
+	-docker exec -it adan-c rm -rf /workspace/compiled
+	docker exec -it adan-c mkdir -p /workspace/compiled
+	docker exec -it adan-c gcc /workspace/src/main.c -o /workspace/compiled/main.o
 
-all:
-	@python3 $(DOCKER_INSTALLER) || python $(DOCKER_INSTALLER) || py $(DOCKER_INSTALLER)
-	@$(DOCKER_MOUNT)
-
-compile:
-	@$(MAKE) all
-	@docker exec -it $(DOCKER_CONTAINER_NAME) cargo clean
-	@docker exec -it $(DOCKER_CONTAINER_NAME) cargo build
-	@docker exec -it $(DOCKER_CONTAINER_NAME) $(DEBUG_OUTPUT)
-
-run:
-	@$(MAKE) all
-	@docker exec -it $(DOCKER_CONTAINER_NAME) $(DEBUG_OUTPUT)
-	-@docker exec -it $(DOCKER_CONTAINER_NAME) $(EXECUTABLE)
-
-debug:
-	@$(MAKE) compile
-	@$(MAKE) run
+run: compile
+	docker exec -it adan-c /workspace/compiled/main.o
