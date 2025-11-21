@@ -1,10 +1,8 @@
 include adan.garden.io;
 
-// Create a new function block named `main` with no return type.
-void program main() {
-    declare string my_message; // Declare new `string` variable.
+void program main() -> {
+    string name -> "John Doe";
+    int age -> 16;
 
-    my_message = "Hello world from ADAN"; // Assign value to `my_message`.
-
-    printf(my_message); // Included from the `io` library.
+    printf("My name is %s and I am %d year old.", name, age);
 }
