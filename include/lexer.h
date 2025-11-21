@@ -22,6 +22,7 @@ typedef enum {
     TOKEN_ASTERISK,
     TOKEN_SLASH,
     TOKEN_PERCENT,
+    TOKEN_CAROT,
 
     // Symbols
     TOKEN_LPAREN,
@@ -31,6 +32,8 @@ typedef enum {
     TOKEN_SEMICOLON,
     TOKEN_COMMA,
     TOKEN_PERIOD,
+    TOKEN_APOSTROPHE,
+    TOKEN_QUOTATION,
 
     // Keywords
     TOKEN_IF,         // Comparison between two values.
@@ -40,9 +43,7 @@ typedef enum {
     TOKEN_BREAK,      // Stops a loop regardless if the condition is met.
     TOKEN_TRUE,
     TOKEN_FALSE,
-    TOKEN_PROGRAM,
-    TOKEN_SINGLE_COMMENT,
-    TOKEN_MULTI_COMMENT,
+    TOKEN_PROGRAM,    // Defines a new function, allowing code to be reusable.
 
     // Special
     TOKEN_EOF,    // Used when representing the lack of any more tokens in a file.
