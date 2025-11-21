@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <lexer.h>
+#include "lexer.h"
 #include <string.h>
 
 Lexer *create_lexer(const char *src) {
@@ -13,15 +13,30 @@ Lexer *create_lexer(const char *src) {
     return new_lex;
 }
 
-Token *make_token(Lexer *lexer, TokenType type, const char *text) {
+Token *make_token(Lexer *lexer, TokenType type, const char *texts[], int count) {
     Token *new_token = malloc(sizeof(Token));
     if (!new_token) return NULL;
 
+    int total_len = 0;
+    for (int i = 0; i < count; i++) {
+        total_len += strlen(texts[i]);
+    }
+
+    char *combined = malloc(total_len + 1);
+    combined[0] = '\0';
+
+    for (int i = 0; i < count; i++) {
+        strcat(combined, texts[i]);
+    }
+
     new_token->type = type;
-    new_token->text = strdup(text);
+    new_token->text = combined;
     new_token->line = lexer->line;
 
-    advance(lexer);
+    for (int i = 0; i < total_len; i++) {
+        advance(lexer);
+    }
+
     return new_token;
 }
 
@@ -42,7 +57,9 @@ char *capture_word(Lexer *lexer) {
 
 Token *next_token(Lexer *lexer) {
     while (is_whitespace(lexer->src[lexer->position])) advance(lexer);
+    
     char c = lexer->src[lexer->position];
+    char next = lexer->src[lexer->position + 1];
 
     if (c == '\0') {
         Token *token = malloc(sizeof(Token));
@@ -98,22 +115,70 @@ Token *next_token(Lexer *lexer) {
         return token;
     }
 
+    if (c == '>' && next == '=') return make_token(lexer, TOKEN_GREATER_EQUALS, (const char*[]){">", "="}, 2);
+    if (c == '<' && next == '=') return make_token(lexer, TOKEN_LESS_EQUALS, (const char*[]){"<", "="}, 2);
+    if (c == '-' && next == '>') return make_token(lexer, TOKEN_ASSIGN, (const char*[]){"-", ">"}, 2);
+    if (c == '!' && next == '=') return make_token(lexer, TOKEN_NOT_EQUALS, (const char*[]){"!", "="}, 2);
+    if (c == '&' && next == '&') return make_token(lexer, TOKEN_AND, (const char*[]){"&", "&"}, 2);
+
     switch(c) {
-        case '+': return make_token(lexer, TOKEN_PLUS, "+");
-        case '-': return make_token(lexer, TOKEN_MINUS, "-");
-        case '*': return make_token(lexer, TOKEN_ASTERISK, "*");
-        case '/': return make_token(lexer, TOKEN_SLASH, "/");
-        case '%': return make_token(lexer, TOKEN_PERCENT, "%");
-        case '^': return make_token(lexer, TOKEN_CAROT, "^");
-        case '(': return make_token(lexer, TOKEN_LPAREN, "(");
-        case ')': return make_token(lexer, TOKEN_RPAREN, ")");
-        case '{': return make_token(lexer, TOKEN_LBRACE, "{");
-        case '}': return make_token(lexer, TOKEN_RBRACE, "}");
-        case ';': return make_token(lexer, TOKEN_SEMICOLON, ";");
-        case ',': return make_token(lexer, TOKEN_COMMA, ",");
-        case '.': return make_token(lexer, TOKEN_PERIOD, ".");
-        case '\'': return make_token(lexer, TOKEN_APOSTROPHE, "'");
-        case '"': return make_token(lexer, TOKEN_QUOTATION, "\"");
+        case '+': return make_token(lexer, TOKEN_PLUS, (const char*[]){"+"}, 1);
+        case '-': return make_token(lexer, TOKEN_MINUS, (const char*[]){"-"}, 1);
+        case '*': return make_token(lexer, TOKEN_ASTERISK, (const char*[]){"*"}, 1);
+        case '/': return make_token(lexer, TOKEN_SLASH, (const char*[]){"/"}, 1);
+        case '%': return make_token(lexer, TOKEN_PERCENT, (const char*[]){"%"}, 1);
+        case '^': return make_token(lexer, TOKEN_CAROT, (const char*[]){"^"}, 1);
+        case '(': return make_token(lexer, TOKEN_LPAREN, (const char*[]){"("}, 1);
+        case ')': return make_token(lexer, TOKEN_RPAREN, (const char*[]){")"}, 1);
+        case '{': return make_token(lexer, TOKEN_LBRACE, (const char*[]){"{"}, 1);
+        case '}': return make_token(lexer, TOKEN_RBRACE, (const char*[]){"}"}, 1);
+        case ';': return make_token(lexer, TOKEN_SEMICOLON, (const char*[]){";"}, 1);
+        case ',': return make_token(lexer, TOKEN_COMMA, (const char*[]){","}, 1);
+        case '.': return make_token(lexer, TOKEN_PERIOD, (const char*[]){"."}, 1);
+        case '\'': return make_token(lexer, TOKEN_APOSTROPHE, (const char*[]){"'"}, 1);
+        case '"': return make_token(lexer, TOKEN_QUOTATION, (const char*[]){"\""}, 1);
+        case '>': return make_token(lexer, TOKEN_GREATER, (const char*[]){">"}, 1);
+        case '<': return make_token(lexer, TOKEN_LESS, (const char*[]){"<"}, 1);
+        case '!': return make_token(lexer, TOKEN_NOT, (const char*[]){"!"}, 1);
+    }
+
+    if (is_digit(c)) {
+        int start = lexer->position;
+        while (is_digit(lexer->src[lexer->position])) advance(lexer);
+
+        // 
+        //  Handle floating point and signed integer literals.
+        // 
+        if (lexer->src[lexer->position] == '.') {
+            advance(lexer);
+
+            while (is_digit(lexer->src[lexer->position])) advance(lexer);
+            int length = lexer->position - start;
+            char *text = malloc(length + 1);
+            
+            strncpy(text, lexer->src + start, length);
+            text[length] = '\0';
+
+            Token *token = malloc(sizeof(Token));
+            token->type = TOKEN_FLOAT_LITERAL;
+            token->text = text;
+            token->line = lexer->line;
+
+            return token;
+        } else {
+            int length = lexer->position - start;
+            char *text = malloc(length + 1);
+
+            strncpy(text, lexer->src + start, length);
+            text[length] = '\0';
+
+            Token *token = malloc(sizeof(Token));
+            token->type = TOKEN_INT_LITERAL;
+            token->text = text;
+            token->line = lexer->line;
+            
+            return token;
+        }
     }
 
     advance(lexer);

@@ -13,9 +13,9 @@ docker:
 	fi
 
 compile: docker
-	-docker exec -it adan-c rm -rf /workspace/compiled
-	docker exec -it adan-c mkdir -p /workspace/compiled
-	docker exec -it adan-c gcc /workspace/src/main.c -o /workspace/compiled/main.o
+	-docker exec -it adan-c rm -rf compiled
+	docker exec -it adan-c mkdir -p compiled
+	docker exec -it adan-c gcc src/*.c tests/*.c -I include -o compiled/main
 
 run: compile
-	docker exec -it adan-c /workspace/compiled/main.o
+	docker exec -it adan-c compiled/main

@@ -34,6 +34,17 @@ typedef enum {
     TOKEN_PERIOD,
     TOKEN_APOSTROPHE,
     TOKEN_QUOTATION,
+    TOKEN_NOT,           // Is used for negation. Use `!=` for checking for not-equal values.
+
+    // Signs
+    TOKEN_EQUALS,            // Used ONLY for checking equality (=, NOT ==) between two values.
+    TOKEN_GREATER,
+    TOKEN_LESS,
+    TOKEN_GREATER_EQUALS,
+    TOKEN_LESS_EQUALS,
+    TOKEN_ASSIGN,             // Used explicitly for variable assignment, NOT equality checking.
+    TOKEN_NOT_EQUALS,
+    TOKEN_AND,
 
     // Keywords
     TOKEN_IF,         // Comparison between two values.
@@ -44,6 +55,10 @@ typedef enum {
     TOKEN_TRUE,
     TOKEN_FALSE,
     TOKEN_PROGRAM,    // Defines a new function, allowing code to be reusable.
+
+    // Literals
+    TOKEN_INT_LITERAL,
+    TOKEN_FLOAT_LITERAL,
 
     // Special
     TOKEN_EOF,    // Used when representing the lack of any more tokens in a file.
@@ -61,11 +76,11 @@ typedef struct {
     int line;
 } Lexer;
 
-inline bool is_digit(char c) {
+static inline bool is_digit(char c) {
     return (c >= '0' && c <= '9');
 }
 
-inline bool is_whitespace(char c) {
+static inline bool is_whitespace(char c) {
     return c == ' ' || c == '\n' || c == '\t' || c == '\r';
 }
 
@@ -73,14 +88,14 @@ inline bool is_whitespace(char c) {
 //  Preview the next upcoming token without advancing to it. Returns the
 //   token that's ahead.
 // 
-inline int peek(Lexer *lexer) {
+static inline int peek(Lexer *lexer) {
     return lexer->src[lexer->position + 1];
 }
 
 // 
 //  Bumps cursor +1 space to go to the next token.
 // 
-inline void advance(Lexer *lexer) {
+static inline void advance(Lexer *lexer) {
     if (lexer->src[lexer->position] == '\n') {
         lexer->line++;
     }
