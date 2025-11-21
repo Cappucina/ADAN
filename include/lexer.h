@@ -60,11 +60,11 @@ typedef struct {
     int line;
 } Lexer;
 
-bool is_digit(char c) {
+inline bool is_digit(char c) {
     return (c >= '0' && c <= '9');
 }
 
-bool is_whitespace(char c) {
+inline bool is_whitespace(char c) {
     return c == ' ' || c == '\n' || c == '\t' || c == '\r';
 }
 
@@ -72,14 +72,14 @@ bool is_whitespace(char c) {
 //  Preview the next upcoming token without advancing to it. Returns the
 //   token that's ahead.
 // 
-int peek(Lexer *lexer) {
+inline int peek(Lexer *lexer) {
     return lexer->src[lexer->position + 1];
 }
 
 // 
 //  Bumps cursor +1 space to go to the next token.
 // 
-void advance(Lexer *lexer) {
+inline void advance(Lexer *lexer) {
     if (lexer->src[lexer->position] == '\n') {
         lexer->line++;
     }
