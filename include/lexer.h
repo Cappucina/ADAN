@@ -6,7 +6,9 @@
 typedef enum {
     TOKEN_IDENTIFIER,    // For variable, function, or any kind of declaration.
 
-    // Types
+    // 
+    //  Types
+    // 
     TOKEN_INT,        // A whole number where the limit is your CPU's bit limit. (x32, x64, ...)
     TOKEN_FLOAT,      // A more specific number allowing for decimal placements.
     TOKEN_STRING,     // A collection of characters wrapped inside of quotation marks. ("")
@@ -16,7 +18,9 @@ typedef enum {
     TOKEN_NULL,       // Represents an invalid or a non-existant return value. Unlike `void`, `null` is a valid return type and can be matched.
     TOKEN_VOID,       // Represents the act of returning nothing. Matching will `null` will return false.
 
-    // Operands
+    // 
+    //  Operands
+    // 
     TOKEN_PLUS,
     TOKEN_MINUS,
     TOKEN_ASTERISK,
@@ -24,7 +28,9 @@ typedef enum {
     TOKEN_PERCENT,
     TOKEN_CAROT,
 
-    // Symbols
+    // 
+    //  Symbols
+    // 
     TOKEN_LPAREN,
     TOKEN_RPAREN,
     TOKEN_LBRACE,
@@ -36,7 +42,9 @@ typedef enum {
     TOKEN_QUOTATION,
     TOKEN_NOT,           // Is used for negation. Use `!=` for checking for not-equal values.
 
-    // Signs
+    // 
+    //  Signs
+    // 
     TOKEN_EQUALS,            // Used ONLY for checking equality (=, NOT ==) between two values.
     TOKEN_GREATER,
     TOKEN_LESS,
@@ -46,7 +54,9 @@ typedef enum {
     TOKEN_NOT_EQUALS,
     TOKEN_AND,
 
-    // Keywords
+    // 
+    //  Keywords
+    // 
     TOKEN_IF,         // Comparison between two values.
     TOKEN_WHILE,      // Loops until the condition provided is true.
     TOKEN_FOR,        // Loops specific code for a certain amount of times.
@@ -56,11 +66,15 @@ typedef enum {
     TOKEN_FALSE,
     TOKEN_PROGRAM,    // Defines a new function, allowing code to be reusable.
 
-    // Literals
+    // 
+    //  Literals
+    // 
     TOKEN_INT_LITERAL,
     TOKEN_FLOAT_LITERAL,
 
-    // Special
+    // 
+    //  Special
+    // 
     TOKEN_EOF,    // Used when representing the lack of any more tokens in a file.
 } TokenType;
 

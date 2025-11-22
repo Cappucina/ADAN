@@ -30,14 +30,18 @@
 
 */
 typedef enum {
-    // Keywords
+    // 
+    //  Keywords
+    // 
     AST_PROGRAM,
     AST_IF,
     AST_WHILE,
     AST_INCLUDE,
     AST_BREAK,
     
-    // Groups
+    // 
+    //  Groups
+    // 
     AST_STATEMENT,
     AST_EXPRESSION,
     AST_ASSIGNMENT,
