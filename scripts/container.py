@@ -12,7 +12,7 @@ from install_docker import has_docker, install
 
 import subprocess
 
-CONTAINER_NAME = "adan-c"
+CONTAINER_NAME = "adan-dev-container"
 
 if False == has_docker():
     install()
@@ -26,4 +26,4 @@ def find_relative_path():
     ancestor = script_path.parent.parent
     return ancestor
 
-subprocess.run(["docker", "build", "-t", CONTAINER_NAME, find_relative_path()])
+subprocess.run(["docker", "build", "-q", "-t", CONTAINER_NAME, find_relative_path()])
