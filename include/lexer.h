@@ -41,11 +41,12 @@ typedef enum {
     TOKEN_APOSTROPHE,
     TOKEN_QUOTATION,
     TOKEN_NOT,           // Is used for negation. Use `!=` for checking for not-equal values.
+    TOKEN_TYPE_DECL,     // Used when declaring a type of something, usually a variable or program.
 
     // 
     //  Signs
     // 
-    TOKEN_EQUALS,            // Used ONLY for checking equality (=, NOT ==) between two values.
+    TOKEN_EQUALS,             // Used during checking the equality between two values. (==, NOT =)
     TOKEN_GREATER,
     TOKEN_LESS,
     TOKEN_GREATER_EQUALS,
@@ -65,6 +66,7 @@ typedef enum {
     TOKEN_TRUE,
     TOKEN_FALSE,
     TOKEN_PROGRAM,    // Defines a new function, allowing code to be reusable.
+    TOKEN_RETURN,     // Return a value from a program or loop statement. Does not stop loops directly.
 
     // 
     //  Literals
@@ -75,13 +77,15 @@ typedef enum {
     // 
     //  Special
     // 
-    TOKEN_EOF,    // Used when representing the lack of any more tokens in a file.
+    TOKEN_ERROR,    // When something goes wrong or when coming across an unexpected token. Better than returning NULL itself.
+    TOKEN_EOF,      // Used when representing the lack of any more tokens in a file.
 } TokenType;
 
 typedef struct {
     TokenType type;
     char *text;
     int line;
+    int column;
 } Token;
 
 typedef struct {
@@ -102,8 +106,8 @@ static inline bool is_whitespace(char c) {
 //  Preview the next upcoming token without advancing to it. Returns the
 //   token that's ahead.
 // 
-static inline int peek(Lexer *lexer) {
-    return lexer->src[lexer->position + 1];
+static inline char peek(Lexer *lexer) {
+    return lexer->src[lexer->position + 1] ? lexer->src[lexer->position + 1] : '\0';
 }
 
 // 

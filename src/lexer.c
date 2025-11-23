@@ -96,7 +96,8 @@ Token *next_token(Lexer *lexer) {
             {"break", TOKEN_BREAK},
             {"true", TOKEN_TRUE},
             {"false", TOKEN_FALSE},
-            {"program", TOKEN_PROGRAM}
+            {"program", TOKEN_PROGRAM},
+            {"return", TOKEN_RETURN},
         };
 
         TokenType type = TOKEN_IDENTIFIER;
@@ -117,9 +118,10 @@ Token *next_token(Lexer *lexer) {
 
     if (c == '>' && next == '=') return make_token(lexer, TOKEN_GREATER_EQUALS, (const char*[]){">", "="}, 2);
     if (c == '<' && next == '=') return make_token(lexer, TOKEN_LESS_EQUALS, (const char*[]){"<", "="}, 2);
-    if (c == '-' && next == '>') return make_token(lexer, TOKEN_ASSIGN, (const char*[]){"-", ">"}, 2);
     if (c == '!' && next == '=') return make_token(lexer, TOKEN_NOT_EQUALS, (const char*[]){"!", "="}, 2);
     if (c == '&' && next == '&') return make_token(lexer, TOKEN_AND, (const char*[]){"&", "&"}, 2);
+    if (c == '=' && next == '=') return make_token(lexer, TOKEN_EQUALS, (const char*[]){"=", "="}, 2);
+    if (c == ':' && next == ':') return make_token(lexer, TOKEN_TYPE_DECL, (const char*[]){":", ":"}, 2);
 
     switch(c) {
         case '+': return make_token(lexer, TOKEN_PLUS, (const char*[]){"+"}, 1);
@@ -140,6 +142,7 @@ Token *next_token(Lexer *lexer) {
         case '>': return make_token(lexer, TOKEN_GREATER, (const char*[]){">"}, 1);
         case '<': return make_token(lexer, TOKEN_LESS, (const char*[]){"<"}, 1);
         case '!': return make_token(lexer, TOKEN_NOT, (const char*[]){"!"}, 1);
+        case '=': return make_token(lexer, TOKEN_ASSIGN, (const char*[]){"="}, 1);
     }
 
     if (is_digit(c)) {

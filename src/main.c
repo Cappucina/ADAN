@@ -4,30 +4,30 @@
 
 int main() {
     LexerTest tests[] = {
-        { "int x;", 
-          { TOKEN_INT, TOKEN_IDENTIFIER, TOKEN_SEMICOLON },
-          { "int", "x", ";" },
+        { "x::int;", 
+          { TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_INT, TOKEN_SEMICOLON },
+          { "x", "::", "int", ";" },
           3
         },
-        { "float y -> 3.14;",
-          { TOKEN_FLOAT, TOKEN_IDENTIFIER, TOKEN_ASSIGN, TOKEN_FLOAT_LITERAL, TOKEN_SEMICOLON },
-          { "float", "y", "->", "3.14", ";" },
+        { "y::float = 3.14;",
+          { TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_FLOAT, TOKEN_ASSIGN, TOKEN_FLOAT_LITERAL, TOKEN_SEMICOLON },
+          { "y", "::", "float", "=", "3.14", ";" },
           5
         },
-        { "if (x > 0) { y -> x; }",
+        { "if (x > 0) { y = x; }",
           { TOKEN_IF, TOKEN_LPAREN, TOKEN_IDENTIFIER, TOKEN_GREATER, TOKEN_INT_LITERAL, TOKEN_RPAREN,
             TOKEN_LBRACE, TOKEN_IDENTIFIER, TOKEN_ASSIGN, TOKEN_IDENTIFIER, TOKEN_SEMICOLON, TOKEN_RBRACE },
-          { "if","(","x",">","0",")","{","y","->","x",";","}" },
+          { "if","(","x",">","0",")","{","y","=","x",";","}" },
           12
         },
-        { "int program test() -> { int a -> 5; float b -> 2.2; }",
-          { TOKEN_INT, TOKEN_PROGRAM, TOKEN_IDENTIFIER, TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_ASSIGN, TOKEN_LBRACE,
-            TOKEN_INT, TOKEN_IDENTIFIER, TOKEN_ASSIGN, TOKEN_INT_LITERAL, TOKEN_SEMICOLON,
-            TOKEN_FLOAT, TOKEN_IDENTIFIER, TOKEN_ASSIGN, TOKEN_FLOAT_LITERAL, TOKEN_SEMICOLON,
+        { "program::void test() { a::int = 5; b::float = 2.2; }",
+          { TOKEN_PROGRAM, TOKEN_TYPE_DECL, TOKEN_VOID, TOKEN_IDENTIFIER, TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_LBRACE,
+            TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_INT, TOKEN_ASSIGN, TOKEN_INT_LITERAL, TOKEN_SEMICOLON,
+            TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_FLOAT, TOKEN_ASSIGN, TOKEN_FLOAT_LITERAL, TOKEN_SEMICOLON,
             TOKEN_RBRACE },
-          { "int","program","test","(",")","->","{",
-            "int","a","->","5",";",
-            "float","b","->","2.2",";",
+          { "program","::","void","test","(",")","{",
+            "a","::","int","=","5",";",
+            "b","::","float","=","2.2",";",
             "}" },
           17
         }

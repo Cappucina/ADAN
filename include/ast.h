@@ -1,34 +1,9 @@
 #include "lexer.h"
+#include <stdlib.h>
 
 #ifndef AST_H
 #define AST_H
-/*
 
-        AST_PROGRAM
-        ├─ AST_STATEMENT
-        │   ├─ AST_ASSIGNMENT
-        │   │   ├─ AST_IDENTIFIER
-        │   │   └─ AST_EXPRESSION
-        │   │       └─ AST_BINARY_OP
-        │   │           ├─ AST_LITERAL / AST_IDENTIFIER
-        │   │           └─ AST_LITERAL / AST_IDENTIFIER
-        │   ├─ AST_IF
-        │   │   ├─ AST_EXPRESSION (condition)
-        │   │   └─ AST_BLOCK
-        │   │       └─ AST_STATEMENT
-        │   ├─ AST_WHILE
-        │   │   ├─ AST_EXPRESSION (condition)
-        │   │   └─ AST_BLOCK
-        │   │       └─ AST_STATEMENT
-        │   └─ AST_FUNCTION_CALL
-        │       ├─ AST_IDENTIFIER (function name)
-        │       └─ AST_EXPRESSION[] (arguments)
-        ├─ AST_INCLUDE
-        |─ AST_BREAK
-        └─ AST_BLOCK
-            └─ AST_STATEMENT
-
-*/
 typedef enum {
     // 
     //  Keywords
@@ -50,13 +25,33 @@ typedef enum {
     AST_FUNCTION_CALL,
     AST_BLOCK,
     AST_BINARY_OP,
+    AST_UNARY_OP,
 } ASTNodeType;
 
-typedef struct {
+typedef struct ASTNode {
     ASTNodeType type;
     Token token;
+    
     struct ASTNode **children;    // An array of child nodes.
     int child_count;
 } ASTNode;
+
+static inline void free_ast(ASTNode *node) {
+    if (!node) return;
+    for (int i = 0; i < node->child_count; i++) {
+        // 
+        //  Recursively call free_ast to continuously free children
+        // 
+        free_ast(node->children[i]);
+    }
+
+    // 
+    //  Checking if it exists, if so, free the array itself.
+    // 
+    if (node->children) free(node->children);
+    if (node->token.text) free(node->token.text);
+
+    free(node);
+}
 
 #endif

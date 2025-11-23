@@ -1,8 +1,8 @@
 include adan.garden.io;
 
-void program main() -> {
-    string name -> "John Doe";
-    int age -> 16;
+program::void main() {
+    name::string = "John Doe";
+    age::int = 16;
 
     printf("My name is %s and I am %d year old.", name, age);
 }
