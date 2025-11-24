@@ -102,7 +102,15 @@ static inline bool is_whitespace(char c) {
     return c == ' ' || c == '\n' || c == '\t' || c == '\r';
 }
 
-Token *next_token(Lexer *lexer);
+Lexer* create_lexer(const char *src);
+
+Token* make_token(Lexer *lexer, TokenType type, const char *parts[], int part_count);
+
+Token* next_token(Lexer *lexer);
+
+void free_token(Token *token);
+
+void print_token(Token *token);
 
 // 
 //  Preview the next upcoming token without advancing to it. Returns the

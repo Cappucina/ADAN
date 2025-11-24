@@ -3,7 +3,7 @@
 #include "lexer.h"
 #include <string.h>
 
-Lexer *create_lexer(const char *src) {
+Lexer* create_lexer(const char *src) {
     Lexer *new_lex = (Lexer*) malloc(sizeof(Lexer));
     new_lex->src = src;
     
@@ -13,7 +13,7 @@ Lexer *create_lexer(const char *src) {
     return new_lex;
 }
 
-Token *make_token(Lexer *lexer, TokenType type, const char *texts[], int count) {
+Token* make_token(Lexer *lexer, TokenType type, const char *texts[], int count) {
     Token *new_token = malloc(sizeof(Token));
     if (!new_token) return NULL;
 
@@ -40,7 +40,7 @@ Token *make_token(Lexer *lexer, TokenType type, const char *texts[], int count) 
     return new_token;
 }
 
-char *capture_word(Lexer *lexer) {
+char* capture_word(Lexer *lexer) {
     int start = lexer->position;
     while ((lexer->src[lexer->position] >= 'a' && lexer->src[lexer->position] <= 'z') || (lexer->src[lexer->position] >= 'A' && lexer->src[lexer->position] <= 'Z') || is_digit(lexer->src[lexer->position]) || lexer->src[lexer->position] == '_') {
         advance(lexer);
@@ -55,7 +55,7 @@ char *capture_word(Lexer *lexer) {
     return word;
 }
 
-Token *next_token(Lexer *lexer) {
+Token* next_token(Lexer *lexer) {
     while (is_whitespace(lexer->src[lexer->position])) advance(lexer);
     
     char c = lexer->src[lexer->position];
