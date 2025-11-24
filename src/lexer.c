@@ -85,7 +85,7 @@ Token *next_token(Lexer *lexer) {
             {"char", TOKEN_CHAR},
             {"null", TOKEN_NULL},
             {"void", TOKEN_VOID},
-            
+
             // 
             //  Keywords
             // 

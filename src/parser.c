@@ -3,23 +3,31 @@
 #include "parser.h"
 
 void init_parser(Parser *parser, Lexer *lexer) {
-    
+    parser->lexer = lexer;
+    parser->error = false;
+    parser->error_message = NULL;
+    parser->current_token = *next_token(lexer);
+    parser->peek_token = *next_token(lexer);
 }
 
 void free_parser(Parser *parser) {
-
+    if (parser->error_message) parser->error_message = NULL;
 }
 
 // 
 //  Helper functions, designed to make parsing a whole lot simpler and
 //   easier to manage.
 // 
+
+// 
+//  Match two tokens
+// 
 bool match(Parser *parser, TokenType type) {
 
 }
 
 bool expect(Parser *parser, TokenType type, const char *error_msg) {
-    
+
 }
 
 bool peek_is(Parser *parser, TokenType type) {

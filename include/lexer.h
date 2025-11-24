@@ -102,6 +102,8 @@ static inline bool is_whitespace(char c) {
     return c == ' ' || c == '\n' || c == '\t' || c == '\r';
 }
 
+Token *next_token(Lexer *lexer);
+
 // 
 //  Preview the next upcoming token without advancing to it. Returns the
 //   token that's ahead.
