@@ -8,14 +8,10 @@
 #
 
 from pathlib import Path
-from install_docker import has_docker, install
 
 import subprocess
 
 CONTAINER_NAME = "adan-dev-container"
-
-if False == has_docker():
-    install()
 
 #
 #  Returns the parent of this script's parent (e.g. scripts)

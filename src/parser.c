@@ -14,10 +14,6 @@ void free_parser(Parser *parser) {
 //  Helper functions, designed to make parsing a whole lot simpler and
 //   easier to manage.
 // 
-void advance(Parser *parser) {
-
-}
-
 bool match(Parser *parser, TokenType type) {
 
 }

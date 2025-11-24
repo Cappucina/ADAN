@@ -3,12 +3,12 @@
 docker:
 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
 # 
-# 	Install Docker
+# 	Build our Docker Image
 # 
-	python3 scripts/container.py
+	python3 scripts/container.py || python scripts/container.py || py scripts/container.py
 
 # 
-# 	Setup Container
+# 	Start Container
 # 
 	docker rm adan-dev-container --force >/dev/null 2>&1
 	if [ -z "$$(docker ps -a -q -f name=^/adan-dev-container$$)" ]; then \
