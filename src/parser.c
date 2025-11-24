@@ -3,7 +3,7 @@
 #include "parser.h"
 
 void init_parser(Parser *parser, Lexer *lexer) {
-
+    
 }
 
 void free_parser(Parser *parser) {
@@ -19,7 +19,7 @@ bool match(Parser *parser, TokenType type) {
 }
 
 bool expect(Parser *parser, TokenType type, const char *error_msg) {
-
+    
 }
 
 bool peek_is(Parser *parser, TokenType type) {

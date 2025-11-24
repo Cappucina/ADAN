@@ -1,8 +1,7 @@
 include adan.garden.io;
 
 program::void main() {
-    name::string = "John Doe";
-    age::int = 16;
+    pi::float = 3.14;
 
-    printf("My name is %s and I am %d year old.", name, age);
+    printf("%d", float);
 }
