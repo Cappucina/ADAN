@@ -2,3 +2,4 @@ __pycache__/
 compiled/
 .vscode/
 .DS_Store
+.cache
