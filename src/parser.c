@@ -106,6 +106,7 @@ ASTNode* parse_statement(Parser *parser) {
     } else {
         set_error(parser, "Unexpected token '%s' on line %d", parser->current_token.text, parser->current_token.line);
     }
+
     return node;
 }
 
@@ -119,19 +120,78 @@ ASTNode* parse_program(Parser *parser) {
             break;
         }
     }
+
     return program_node;
 }
 
 ASTNode* parse_assignment(Parser *parser) {
+    ASTNode *assignment_node = create_ast_node(AST_ASSIGNMENT, parser->current_token);
+    ASTNode *identifier_node = parse_identifier(parser);
+    if (!identifier_node) {
+        set_error(parser, "Expected identifier in assignment on line %d", parser->current_token.line);
+        free_ast(assignment_node);
+        return NULL;
+    }
+    
+    add_child(assignment_node, identifier_node);
+    if (!expect(parser, TOKEN_ASSIGN, "Expected '=' in assignment")) {
+        free_ast(assignment_node);
+        return NULL;
+    }
 
+    // 
+    //  Handle expression operations on the right side
+    //   for things like: a = 5 + 3; or a = "hello";
+    // 
+    ASTNode *expression_node = parse_expression(parser);
+    if (!expression_node) {
+        set_error(parser, "Expected expression in assignment on line %d", parser->current_token.line);
+        free_ast(assignment_node);
+        return NULL;
+    }
+
+    add_child(assignment_node, expression_node);
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected ';' at end of assignment")) {
+        free_ast(assignment_node);
+        return NULL;
+    }
+    return assignment_node;
 }
 
+// 
+//  Parse expressions, handling binary operations and literals such as
+//   integers, floats, string literals, booleans, etc.
+// 
 ASTNode* parse_expression(Parser *parser) {
-
+    
 }
 
 ASTNode* parse_binary_op(Parser *parser) {
+    ASTNode *binary_node = create_ast_node(AST_BINARY_OP, parser->current_token);
+    ASTNode *left = parse_primary(parser);
+    if (!left) {
+        set_error(parser, "Expected left operand in binary operation on line %d", parser->current_token.line);
+        free_ast(binary_node);
+        return NULL;
+    }
+    add_child(binary_node, left);
 
+    Token operator_token = parser->current_token;
+    if (!match(parser, operator_token.type)) {
+        set_error(parser, "Expected operator in binary operation on line %d", parser->current_token.line);
+        free_ast(binary_node);
+        return NULL;
+    }
+
+    ASTNode *right = parse_primary(parser);
+    if (!right) {
+        set_error(parser, "Expected right operand in binary operation on line %d", parser->current_token.line);
+        free_ast(binary_node);
+        return NULL;
+    }
+
+    add_child(binary_node, right);
+    return binary_node;
 }
 
 ASTNode* parse_if_statement(Parser *parser) {
