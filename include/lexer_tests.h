@@ -12,4 +12,6 @@ typedef struct {
 
 void run_lexer_test(LexerTest test);
 
+void create_lexer_tests();
+
 #endif
