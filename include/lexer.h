@@ -6,9 +6,9 @@
 typedef enum {
     TOKEN_IDENTIFIER,    // For variable, function, or any kind of declaration.
 
-    // 
+    //
     //  Types
-    // 
+    //
     TOKEN_INT,        // A whole number where the limit is your CPU's bit limit. (x32, x64, ...)
     TOKEN_FLOAT,      // A more specific number allowing for decimal placements.
     TOKEN_STRING,     // A collection of characters wrapped inside of quotation marks. ("")
@@ -18,9 +18,9 @@ typedef enum {
     TOKEN_NULL,       // Represents an invalid or a non-existant return value. Unlike `void`, `null` is a valid return type and can be matched.
     TOKEN_VOID,       // Represents the act of returning nothing. Matching will `null` will return false.
 
-    // 
+    //
     //  Operands
-    // 
+    //
     TOKEN_PLUS,
     TOKEN_MINUS,
     TOKEN_ASTERISK,
@@ -28,9 +28,9 @@ typedef enum {
     TOKEN_PERCENT,
     TOKEN_CAROT,
 
-    // 
+    //
     //  Symbols
-    // 
+    //
     TOKEN_LPAREN,
     TOKEN_RPAREN,
     TOKEN_LBRACE,
@@ -43,9 +43,9 @@ typedef enum {
     TOKEN_NOT,           // Is used for negation. Use `!=` for checking for not-equal values.
     TOKEN_TYPE_DECL,     // Used when declaring a type of something, usually a variable or program.
 
-    // 
+    //
     //  Signs
-    // 
+    //
     TOKEN_EQUALS,             // Used during checking the equality between two values. (==, NOT =)
     TOKEN_GREATER,
     TOKEN_LESS,
@@ -55,9 +55,9 @@ typedef enum {
     TOKEN_NOT_EQUALS,
     TOKEN_AND,
 
-    // 
+    //
     //  Keywords
-    // 
+    //
     TOKEN_IF,         // Comparison between two values.
     TOKEN_WHILE,      // Loops until the condition provided is true.
     TOKEN_FOR,        // Loops specific code for a certain amount of times.
@@ -68,15 +68,15 @@ typedef enum {
     TOKEN_PROGRAM,    // Defines a new function, allowing code to be reusable.
     TOKEN_RETURN,     // Return a value from a program or loop statement. Does not stop loops directly.
 
-    // 
+    //
     //  Literals
-    // 
+    //
     TOKEN_INT_LITERAL,
     TOKEN_FLOAT_LITERAL,
 
-    // 
+    //
     //  Special
-    // 
+    //
     TOKEN_ERROR,    // When something goes wrong or when coming across an unexpected token. Better than returning NULL itself.
     TOKEN_EOF,      // Used when representing the lack of any more tokens in a file.
 } TokenType;
@@ -112,17 +112,17 @@ void free_token(Token *token);
 
 void print_token(Token *token);
 
-// 
+//
 //  Preview the next upcoming token without advancing to it. Returns the
 //   token that's ahead.
-// 
+//
 static inline char peek(Lexer *lexer) {
     return lexer->src[lexer->position + 1] ? lexer->src[lexer->position + 1] : '\0';
 }
 
-// 
+//
 //  Bumps cursor +1 space to go to the next token.
-// 
+//
 static inline void advance(Lexer *lexer) {
     if (lexer->src[lexer->position] == '\n') {
         lexer->line++;

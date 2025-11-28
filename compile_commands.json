@@ -1,0 +1,7 @@
+[
+  {
+    "directory": "C:/Users/sam/Desktop/adan",
+    "command": "gcc -I./include -c src/*.c tests/*.c -o compiled/main",
+    "file": "src/parser.c"
+  }
+]

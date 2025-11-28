@@ -13,6 +13,7 @@ typedef enum {
     AST_WHILE,
     AST_INCLUDE,
     AST_BREAK,
+    AST_RETURN,
 
     //
     //  Groups
@@ -26,6 +27,10 @@ typedef enum {
     AST_BLOCK,
     AST_BINARY_OP,
     AST_UNARY_OP,
+    AST_TYPE,
+    AST_PARAMS,
+    AST_OPERATORS,
+    AST_COMPARISON,
 } ASTNodeType;
 
 typedef struct ASTNode {
