@@ -23,8 +23,8 @@ void init_parser(Parser* parser, Lexer* lexer) {
     parser->current_token = *current;
     parser->peek_token = *peek;
 
-    free(current);
-    free(peek);
+    free_token(current);
+    free_token(peek);
 }
 
 void free_parser(Parser* parser) {
@@ -38,23 +38,43 @@ bool match(Parser* parser, TokenType type) {
     TokenType current_type = parser->current_token.type;
     if (current_type == type) {
         parser->current_token = parser->peek_token;
-        parser->peek_token = *next_token(parser->lexer);
+        
+        Token* t = next_token(parser->lexer);
+        if (t == NULL) {
+            set_error(parser, "Failed to get next token");
+            return false;
+        }
+        parser->peek_token = *t;
+        free_token(t);
         return true;
     }
     return false;
 }
 
-bool expect(Parser* parser, TokenType type, const char* error_msg) {
-    TokenType current_type = parser->current_token.type;
-    if (current_type == type) {
+bool expect(Parser* parser, TokenType type, const char* error_msg, ...) {
+    va_list args;
+    va_start(args, error_msg);
+
+    if (parser->current_token.type == type) {
         parser->current_token = parser->peek_token;
-        parser->peek_token = *next_token(parser->lexer);
+
+        Token* t = next_token(parser->lexer);
+        if (t == NULL) {
+            set_error(parser, error_msg, args);
+            va_end(args);
+            return false;
+        }
+        parser->peek_token = *t;
+        free_token(t);
+        va_end(args);
         return true;
     }
-
-    set_error(parser, error_msg);
+    
+    set_error(parser, error_msg, args);
+    va_end(args);
     return false;
 }
+
 
 bool peek_is(Parser* parser, TokenType type) {
     TokenType current_type = parser->peek_token.type;
@@ -66,7 +86,9 @@ bool peek_is(Parser* parser, TokenType type) {
 
 void set_error(Parser* parser, const char* fmt, ...) {
     if (parser->error) return;
-
+    
+    free(parser->error_message);
+    
     va_list args;
     va_start(args, fmt);
 
@@ -75,11 +97,17 @@ void set_error(Parser* parser, const char* fmt, ...) {
 
     int f = vsnprintf(NULL, 0, fmt, args);
     char* formatted = malloc(f + 1);
-    if (!formatted) return;
+    if (formatted == NULL) {
+        parser->error_message = NULL;
+        parser->error = true;
+        va_end(args_copy);
+        va_end(args);
+        return;
+    }
     vsnprintf(formatted, f + 1, fmt, args_copy);
 
-    va_end(args);
     va_end(args_copy);
+    va_end(args);
 
     parser->error_message = formatted;
 
@@ -142,7 +170,7 @@ ASTNode* parse_statement(Parser* parser) { // WiP
         case TOKEN_FALSE:
         case TOKEN_NULL:
         case TOKEN_LPAREN:
-            return parse_expression(parser);
+            return parse_params(parser);
             break;
 
         default:
@@ -151,15 +179,18 @@ ASTNode* parse_statement(Parser* parser) { // WiP
     }
 }
 
-// program::void my_function() { }
+// 
+//  program::void my_function() { }
+// 
 ASTNode* parse_program(Parser* parser) {
     ASTNode* parse_node = create_ast_node(AST_PROGRAM, parser->current_token);
-    if (!match(parser, TOKEN_PROGRAM)) {
-        set_error(parser, "Expected keyword 'program', got '%s'", parser->current_token.text);
+    if (!expect(parser, TOKEN_PROGRAM, "Expected keyword 'program', got '%s'", parser->current_token.text)) {
         return NULL;
     }
 
-    // TOKEN_TYPE_DECL = ::
+    // 
+    //  TOKEN_TYPE_DECL = ::
+    // 
     if (!match(parser, TOKEN_TYPE_DECL)) {
         set_error(parser, "Expected '::' after program, got '%s'", parser->current_token.text);
         return NULL;
@@ -262,6 +293,11 @@ ASTNode* parse_if_statement(Parser* parser) {
         return NULL;
     }
 
+    if (!match(parser, TOKEN_LPAREN)) {
+        set_error(parser, "Expected '(', got '%s'", parser->current_token.text);
+        return NULL;
+    }
+
     ASTNode* left = parse_expression(parser);
 
     ASTNode* operator = create_ast_node(AST_OPERATORS, parser->current_token);
@@ -282,6 +318,11 @@ ASTNode* parse_if_statement(Parser* parser) {
     condition->children[0] = left;
     condition->children[1] = right;
 
+    if (!match(parser, TOKEN_RPAREN)) {
+        set_error(parser, "Expected ')', got '%s'", parser->current_token.text);
+        return NULL;
+    }
+
     ASTNode* block = parse_block(parser);
 
     if_node->child_count = 2;
@@ -296,12 +337,66 @@ ASTNode* parse_while_statement(Parser* parser) {
 
 }
 
+// 
+//  for (var; conditional; increment) { }
+// 
 ASTNode* parse_for_statement(Parser* parser) {
+    ASTNode* for_node = create_ast_node(AST_FOR, parser->current_token);
+    if (!expect(parser, TOKEN_FOR, "Expected keyword 'for', got '%s'", parser->current_token.text)) {
+        return NULL;
+    }
 
+    if (!expect(parser, TOKEN_LPAREN, "Expected '(', got '%s'", parser->current_token.text)) {
+        return NULL;
+    }
+
+    ASTNode* variable = create_ast_node(AST_ASSIGNMENT, parser->current_token);
+
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected ';', got '%s'", parser->current_token.text)) {
+        return NULL;
+    }
+
+    ASTNode* left = parse_expression(parser);
+
+    ASTNode* operator = create_ast_node(AST_OPERATORS, parser->current_token);
+    if (!match(parser, TOKEN_EQUALS) && !match(parser, TOKEN_GREATER) &&
+        !match(parser, TOKEN_LESS) && !match(parser, TOKEN_GREATER_EQUALS) &&
+        !match(parser, TOKEN_LESS_EQUALS) &&
+        !match(parser, TOKEN_NOT_EQUALS) && !match(parser, TOKEN_AND)) {
+            set_error(parser, "Expected comparison operator, got '%s'", parser->current_token.text);
+            return;
+    }
+
+    ASTNode* right = parse_expression(parser);
+
+    ASTNode* condition = create_ast_node(AST_COMPARISON, operator->token);
+
+    condition->child_count = 2;
+    condition->children = malloc(sizeof(ASTNode*) * condition->child_count);
+    condition->children[0] = left;
+    condition->children[1] = right;
+
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected ';', got '%s'", parser->current_token.text)) {
+        return NULL;
+    }
+
+    
 }
 
 ASTNode* parse_function_call(Parser* parser) {
-
+    // IDENTIFIER LPAREN PARAMS RPAREN SEMICOLON
+    ASTNode* node = create_ast_node(AST_FUNCTION_CALL, parser->current_token);
+    
+    ASTNode* identifier = parse_primary(parser);
+    ASTNode* params = parse_primary(parser);
+    ASTNode* block = parse_block(parser);
+    
+    node->child_count = 3; // Identifier - Params - Block
+    node->children = malloc(sizeof(ASTNode*) * node->child_count);
+    node->children[0] = identifier;
+    node->children[1] = params;
+    node->children[2] = block;
+    
 }
 
 ASTNode* parse_include_statement(Parser* parser) {
@@ -315,7 +410,9 @@ ASTNode* parse_block(Parser* parser) {
         return NULL;
     }
 
-    match(parser, TOKEN_LBRACE);
+    if (!expect(parser, TOKEN_LBRACE, "Expected '{', got '%s'", parser->current_token.text)) {
+        return NULL;
+    }
 
     int count = 0;
     Parser clone = *parser;
@@ -338,7 +435,10 @@ ASTNode* parse_block(Parser* parser) {
     node->children = children;
     node->child_count = count;
 
-    match(parser, TOKEN_RBRACE);
+    if (!match(parser, TOKEN_RBRACE)) {
+        set_error(parser, "Expected '}', got '%s'", parser->current_token.text);
+        return NULL;
+    }
     return node;
 }
 
@@ -350,6 +450,9 @@ ASTNode* parse_literal(Parser* parser) {
 
 }
 
+//
+//  Replaced with parse_params()?
+//
 ASTNode* parse_statement_list(Parser* parser) {
 
 }

@@ -1,7 +1,10 @@
 include adan.garden.io;
 
 program::void main() {
-    pi::float = 3.14;
+    loop_count::int = 0;
+    total::int = 10;
 
-    printf("%d", float);
+    for (index::int = 0; index <= total; index++) {
+        printf("Index: %d", index);
+    }
 }

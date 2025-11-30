@@ -37,7 +37,7 @@ bool match(Parser* parser, TokenType type);
 //  Enforces that the current token must be a specific type, sets an
 //   error and returns false if not, otherwise advances.
 //
-bool expect(Parser* parser, TokenType type, const char* error_msg);
+bool expect(Parser* parser, TokenType type, const char* error_msg, ...);
 
 //
 //  Checks whether the next token matches a type without actually
@@ -83,6 +83,12 @@ ASTNode* parse_statement(Parser* parser);
 //  Parses a function/program definition.
 //
 ASTNode* parse_program(Parser* parser);
+
+// 
+//  Handles program parameters when either declaring a new
+//   program or calling an existing one.
+// 
+ASTNode* parse_params(Parser* parser);
 
 //
 //  Parses an identifier followed by "=" and an expression

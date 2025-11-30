@@ -14,6 +14,7 @@ typedef enum {
     AST_INCLUDE,
     AST_BREAK,
     AST_RETURN,
+    AST_FOR,
 
     //
     //  Groups
