@@ -4,6 +4,21 @@
 #include "ast.h"
 #include "parser.h"
 
+/*
+
+    Do later
+
+    - ASTNode* parse_assignment(Parser* parser);
+    - ASTNode* parse_expression(Parser* parser);
+    - ASTNode* parse_binary(Parser* parser);
+    - ASTNode* parse_unary(Parser* parser);
+    - ASTNode* parse_primary(Parser* parser);
+    - ASTNode* parse_identifier(Parser* parser);
+    - ASTNode* parse_literal(Parser* parser);
+    - ASTNode* parse_statement_list(Parser* parser);
+
+*/
+
 void init_parser(Parser* parser, Lexer* lexer) {
     parser->lexer = lexer;
     parser->error = false;
@@ -319,7 +334,36 @@ ASTNode* parse_while_statement(Parser* parser) {
     if (!expect(parser, TOKEN_WHILE, "Expected keyword 'while', got '%s'", parser->current_token.text)) return NULL;
     if (!expect(parser, TOKEN_LPAREN, "Expected '(', got '%s'", parser->current_token.text)) return NULL;
 
+    ASTNode* left = parse_expression(parser);
 
+    ASTNode* operator = create_ast_node(AST_OPERATORS, parser->current_token);
+    if (!match(parser, TOKEN_EQUALS) && !match(parser, TOKEN_GREATER) &&
+        !match(parser, TOKEN_LESS) && !match(parser, TOKEN_GREATER_EQUALS) &&
+        !match(parser, TOKEN_LESS_EQUALS) &&
+        !match(parser, TOKEN_NOT_EQUALS) && !match(parser, TOKEN_AND)) {
+            set_error(parser, "Expected comparison operator, got '%s'", parser->current_token.text);
+            return NULL;
+    }
+
+    ASTNode* right = parse_expression(parser);
+
+    ASTNode* condition = create_ast_node(AST_COMPARISON, operator->token);
+
+    condition->child_count = 2;
+    condition->children = malloc(sizeof(ASTNode*) * condition->child_count);
+    condition->children[0] = left;
+    condition->children[1] = right;
+
+    if (!expect(parser, TOKEN_RPAREN, "Expected ')', got '%s'", parser->current_token.text)) return NULL;
+
+    ASTNode* block = parse_block(parser);
+
+    while_node->child_count = 2;
+    while_node->children = malloc(sizeof(ASTNode*) * while_node->child_count);
+    while_node->children[0] = condition;
+    while_node->children[1] = block;
+    
+    return while_node;
 }
 
 // 
@@ -414,7 +458,24 @@ ASTNode* parse_function_call(Parser* parser) {
 }
 
 ASTNode* parse_include_statement(Parser* parser) {
+    ASTNode* include_node = create_ast_node(AST_INCLUDE, parser->current_token);
 
+    if (!expect(parser, TOKEN_INCLUDE, "Expected keyword 'include', got '%s'", parser->current_token.text)) return NULL;
+
+    ASTNode* publisher = parse_identifier(parser); // `include **adan**.io`, the publisher part being `adan`.
+
+    if (!expect(parser, TOKEN_PERIOD, "Expected '.', got '%s'", parser->current_token.text)) return NULL;
+
+    ASTNode* package = parse_identifier(parser); // `include adan.**io**`, the package part being `io`.
+
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected ';', got '%s'", parser->current_token.text)) return NULL;
+
+    include_node->child_count = 2;
+    include_node->children = malloc(sizeof(ASTNode*) * include_node->child_count);
+    include_node->children[0] = publisher;
+    include_node->children[1] = package;
+
+    return include_node;
 }
 
 ASTNode* parse_block(Parser* parser) {
