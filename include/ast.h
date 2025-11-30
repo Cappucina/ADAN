@@ -32,6 +32,7 @@ typedef enum {
     AST_PARAMS,
     AST_OPERATORS,
     AST_COMPARISON,
+    AST_INCREMENT_EXPR,
 } ASTNodeType;
 
 typedef struct ASTNode {

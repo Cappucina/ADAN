@@ -29,6 +29,14 @@ typedef enum {
     TOKEN_CAROT,
 
     //
+    //  Increment, Decrement
+    // 
+    TOKEN_INCREMENT,
+    TOKEN_DECREMENT,
+    TOKEN_MUL_MUL,
+    TOKEN_DIV_DIV,
+
+    //
     //  Symbols
     //
     TOKEN_LPAREN,
