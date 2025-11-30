@@ -310,12 +310,20 @@ ASTNode* parse_if_statement(Parser* parser) {
     return if_node;
 }
 
+// 
+//  while (condition) { }
+// 
 ASTNode* parse_while_statement(Parser* parser) {
+    ASTNode* while_node = create_ast_node(AST_WHILE, parser->current_token);
+
+    if (!expect(parser, TOKEN_WHILE, "Expected keyword 'while', got '%s'", parser->current_token.text)) return NULL;
+    if (!expect(parser, TOKEN_LPAREN, "Expected '(', got '%s'", parser->current_token.text)) return NULL;
+
 
 }
 
 // 
-//  for (var; conditional; increment) { }
+//  for (var; condition; increment) { }
 // 
 ASTNode* parse_for_statement(Parser* parser) {
     ASTNode* for_node = create_ast_node(AST_FOR, parser->current_token);
