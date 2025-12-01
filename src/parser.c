@@ -6,16 +6,15 @@
 
 /*
 
-    Do later
-
-    - ASTNode* parse_assignment(Parser* parser);
+    Lily
+    - ASTNode* parse_identifier(Parser* parser);
     - ASTNode* parse_expression(Parser* parser);
     - ASTNode* parse_binary(Parser* parser);
+    
+    Sammy
     - ASTNode* parse_unary(Parser* parser);
     - ASTNode* parse_primary(Parser* parser);
-    - ASTNode* parse_identifier(Parser* parser);
     - ASTNode* parse_literal(Parser* parser);
-    - ASTNode* parse_statement_list(Parser* parser);
 
 */
 
@@ -127,7 +126,6 @@ void set_error(Parser* parser, const char* fmt, ...) {
 
     parser->error = true;
 }
-
 
 ASTNode* create_ast_node(ASTNodeType type, Token token) {
     ASTNode* node = malloc(sizeof(ASTNode));
@@ -250,13 +248,29 @@ ASTNode* parse_params(Parser* parser) {
     int count = 0;
     Parser clone = *parser;
     while (clone.current_token.type != TOKEN_RPAREN) {
-        ASTNode* id = parse_assignment(&clone);
+        // ASTNode* id = parse_assignment(&clone);
+        
+        ASTNode* id = create_ast_node(AST_ASSIGNMENT, clone.current_token);
+
+        if (!expect(&clone, TOKEN_IDENTIFIER, "Expected identifier, got '%s'", clone.current_token.text)) return NULL;
+        if (!expect(&clone, TOKEN_TYPE_DECL, "Expected '::', got '%s'", clone.current_token.text)) return NULL;
+
+        if (!match(&clone, TOKEN_INT) && !match(&clone, TOKEN_FLOAT) &&
+            !match(&clone, TOKEN_STRING) && !match(&clone, TOKEN_BOOLEAN) &&
+            !match(&clone, TOKEN_CHAR) && !match(&clone, TOKEN_NULL) &&
+            !match(&clone, TOKEN_VOID)) {
+                set_error(&clone, "Expected type declaration, got '%s'", clone.current_token.text);
+                return NULL;
+        }
+
+        if (!match(&clone, TOKEN_COMMA)) break;
+        
         count++;
     }
 
     ASTNode** assignments = malloc(sizeof(ASTNode*) * count);
     for (int i = 0; i < count; i++) {
-        assignments[i] = parse_assignment(parser);
+        assignments[i] = parse_statement(parser);
     }
 
     if (!expect(parser, TOKEN_RPAREN, "Expected ')', got '%s'", parser->current_token.text)) return NULL;
@@ -268,7 +282,56 @@ ASTNode* parse_params(Parser* parser) {
 }
 
 ASTNode* parse_assignment(Parser* parser) {
+    ASTNode* assignment_node = create_ast_node(AST_ASSIGNMENT, parser->current_token);
 
+    ASTNode* identifier = create_ast_node(AST_IDENTIFIER, parser->current_token);
+    if (!identifier) 
+    {
+        set_error(parser, "Expected identifier, got '%s'", parser->current_token.text);
+        return NULL;
+    }
+    
+    if (!expect(parser, TOKEN_TYPE_DECL, "Expected '::', got '%s'", parser->current_token.text)) return NULL;
+
+    ASTNode* type = create_ast_node(AST_TYPE, parser->current_token);
+
+    if (!match(parser, TOKEN_INT) && !match(parser, TOKEN_FLOAT) &&
+        !match(parser, TOKEN_STRING) && !match(parser, TOKEN_BOOLEAN) &&
+        !match(parser, TOKEN_CHAR) && !match(parser, TOKEN_NULL) &&
+        !match(parser, TOKEN_VOID)) {
+            set_error(parser, "Expected type declaration, got '%s'", parser->current_token.text);
+            return NULL;
+    }
+
+    if (peek_is(parser, TOKEN_EQUALS)) {
+        if (!match(parser, TOKEN_EQUALS)) {
+            set_error(parser, "Expected '=', got '%s'", parser->current_token.text);
+            return NULL;
+        }
+
+        ASTNode* expression = parse_statement(parser);
+        if (!expression) {
+            set_error(parser, "Expected expression, got '%s'", parser->current_token.text);
+            return NULL;
+        }
+
+        if (!expect(parser, TOKEN_SEMICOLON, "Expected ';', got '%s'", parser->current_token.text)) return NULL;
+
+        assignment_node->child_count = 3;
+        assignment_node->children = malloc(sizeof(ASTNode*) * assignment_node->child_count);
+        assignment_node->children[0] = identifier;
+        assignment_node->children[1] = type;
+        assignment_node->children[2] = expression;
+    } else {
+        if (!expect(parser, TOKEN_SEMICOLON, "Expected ';', got '%s'", parser->current_token.text)) return NULL;
+
+        assignment_node->child_count = 2;
+        assignment_node->children = malloc(sizeof(ASTNode*) * assignment_node->child_count);
+        assignment_node->children[0] = identifier;
+        assignment_node->children[1] = type;
+    }
+
+    return assignment_node;
 }
 
 ASTNode* parse_expression(Parser* parser) {
@@ -293,7 +356,7 @@ ASTNode* parse_if_statement(Parser* parser) {
     if (!expect(parser, TOKEN_IF, "Expected keyword 'if', got '%s'", parser->current_token.text)) return NULL;
     if (!expect(parser, TOKEN_LPAREN, "Expected '(', got '%s'", parser->current_token.text)) return NULL;
 
-    ASTNode* left = parse_expression(parser);
+    ASTNode* left = parse_statement(parser);
 
     ASTNode* operator = create_ast_node(AST_OPERATORS, parser->current_token);
     if (!match(parser, TOKEN_EQUALS) && !match(parser, TOKEN_GREATER) &&
@@ -304,7 +367,7 @@ ASTNode* parse_if_statement(Parser* parser) {
             return NULL;
     }
 
-    ASTNode* right = parse_expression(parser);
+    ASTNode* right = parse_statement(parser);
 
     ASTNode* condition = create_ast_node(AST_COMPARISON, operator->token);
 
@@ -334,7 +397,7 @@ ASTNode* parse_while_statement(Parser* parser) {
     if (!expect(parser, TOKEN_WHILE, "Expected keyword 'while', got '%s'", parser->current_token.text)) return NULL;
     if (!expect(parser, TOKEN_LPAREN, "Expected '(', got '%s'", parser->current_token.text)) return NULL;
 
-    ASTNode* left = parse_expression(parser);
+    ASTNode* left = parse_statement(parser);
 
     ASTNode* operator = create_ast_node(AST_OPERATORS, parser->current_token);
     if (!match(parser, TOKEN_EQUALS) && !match(parser, TOKEN_GREATER) &&
@@ -345,7 +408,7 @@ ASTNode* parse_while_statement(Parser* parser) {
             return NULL;
     }
 
-    ASTNode* right = parse_expression(parser);
+    ASTNode* right = parse_statement(parser);
 
     ASTNode* condition = create_ast_node(AST_COMPARISON, operator->token);
 
@@ -380,11 +443,11 @@ ASTNode* parse_for_statement(Parser* parser) {
     if (!expect(parser, TOKEN_IDENTIFIER, "Expected identifier, got '%s'", parser->current_token.text)) return NULL;
     if (!expect(parser, TOKEN_ASSIGN, "Expected '=', got '%s'", parser->current_token.text)) return NULL;
 
-    ASTNode* value = parse_expression(parser);
+    ASTNode* value = parse_statement(parser);
 
     if (!expect(parser, TOKEN_SEMICOLON, "Expected ';', got '%s'", parser->current_token.text)) return NULL;
 
-    ASTNode* left = parse_expression(parser);
+    ASTNode* left = parse_statement(parser);
 
     ASTNode* operator = create_ast_node(AST_OPERATORS, parser->current_token);
     if (!match(parser, TOKEN_EQUALS) && !match(parser, TOKEN_GREATER) &&
@@ -395,7 +458,7 @@ ASTNode* parse_for_statement(Parser* parser) {
             return NULL;
     }
 
-    ASTNode* right = parse_expression(parser);
+    ASTNode* right = parse_statement(parser);
 
     ASTNode* condition = create_ast_node(AST_COMPARISON, operator->token);
 
@@ -446,13 +509,13 @@ ASTNode* parse_function_call(Parser* parser) {
     
     ASTNode* identifier = parse_primary(parser);
     ASTNode* params = parse_primary(parser);
-    ASTNode* block = parse_block(parser);
+
+    expect(parser, TOKEN_SEMICOLON, "Expected ';', got '%s'", parser->current_token.text);
     
-    node->child_count = 3; // Identifier - Params - Block
+    node->child_count = 2; // Identifier - Params
     node->children = malloc(sizeof(ASTNode*) * node->child_count);
     node->children[0] = identifier;
     node->children[1] = params;
-    node->children[2] = block;
     
     return node;
 }
@@ -518,12 +581,5 @@ ASTNode* parse_identifier(Parser* parser) {
 }
 
 ASTNode* parse_literal(Parser* parser) {
-
-}
-
-//
-//  Replaced with parse_params()?
-//
-ASTNode* parse_statement_list(Parser* parser) {
 
 }
