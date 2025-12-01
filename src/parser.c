@@ -7,7 +7,7 @@
 /*
 
     Lily
-    - ASTNode* parse_primary(Parser* parser);
+    - NOTHING TO DO
     
     Sammy
     - ASTNode* parse_binary(Parser* parser);
@@ -404,7 +404,45 @@ ASTNode* parse_unary(Parser* parser) {
 }
 
 ASTNode* parse_primary(Parser* parser) {
+    ASTNode* node = NULL;
 
+    // 
+    //  Literals (Strings, Booleans, Integers, etc.)
+    //
+    if (parser->current_token.type == TOKEN_INT_LITERAL || parser->current_token.type == TOKEN_FLOAT_LITERAL ||
+        parser->current_token.type == TOKEN_TRUE || parser->current_token.type == TOKEN_FALSE ||
+        parser->current_token.type == TOKEN_STRING || parser->current_token.type == TOKEN_CHAR ||
+        parser->current_token.type == TOKEN_NULL) {
+            ASTNode* node_literal = create_ast_node(AST_LITERAL, parser->current_token);
+            match(parser, parser->current_token.type);
+
+            return node_literal;
+    }
+
+    // 
+    //  Identifiers, such as variable names
+    // 
+    if (parser->current_token.type == TOKEN_IDENTIFIER) {
+        node = parse_identifier(parser);
+        
+        return node;
+    }
+
+    // 
+    //  Parenthesized expressions (Adds support for statement enclosed between '(', ')')
+    //
+    if (parser->current_token.type == TOKEN_LPAREN) {
+        match(parser, TOKEN_LPAREN);
+        node = parse_expression(parser);
+
+        if (!node) return NULL;
+        if (!expect(parser, TOKEN_RPAREN, "Expected ')' after expression, got '%s'", parser->current_token.text)) return NULL;
+
+        return node;
+    }
+
+    set_error(parser, "Expected primary expression, got '%s'", parser->current_token.text);
+    return NULL;
 }
 
 ASTNode* parse_if_statement(Parser* parser) {
