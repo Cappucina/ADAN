@@ -7,11 +7,11 @@
 /*
 
     Lily
-    - ASTNode* parse_binary(Parser* parser);
+    - ASTNode* parse_primary(Parser* parser);
     
     Sammy
+    - ASTNode* parse_binary(Parser* parser);
     - ASTNode* parse_unary(Parser* parser);
-    - ASTNode* parse_primary(Parser* parser);
     - ASTNode* parse_literal(Parser* parser);
 
 */
