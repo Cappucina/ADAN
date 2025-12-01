@@ -76,7 +76,8 @@ typedef enum {
     //
     AST_TYPE,
     AST_PARAMS,
-    AST_OPERATORS
+    AST_OPERATORS,
+    AST_ARRAY_LITERAL,
 } ASTNodeType;
 
 typedef struct ASTNode {

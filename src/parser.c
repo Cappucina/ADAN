@@ -4,17 +4,6 @@
 #include "ast.h"
 #include "parser.h"
 
-/*
-
-    Lily
-    - NOTHING TO DO
-    
-    Sammy
-    - ASTNode* parse_unary(Parser* parser);
-    - ASTNode* parse_literal(Parser* parser);
-
-*/
-
 void init_parser(Parser* parser, Lexer* lexer) {
     parser->lexer = lexer;
     parser->error = false;
@@ -475,50 +464,33 @@ ASTNode* parse_binary(Parser* parser) {
     return left;
 }
 
+// 
+//  Supported operators:
+//   -, !
+// 
 ASTNode* parse_unary(Parser* parser) {
+    TokenType op_type = parser->current_token.type;
 
-}
+    if (op_type == TOKEN_MINUS || op_type == TOKEN_NOT) {
+        Token op_token = parser->current_token;
+        match(parser, op_type);
 
-ASTNode* parse_primary(Parser* parser) {
-    ASTNode* node = NULL;
+        ASTNode* operand = parse_unary(parser);
+        if (!operand) {
+            set_error(parser, "Expected expression after unary operator '%s'", op_token.text);
+            return NULL;
+        }
 
-    // 
-    //  Literals (Strings, Booleans, Integers, etc.)
-    //
-    if (parser->current_token.type == TOKEN_INT_LITERAL || parser->current_token.type == TOKEN_FLOAT_LITERAL ||
-        parser->current_token.type == TOKEN_TRUE || parser->current_token.type == TOKEN_FALSE ||
-        parser->current_token.type == TOKEN_STRING || parser->current_token.type == TOKEN_CHAR ||
-        parser->current_token.type == TOKEN_NULL) {
-            ASTNode* node_literal = create_ast_node(AST_LITERAL, parser->current_token);
-            match(parser, parser->current_token.type);
-
-            return node_literal;
-    }
-
-    // 
-    //  Identifiers, such as variable names
-    // 
-    if (parser->current_token.type == TOKEN_IDENTIFIER) {
-        node = parse_identifier(parser);
+        ASTNode* node = create_ast_node(AST_UNARY_OP, op_token);
         
-        return node;
-    }
-
-    // 
-    //  Parenthesized expressions (Adds support for statement enclosed between '(', ')')
-    //
-    if (parser->current_token.type == TOKEN_LPAREN) {
-        match(parser, TOKEN_LPAREN);
-        node = parse_expression(parser);
-
-        if (!node) return NULL;
-        if (!expect(parser, TOKEN_RPAREN, "Expected ')' after expression, got '%s'", parser->current_token.text)) return NULL;
+        node->child_count = 1;
+        node->children = malloc(sizeof(ASTNode*));
+        node->children[0] = operand;
 
         return node;
     }
 
-    set_error(parser, "Expected primary expression, got '%s'", parser->current_token.text);
-    return NULL;
+    return parse_primary(parser);
 }
 
 ASTNode* parse_if_statement(Parser* parser) {
@@ -675,7 +647,6 @@ ASTNode* parse_for_statement(Parser* parser) {
 }
 
 ASTNode* parse_function_call(Parser* parser) {
-    // IDENTIFIER LPAREN PARAMS RPAREN SEMICOLON
     ASTNode* node = create_ast_node(AST_FUNCTION_CALL, parser->current_token);
     
     ASTNode* identifier = parse_primary(parser);
@@ -755,6 +726,109 @@ ASTNode* parse_identifier(Parser* parser) {
     return identifier_node;
 }
 
-ASTNode* parse_literal(Parser* parser) {
+ASTNode* parse_primary(Parser* parser) {
+    TokenType type = parser->current_token.type;
 
+    switch (type) {
+        case TOKEN_INT_LITERAL:
+        case TOKEN_FLOAT_LITERAL: {
+            Token tok = parser->current_token;
+            match(parser, type);
+            ASTNode* node = create_ast_node(AST_LITERAL, tok);
+
+            return node;
+        }
+
+        case TOKEN_TRUE:
+        case TOKEN_FALSE: {
+            Token tok = parser->current_token;
+            match(parser, type);
+            ASTNode* node = create_ast_node(AST_LITERAL, tok);
+
+            return node;
+        }
+
+        case TOKEN_STRING: {
+            Token tok = parser->current_token;
+            match(parser, TOKEN_STRING);
+            ASTNode* node = create_ast_node(AST_LITERAL, tok);
+
+            return node;
+        }
+
+        case TOKEN_LPAREN: {
+            match(parser, TOKEN_LPAREN);
+            ASTNode* expr = parse_binary(parser);
+            if (!expr) {
+                set_error(parser, "Expected expression inside parentheses");
+                return NULL;
+            }
+
+            if (parser->current_token.type != TOKEN_RPAREN) {
+                set_error(parser, "Expected ')'");
+                return NULL;
+            }
+
+            match(parser, TOKEN_RPAREN);
+            return expr;
+        }
+
+        case TOKEN_ARRAY: {
+            match(parser, TOKEN_ARRAY);
+            ASTNode* array_node = create_ast_node(AST_ARRAY_LITERAL, parser->current_token);
+
+            array_node->child_count = 0;
+            array_node->children = NULL;
+
+            while (parser->current_token.type != TOKEN_RBRACE) {
+                ASTNode* element = parse_binary(parser);
+                if (!element) {
+                    set_error(parser, "Expected array element");
+                    return NULL;
+                }
+
+                array_node->child_count++;
+                array_node->children = realloc(array_node->children, sizeof(ASTNode*) * array_node->child_count);
+                array_node->children[array_node->child_count - 1] = element;
+
+                if (parser->current_token.type == TOKEN_COMMA) {
+                    match(parser, TOKEN_COMMA);
+                } else {
+                    break;
+                }
+            }
+
+            if (parser->current_token.type != TOKEN_RBRACE) {
+                set_error(parser, "Expected '}' at end of array");
+                return NULL;
+            }
+ 
+            match(parser, TOKEN_RBRACE);
+            return array_node;
+        }
+
+        case TOKEN_MINUS:
+        case TOKEN_PLUS: {
+            Token op_token = parser->current_token;
+            match(parser, type);
+
+            ASTNode* operand = parse_primary(parser);
+            if (!operand) {
+                set_error(parser, "Expected expression after unary operator '%s'", op_token.text);
+                return NULL;
+            }
+
+            ASTNode* node = create_ast_node(AST_UNARY_OP, op_token);
+ 
+            node->child_count = 1;
+            node->children = malloc(sizeof(ASTNode*));
+            node->children[0] = operand;
+
+            return node;
+        }
+
+        default:
+            set_error(parser, "Unexpected token '%s'", parser->current_token.text);
+            return NULL;
+    }
 }

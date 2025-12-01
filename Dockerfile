@@ -1,7 +1,11 @@
-FROM debian:bookworm-slim
+# 
+#  Choose Alpine Linux for its very light distribution
+# 
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
+FROM alpine:3.21
+
+RUN apk add --no-cache \
+    build-base \
     clang \
     llvm \
     lld \

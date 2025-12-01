@@ -22,4 +22,4 @@ def find_relative_path():
     ancestor = script_path.parent.parent
     return ancestor
 
-subprocess.run(["docker", "build", "-q", "-t", CONTAINER_NAME, find_relative_path()])
+subprocess.run(["docker", "build", "-q", "-t", CONTAINER_NAME, find_relative_path()], check=True)
