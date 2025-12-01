@@ -7,7 +7,6 @@
 /*
 
     Lily
-    - ASTNode* parse_expression(Parser* parser);
     - ASTNode* parse_binary(Parser* parser);
     
     Sammy
@@ -334,7 +333,66 @@ ASTNode* parse_assignment(Parser* parser) {
 }
 
 ASTNode* parse_expression(Parser* parser) {
+    ASTNode* expression_node = NULL;
 
+    // 
+    //  Literals (Strings, Integers, Booleans, etc.)
+    // 
+    if (match(parser, TOKEN_INT_LITERAL) || match(parser, TOKEN_FLOAT_LITERAL) ||
+        match(parser, TOKEN_STRING) || match(parser, TOKEN_CHAR) ||
+        match(parser, TOKEN_TRUE) || match(parser, TOKEN_FALSE) ||
+        match(parser, TOKEN_NULL)) {
+        
+        expression_node = create_ast_node(AST_EXPRESSION, parser->current_token);
+        next_token(parser); // consume the literal
+    }
+
+    // 
+    //  Identifiers (such as variable names)
+    // 
+    else if (match(parser, TOKEN_IDENTIFIER)) {
+        expression_node = parse_identifier(parser);
+    }
+
+    // 
+    //  Unary operands
+    // 
+    else if (match(parser, TOKEN_MINUS) || match(parser, TOKEN_PLUS) ||
+             match(parser, TOKEN_NOT) || match(parser, TOKEN_INCREMENT) ||
+             match(parser, TOKEN_DECREMENT)) {
+
+        Token unary_token = parser->current_token;
+        next_token(parser);
+
+        ASTNode* operand = parse_expression(parser);
+    
+        if (!operand) return NULL;
+
+        expression_node = create_ast_node(AST_UNARY_EXPR, unary_token);
+        expression_node->child_count = 1;
+        expression_node->children = malloc(sizeof(ASTNode*));
+        expression_node->children[0] = operand;
+    }
+
+    else if (match(parser, TOKEN_LPAREN)) {
+        next_token(parser);
+        expression_node = parse_expression(parser);
+        
+        if (!expression_node) return NULL;
+        if (!match(parser, TOKEN_RPAREN)) {
+            set_error(parser, "Expected ')', got '%s'", parser->current_token.text);
+            return NULL;
+        }
+
+        next_token(parser);
+    }
+
+    else {
+        set_error(parser, "Expected expression starter, got '%s'", parser->current_token.text);
+        return NULL;
+    }
+
+    return expression_node;
 }
 
 ASTNode* parse_binary(Parser* parser) {

@@ -6,7 +6,7 @@
 
 typedef enum {
     //
-    //  Keywords
+    //  Keywords / Statements
     //
     AST_PROGRAM,
     AST_IF,
@@ -26,13 +26,57 @@ typedef enum {
     AST_IDENTIFIER,
     AST_FUNCTION_CALL,
     AST_BLOCK,
-    AST_BINARY_OP,
-    AST_UNARY_OP,
+
+    //
+    //  Binary expressions
+    //
+    AST_BINARY_OP,      // Represents the operator itself (+, -, *, /, etc.)
+    AST_BINARY_EXPR,    // The full binary expression node
+
+    //
+    //  Unary expressions
+    //
+    AST_UNARY_OP,       // The operator itself (-, !, ++, --)
+    AST_UNARY_EXPR,     // The full unary expression node
+
+    //
+    //  Comparisons & logical
+    //
+    AST_COMPARISON,     // <, >, <=, >=, ==, !=
+    AST_LOGICAL_OP,     // &&, ||
+
+    //
+    //  Increment / Decrement
+    //
+    AST_INCREMENT_EXPR, // Prefix or postfix ++/--
+
+    //
+    //  Grouping
+    //
+    AST_GROUPED_EXPR,   // Expressions inside parentheses
+
+    //
+    //  Arrays / members
+    //
+    AST_ARRAY_ACCESS,   // arr[index]
+    AST_MEMBER_ACCESS,  // obj.field
+
+    //
+    //  Ternary / Conditional
+    //
+    AST_TERNARY_EXPR,   // cond ? expr1 : expr2
+
+    //
+    //  Type casts / conversions
+    //
+    AST_CAST_EXPR,      // (int)x, (float)y
+
+    //
+    //  Parameters / operators / types
+    //
     AST_TYPE,
     AST_PARAMS,
-    AST_OPERATORS,
-    AST_COMPARISON,
-    AST_INCREMENT_EXPR,
+    AST_OPERATORS
 } ASTNodeType;
 
 typedef struct ASTNode {
