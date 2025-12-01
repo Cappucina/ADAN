@@ -102,6 +102,11 @@ ASTNode* parse_assignment(Parser* parser);
 //
 ASTNode* parse_expression(Parser* parser);
 
+// 
+//  Fetch the precedence value of a binary operator. (E.g.: "4" for ^)
+// 
+int get_node_precedence(ASTNode* node);
+
 //
 //  Handles binary operations based on precedence and associativity,
 //   examples: *, +, -, /, %, etc.

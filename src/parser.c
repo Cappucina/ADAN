@@ -10,7 +10,6 @@
     - NOTHING TO DO
     
     Sammy
-    - ASTNode* parse_binary(Parser* parser);
     - ASTNode* parse_unary(Parser* parser);
     - ASTNode* parse_literal(Parser* parser);
 
@@ -395,8 +394,85 @@ ASTNode* parse_expression(Parser* parser) {
     return expression_node;
 }
 
-ASTNode* parse_binary(Parser* parser) {
+int get_node_precedence(ASTNode* node) {
+    if (!node) return -1;
 
+    switch (node->token.type) {
+        case TOKEN_CAROT: // ^
+            return 4;
+
+        case TOKEN_ASTERISK: // *
+        case TOKEN_SLASH: // /
+        case TOKEN_PERCENT: // %
+            return 3;
+        
+        case TOKEN_PLUS: // +
+        case TOKEN_MINUS: // -
+            return 2;
+        
+        default:
+            return -1;
+    }
+}
+
+// 
+//  Supported operators:
+//   *, +, -, /, ^, %
+// 
+ASTNode* parse_binary(Parser* parser) {
+    ASTNode* left = parse_primary(parser);
+    
+    if (!left) return NULL;
+    while (1) {
+        TokenType op_type = parser->current_token.type;
+
+        int precedence;
+        int right_assoc = 0;
+
+        switch (op_type) {
+            case TOKEN_CAROT:
+                precedence = 4;
+                right_assoc = 1;
+                break;
+            
+            case TOKEN_ASTERISK:
+            case TOKEN_SLASH:
+            case TOKEN_PERCENT:
+                precedence = 3;
+                break;
+            
+            case TOKEN_PLUS:
+            case TOKEN_MINUS:
+                precedence = 2;
+                break;
+            
+            default:
+                return left;
+        }
+
+        if (!right_assoc && precedence < get_node_precedence(left)) break;
+        if (right_assoc && precedence <= get_node_precedence(left)) break;
+
+        Token op_token = parser->current_token;
+        match(parser, op_type);
+
+        ASTNode* right = parse_primary(parser);
+        if (!right) {
+            set_error(parser, "Expected expression after '%s'", op_token.text);
+            return left;
+        }
+
+        ASTNode* new_node = create_ast_node(AST_BINARY_OP, op_token);
+        
+        new_node->child_count = 2;
+        new_node->children = malloc(sizeof(ASTNode*) * 2);
+        new_node->children[0] = left;
+        new_node->children[1] = right;
+
+        left = new_node;
+    }
+
+    return left;
 }
 
 ASTNode* parse_unary(Parser* parser) {
