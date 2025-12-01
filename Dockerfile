@@ -1,7 +1,3 @@
-# 
-#  Choose Alpine Linux for its very light distribution
-# 
-
 FROM alpine:3.21
 
 RUN apk add --no-cache \
