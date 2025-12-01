@@ -160,9 +160,4 @@ ASTNode* parse_identifier(Parser* parser);
 //
 ASTNode* parse_literal(Parser* parser);
 
-//
-//  Parses multiple statements until a closing token or EOF is reached.
-//
-ASTNode* parse_statement_list(Parser* parser);
-
 #endif

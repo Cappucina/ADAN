@@ -7,7 +7,6 @@
 /*
 
     Lily
-    - ASTNode* parse_identifier(Parser* parser);
     - ASTNode* parse_expression(Parser* parser);
     - ASTNode* parse_binary(Parser* parser);
     
@@ -577,7 +576,11 @@ ASTNode* parse_block(Parser* parser) {
 }
 
 ASTNode* parse_identifier(Parser* parser) {
+    if (!expect(parser, TOKEN_IDENTIFIER, "Expected an identifier, got '%s'", parser->current_token.text)) return NULL;
 
+    ASTNode* identifier_node = create_ast_node(AST_IDENTIFIER, parser->current_token);
+
+    return identifier_node;
 }
 
 ASTNode* parse_literal(Parser* parser) {
