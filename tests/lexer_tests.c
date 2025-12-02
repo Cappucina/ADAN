@@ -27,12 +27,12 @@ void run_lexer_test(LexerTest test) {
     }
 
     free(lexer);
-    printf("LEXER PASS: '%s'\n", test.input);
+    // printf("LEXER PASS: '%s'\n", test.input);
 }
 
 void create_lexer_tests() {
     LexerTest tests[] = {
-        { "x::int;", 
+        { "x::int;",
             { 
                 TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_INT, TOKEN_SEMICOLON
             },
@@ -79,6 +79,106 @@ void create_lexer_tests() {
                 "}"
             },
             17
+        },
+        { "a :: int = 10;",
+            {
+                TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_INT, TOKEN_ASSIGN,
+                TOKEN_INT_LITERAL, TOKEN_SEMICOLON
+            },
+            {
+                "a","::","int","=","10",";"
+            },
+            6
+        },
+        { "b::float=0.001;",
+            {
+                TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_FLOAT, TOKEN_ASSIGN,
+                TOKEN_FLOAT_LITERAL, TOKEN_SEMICOLON
+            },
+            {
+                "b","::","float","=","0.001",";"
+            },
+            6
+        },
+        { "sum = a;",
+            {
+                TOKEN_IDENTIFIER, TOKEN_ASSIGN, TOKEN_IDENTIFIER, TOKEN_SEMICOLON
+            },
+            {
+                "sum","=","a",";"
+            },
+            4
+        },
+        { "program :: void main() { }",
+            {
+                TOKEN_PROGRAM, TOKEN_TYPE_DECL, TOKEN_VOID, TOKEN_IDENTIFIER,
+                TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_LBRACE, TOKEN_RBRACE
+            },
+            {
+                "program","::","void","main","(",")","{","}"
+            },
+            8
+        },
+        { "x::int; y::int;",
+            {
+                TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_INT, TOKEN_SEMICOLON,
+                TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_INT, TOKEN_SEMICOLON
+            },
+            {
+                "x","::","int",";","y","::","int",";"
+            },
+            8
+        },
+        { "pi::float = 3.14159;",
+            {
+                TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_FLOAT, TOKEN_ASSIGN,
+                TOKEN_FLOAT_LITERAL, TOKEN_SEMICOLON
+            },
+            {
+                "pi","::","float","=","3.14159",";"
+            },
+            6
+        },
+        { "if (a > 0) a::int = 1;",
+            {
+                TOKEN_IF, TOKEN_LPAREN, TOKEN_IDENTIFIER, TOKEN_GREATER,
+                TOKEN_INT_LITERAL, TOKEN_RPAREN, TOKEN_IDENTIFIER, TOKEN_TYPE_DECL,
+                TOKEN_INT, TOKEN_ASSIGN, TOKEN_INT_LITERAL, TOKEN_SEMICOLON
+            },
+            {
+                "if","(","a",">","0",")","a","::","int","=","1",";"
+            },
+            12
+        },
+        { "empty();",
+            {
+                TOKEN_IDENTIFIER, TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_SEMICOLON
+            },
+            {
+                "empty","(",")",";"
+            },
+            4
+        },
+        { "num::int = 0; val::float = 1.0;",
+            {
+                TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_INT, TOKEN_ASSIGN,
+                TOKEN_INT_LITERAL, TOKEN_SEMICOLON, TOKEN_IDENTIFIER, TOKEN_TYPE_DECL,
+                TOKEN_FLOAT, TOKEN_ASSIGN, TOKEN_FLOAT_LITERAL, TOKEN_SEMICOLON
+            },
+            {
+                "num","::","int","=","0",";","val","::","float","=","1.0",";"
+            },
+            12
+        },
+        { "a_b::int = 7;",
+            {
+                TOKEN_IDENTIFIER, TOKEN_TYPE_DECL, TOKEN_INT, TOKEN_ASSIGN,
+                TOKEN_INT_LITERAL, TOKEN_SEMICOLON
+            },
+            {
+                "a_b","::","int","=","7",";"
+            },
+            6
         }
     };
 

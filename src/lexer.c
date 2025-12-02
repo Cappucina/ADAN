@@ -122,6 +122,8 @@ Token* next_token(Lexer *lexer) {
     if (c == '&' && next == '&') return make_token(lexer, TOKEN_AND, (const char*[]){"&", "&"}, 2);
     if (c == '=' && next == '=') return make_token(lexer, TOKEN_EQUALS, (const char*[]){"=", "="}, 2);
     if (c == ':' && next == ':') return make_token(lexer, TOKEN_TYPE_DECL, (const char*[]){":", ":"}, 2);
+    if (c == '+' && next == '+') return make_token(lexer, TOKEN_INCREMENT, (const char*[]){"+", "+"}, 2);
+    if (c == '-' && next == '-') return make_token(lexer, TOKEN_DECREMENT, (const char*[]){"-", "-"}, 2);
 
     switch(c) {
         case '+': return make_token(lexer, TOKEN_PLUS, (const char*[]){"+"}, 1);

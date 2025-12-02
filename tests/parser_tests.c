@@ -84,39 +84,38 @@ ExpectedNode* create_expected_if() {
 
 ExpectedNode* create_expected_while() {
     ExpectedNode* left = malloc(sizeof(ExpectedNode));
+
     left->type = AST_IDENTIFIER;
     left->token_text = "x";
     left->child_count = 0;
     left->children = NULL;
 
-    ExpectedNode* operator = malloc(sizeof(ExpectedNode));
-    operator->type = AST_OPERATORS;
-    operator->token_text = "<";
-    operator->child_count = 0;
-    operator->children = NULL;
-
     ExpectedNode* right = malloc(sizeof(ExpectedNode));
+
     right->type = AST_LITERAL;
     right->token_text = "10";
     right->child_count = 0;
     right->children = NULL;
 
     ExpectedNode* comparison = malloc(sizeof(ExpectedNode));
+
     comparison->type = AST_COMPARISON;
     comparison->token_text = NULL;
-    comparison->child_count = 3;
-    comparison->children = malloc(sizeof(ExpectedNode*) * 3);
+    comparison->token_type = TOKEN_LESS;
+    comparison->child_count = 2;
+    comparison->children = malloc(sizeof(ExpectedNode*) * 2);
     comparison->children[0] = left;
-    comparison->children[1] = operator;
-    comparison->children[2] = right;
+    comparison->children[1] = right;
 
     ExpectedNode* block = malloc(sizeof(ExpectedNode));
+
     block->type = AST_BLOCK;
     block->token_text = NULL;
     block->child_count = 0;
     block->children = NULL;
-    
+
     ExpectedNode* while_node = malloc(sizeof(ExpectedNode));
+
     while_node->type = AST_WHILE;
     while_node->token_text = NULL;
     while_node->child_count = 2;
@@ -128,46 +127,130 @@ ExpectedNode* create_expected_while() {
 }
 
 ExpectedNode* create_expected_for() {
-    ExpectedNode* literal = malloc(sizeof(ExpectedNode));
+    ExpectedNode* index = malloc(sizeof(ExpectedNode));
 
-    literal->type = AST_LITERAL;
-    literal->token_text = "10";
-    literal->child_count = 0;
-    literal->children = NULL;
+    index->type = AST_IDENTIFIER;
+    index->token_text = "i";
+    index->child_count = 0;
+    index->children = NULL;
+
+    ExpectedNode* type = malloc(sizeof(ExpectedNode));
+
+    type->type = AST_TYPE;
+    type->token_text = "int";
+    type->child_count = 0;
+    type->children = NULL;
+
+    ExpectedNode* initial_value = malloc(sizeof(ExpectedNode));
+
+    initial_value->type = AST_LITERAL;
+    initial_value->token_text = "0";
+    initial_value->child_count = 0;
+    initial_value->children = NULL;
+
+    ExpectedNode* assignment = malloc(sizeof(ExpectedNode));
+
+    assignment->type = AST_ASSIGNMENT;
+    assignment->token_text = NULL;
+    assignment->child_count = 3;
+    assignment->children = malloc(sizeof(ExpectedNode*) * 3);
+    assignment->children[0] = index;
+    assignment->children[1] = type;
+    assignment->children[2] = initial_value;
+
+    ExpectedNode* cond_left = malloc(sizeof(ExpectedNode));
+
+    cond_left->type = AST_IDENTIFIER;
+    cond_left->token_text = "i";
+    cond_left->child_count = 0;
+    cond_left->children = NULL;
+
+    ExpectedNode* cond_right = malloc(sizeof(ExpectedNode));
+
+    cond_right->type = AST_LITERAL;
+    cond_right->token_text = "10";
+    cond_right->child_count = 0;
+    cond_right->children = NULL;
+
+    ExpectedNode* condition = malloc(sizeof(ExpectedNode));
+
+    condition->type = AST_COMPARISON;
+    condition->token_text = NULL;
+    condition->token_type = TOKEN_LESS;
+    condition->child_count = 2;
+    condition->children = malloc(sizeof(ExpectedNode*) * 2);
+    condition->children[0] = cond_left;
+    condition->children[1] = cond_right;
+
+    ExpectedNode* increment_var = malloc(sizeof(ExpectedNode));
+
+    increment_var->type = AST_IDENTIFIER;
+    increment_var->token_text = "i";
+    increment_var->child_count = 0;
+    increment_var->children = NULL;
+
+    ExpectedNode* increment_op = malloc(sizeof(ExpectedNode));
+
+    increment_op->type = AST_OPERATORS;
+    increment_op->token_text = "++";
+    increment_op->token_type = TOKEN_INCREMENT;
+    increment_op->child_count = 0;
+    increment_op->children = NULL;
+
+    ExpectedNode* increment_node = malloc(sizeof(ExpectedNode));
+
+    increment_node->type = AST_INCREMENT_EXPR;
+    increment_node->token_text = NULL;
+    increment_node->child_count = 2;
+    increment_node->children = malloc(sizeof(ExpectedNode*) * 2);
+    increment_node->children[0] = increment_var;
+    increment_node->children[1] = increment_op;
+
+    ExpectedNode* block = malloc(sizeof(ExpectedNode));
+
+    block->type = AST_BLOCK;
+    block->token_text = NULL;
+    block->child_count = 0;
+    block->children = NULL;
 
     ExpectedNode* for_node = malloc(sizeof(ExpectedNode));
-
     for_node->type = AST_FOR;
     for_node->token_text = NULL;
-    for_node->child_count = 1;
-    for_node->children = malloc(sizeof(ExpectedNode*));
-    for_node->children[0] = literal;
+    for_node->child_count = 4;
+    for_node->children = malloc(sizeof(ExpectedNode*) * 4);
+    for_node->children[0] = assignment;
+    for_node->children[1] = condition;
+    for_node->children[2] = increment_node;
+    for_node->children[3] = block;
 
     return for_node;
 }
 
 ExpectedNode* create_expected_program() {
     ExpectedNode* assign = create_expected_assignment();
-
     ExpectedNode* type = malloc(sizeof(ExpectedNode));
+    
     type->type = AST_TYPE;
     type->token_text = "void";
     type->child_count = 0;
     type->children = NULL;
 
     ExpectedNode* id = malloc(sizeof(ExpectedNode));
+    
     id->type = AST_IDENTIFIER;
     id->token_text = "test";
     id->child_count = 0;
     id->children = NULL;
 
     ExpectedNode* params = malloc(sizeof(ExpectedNode));
+    
     params->type = AST_PARAMS;
     params->token_text = NULL;
     params->child_count = 0;
     params->children = NULL;
 
     ExpectedNode* block = malloc(sizeof(ExpectedNode));
+    
     block->type = AST_BLOCK;
     block->token_text = NULL;
     block->child_count = 1;
@@ -175,6 +258,7 @@ ExpectedNode* create_expected_program() {
     block->children[0] = assign;
 
     ExpectedNode* program_node = malloc(sizeof(ExpectedNode));
+    
     program_node->type = AST_PROGRAM;
     program_node->token_text = NULL;
     program_node->child_count = 4;
@@ -206,13 +290,13 @@ void run_parser_test(const char* input, ExpectedNode* expected_ast) {
     ASTNode* ast = parse_statement(&parser);
 
     if (parser.error) {
-        printf("PARSER FAIL: %s\n  Error: %s\n", input, parser.error_message);
+        printf("PARSE FAIL: '%s'\n  Error: '%s'\n", input, parser.error_message);
     } else if (!ast) {
-        printf("PARSER FAIL: %s\n  Error: parse_statement returned NULL\n", input);
+        printf("PARSE FAIL: '%s'\n  Error: parse_statement returned NULL\n", input);
     } else if (!compare_ast(ast, expected_ast)) {
-        printf("PARSER FAIL: %s\n", input);
-    } else {
-        printf("PARSER PASS: %s\n", input);
+        printf("PARSE FAIL: '%s'\n  Error: Mismatch between expected AST and generated AST\n", input);
+    // } else {
+    //     printf("PARSE PASS: '%s'\n", input);
     }
 
     if (ast) free_ast(ast);

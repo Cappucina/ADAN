@@ -79,6 +79,10 @@ static inline void add_child(ASTNode* parent, ASTNode* child) {
 //
 ASTNode* parse_statement(Parser* parser);
 
+ASTNode* parse_break_statement(Parser* parser);
+
+ASTNode* parse_return_statement(Parser* parser);
+
 //
 //  Parses a function/program definition.
 //
