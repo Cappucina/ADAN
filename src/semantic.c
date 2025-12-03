@@ -1,4 +1,5 @@
 #include "semantic.h"
+#include "util.h"
 
 SymbolTable* init_symbol_table() {
     SymbolTable* table = malloc(sizeof(SymbolTable));
@@ -29,21 +30,84 @@ void exit_scope(SymbolTable* table) {
                 sym = next;
             }
         }
+
         free(table->buckets);
         *table = *parent;
     }
 }
 
 bool add_symbol(SymbolTable* table, const char* name, Type type, ASTNode* node) {
+    if (!table || !name) return false;
 
+    unsigned long hash = hash_string(name);
+    int index = (int)(hash % table->bucket_count);
+
+    //
+    //  Check for duplicates in the current scope
+    //
+    Symbol* current_symbol = table->buckets[index];
+    while (current_symbol) {
+        if (strcmp(current_symbol->name, name) == 0) return false;
+        current_symbol = current_symbol->next;
+    }
+
+    // 
+    //  Allocate a new symbol
+    // 
+    Symbol* new_symbol = malloc(sizeof(Symbol));
+    
+    if (!new_symbol) return false;
+    if (!new_symbol->name) {
+        free(new_symbol);
+        return false;
+    }
+
+    new_symbol->type = type;
+    new_symbol->node = node;
+    new_symbol->next = table->buckets[index];
+
+    table->buckets[index] = new_symbol;
+    return true;
 }
 
 Symbol* lookup_symbol(SymbolTable* table, const char* name) {
+    if (!table || !name) return NULL;
 
+    while (table) {
+        if (!table->buckets || table->bucket_count <= 0) {
+            table = table->parent;
+            continue;
+        }
+
+        unsigned long hash = hash_string(name);
+        int index = (int)(hash % table->bucket_count);
+        
+        Symbol* current_symbol = table->buckets[index];
+        while (current_symbol) {
+            if (strcmp(current_symbol->name, name) == 0) {
+                return current_symbol;
+            }
+            current_symbol = current_symbol->next;
+        }
+        table = table->parent;
+    }
+    
+    return NULL;
 }
 
 bool symbol_in_scope(SymbolTable* table, const char* name) {
+    if (!table || !name) return false;
 
+    unsigned long hash = hash_string(name);
+    int index = (int)(hash % table->bucket_count);
+
+    Symbol* current_symbol = table->buckets[index];
+    while (current_symbol) {
+        if (strcmp(current_symbol->name, name) == 0) return true;
+        current_symbol = current_symbol->next;
+    }
+
+    return false;
 }
 
 // 
@@ -97,11 +161,13 @@ Type analyze_unary_op(ASTNode* unary_node, SymbolTable* table) {
 //  Type System / Helper functions
 // 
 Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
+    if (!expr_node || !table) return TYPE_UNKNOWN;
 
+    return expr_node->annotated_type;
 }
 
 bool check_type_compatibility(Type expected, Type actual) {
-
+    return expected == actual;
 }
 
 bool is_numeric_type(Type type) {
@@ -115,15 +181,15 @@ bool is_boolean_type(Type type) {
 //
 //  Error Handling (Errors, Warnings, Tips, etc.)
 // 
-void semantic_error(const char* format, ...) {
+void semantic_error(ASTNode* node, const char* fmt, ...) {
 
 }
 
-void semantic_warning(const char* format, ...) {
+void semantic_warning(ASTNode* node, const char* fmt, ...) {
 
 }
 
-void semantic_tip(const char* format, ...) {
+void semantic_tip(ASTNode* node, const char* fmt, ...) {
 
 }
 

@@ -4,6 +4,7 @@
 #include "lexer.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "semantic.h"
 
 typedef struct ASTNode ASTNode;
 
@@ -80,6 +81,7 @@ struct ASTNode {
     Token token;
     ASTNode** children;
     int child_count;
+    Type annotated_type;
 };
 
 static inline void free_ast(ASTNode* node) {

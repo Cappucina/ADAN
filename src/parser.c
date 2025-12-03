@@ -5,6 +5,7 @@
 #include "lexer.h"
 #include "ast.h"
 #include "parser.h"
+#include "semantic.h"
 
 void init_parser(Parser* parser, Lexer* lexer) {
     parser->lexer = lexer;
@@ -187,6 +188,7 @@ ASTNode* create_ast_node(ASTNodeType type, Token token) {
     }
     node->child_count = 0;
     node->children = NULL;
+    node->annotated_type = TYPE_UNKNOWN;
     return node;
 }
 
