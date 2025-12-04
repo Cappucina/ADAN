@@ -90,8 +90,6 @@ void semantic_tip(ASTNode* node, const char* fmt, ...);
 // 
 void annotate_node_type(ASTNode* node, Type type);
 
-void print_symbol_table(SymbolTable* table);
-
 void free_symbol_table(SymbolTable* table);
 
 #endif
