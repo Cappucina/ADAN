@@ -1,13 +1,13 @@
 FROM alpine:3.21
 
 RUN apk add --no-cache \
-    build-base \
-    clang \
-    llvm \
-    lld \
-    cmake \
-    git \
-    bash
+	build-base \
+	clang \
+	llvm \
+	lld \
+	cmake \
+	git \
+	bash
 
 ENV CC=clang
 ENV CXX=clang++

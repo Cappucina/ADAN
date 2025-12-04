@@ -4,8 +4,8 @@
 #include "ast.h"
 
 typedef struct {
-    const char* input;
-    ExpectedNode* expected_ast;
+	const char* input;
+	ExpectedNode* expected_ast;
 } ParserTest;
 
 bool compare_ast(ASTNode* actual, ExpectedNode* expected);

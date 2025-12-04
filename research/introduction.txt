@@ -1,25 +1,25 @@
 
 
-	The ADAN Programming Language		 - 		Table of Contents
+	The ADAN Programming Language				- 			Table of Contents
 						   
-This and the following files in the "research"	    This research papers will be broken down
-directory are aimed to help you understand how      into a few different "chapters", we'll
-compilers work, how ADAN accomplishes		    say. 
+This and the following files in the "research"	  This research papers will be broken down
+directory are aimed to help you understand how	  into a few different "chapters", we'll
+compilers work, how ADAN accomplishes			  say. 
 compilation, how to contribute to the ADAN
-project, and a way to contact the developers	    Ch. 1: "Lexical Analysis" - Understanding
-behind the language itself.				   how tokenization works and why it's
-							   important for compilation.
+project, and a way to contact the developers	Ch. 1: "Lexical Analysis" - Understanding
+behind the language itself.				   				how tokenization works and why it's
+														important for compilation.
 
-						    Ch. 2: "Parser" - Learning how parsing
-						           works and how to write your very
-							   first parser alongside
-							   construction of a nicely arranged
-							   Abstract Syntax Tree (AST).
+												Ch. 2: "Parser" - Learning how parsing
+														works and how to write your very
+														first parser alongside
+														construction of a nicely arranged
+														Abstract Syntax Tree (AST).
 
-						    Ch. 3: "Semantic Analysis" - Understanding
-						    	   strict type systems and why writing
-							   a statically typed programming
-							   language should be preferred over
-							   dynamically typed languages.
+												Ch. 3: "Semantic Analysis" - Understanding
+														strict type systems and why writing
+													a statically typed programming
+													language should be preferred over
+													dynamically typed languages.
 
-						    ... (Add onto this later)
+... (Add onto this later)

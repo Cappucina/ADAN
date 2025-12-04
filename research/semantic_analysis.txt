@@ -1,6 +1,6 @@
 
 
-	  Understanding Semantic Analysis
+	     Understanding Semantic Analysis
 
 Semantic Analysis, otherwise known as type checking,
 breaks down and reads the generated AST and makes

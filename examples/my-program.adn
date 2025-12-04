@@ -1,9 +1,9 @@
 include adan.io;
 
 program::void main() {
-    total::int = 10;
+	total::int = 10;
 
-    for (index::int = 0; index <= total; index++) {
-        printf("Index: %d", index);
-    }
+	for (index::int = 0; index <= total; index++) {
+		printf("Index: %d", index);
+	}
 }

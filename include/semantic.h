@@ -3,29 +3,17 @@
 
 #include "ast.h"
 
-typedef enum {
-    TYPE_INT,
-    TYPE_FLOAT,
-    TYPE_STRING,
-    TYPE_BOOLEAN,
-    TYPE_CHAR,
-    TYPE_NULL,
-    TYPE_VOID,
-    TYPE_ARRAY,
-    TYPE_UNKNOWN
-} Type;
-
 typedef struct Symbol {
-    char* name;
-    Type type;
-    ASTNode* node;
-    struct Symbol* next;
+	char* name;
+	Type type;
+	ASTNode* node;
+	struct Symbol* next;
 } Symbol;
 
 typedef struct SymbolTable {
-    Symbol** buckets;
-    int bucket_count;
-    struct SymbolTable* parent;
+	Symbol** buckets;
+	int bucket_count;
+	struct SymbolTable* parent;
 } SymbolTable;
 
 SymbolTable* init_symbol_table();

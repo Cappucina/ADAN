@@ -4,8 +4,8 @@
 #include "lexer.h"
 
 int main() {
-    create_lexer_tests();
-    create_parser_tests();
+	create_lexer_tests();
+	create_parser_tests();
 
-    return 0;
+	return 0;
 }

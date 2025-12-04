@@ -18,8 +18,8 @@ CONTAINER_NAME = "adan-dev-container"
 #   to find ADAN's true file path.
 #
 def find_relative_path():
-    script_path = Path(__file__).resolve()
-    ancestor = script_path.parent.parent
-    return ancestor
+	script_path = Path(__file__).resolve()
+	ancestor = script_path.parent.parent
+	return ancestor
 
 subprocess.run(["docker", "build", "-q", "-t", CONTAINER_NAME, find_relative_path()], check=True)

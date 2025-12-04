@@ -6,13 +6,13 @@
 #include "ast.h"
 
 typedef struct {
-    Lexer* lexer;
+	Lexer* lexer;
 
-    Token current_token;   // Store tokens by value, not pointer
-    Token peek_token;
+	Token current_token;   // Store tokens by value, not pointer
+	Token peek_token;
 
-    bool error;
-    char* error_message;
+	bool error;
+	char* error_message;
 } Parser;
 
 //
@@ -27,6 +27,11 @@ void init_parser(Parser* parser, Lexer* lexer);
 //
 void free_parser(Parser* parser);
 
+// 
+//  Fetch the respected error message from the logs file.
+// 
+const char* get_error_message(int error_code);
+
 //
 //  Checks whether the current token is a specific type and advances if
 //   true; used for optional grammar elements.
@@ -37,7 +42,7 @@ bool match(Parser* parser, TokenType type);
 //  Enforces that the current token must be a specific type, sets an
 //   error and returns false if not, otherwise advances.
 //
-bool expect(Parser* parser, TokenType type, const char* error_msg, ...);
+bool expect(Parser* parser, TokenType type, int error_msg, ...);
 
 //
 //  Checks whether the next token matches a type without actually
@@ -48,10 +53,10 @@ bool peek_is(Parser* parser, TokenType type);
 //
 //  Stores a formatted error message and marks the parser as failed.
 //
-void set_error(Parser* parser, const char* message, ...);
+void set_error(Parser* parser, int message, ...);
 
 static inline bool has_error(Parser* parser) {
-    return parser->error;
+	return parser->error;
 }
 
 //
@@ -64,13 +69,13 @@ ASTNode* create_ast_node(ASTNodeType type, Token token);
 //  Appends a child node to a parent AST node.
 //
 static inline void add_child(ASTNode* parent, ASTNode* child) {
-    if (!parent || !child) return;
-    ASTNode** new_children = (ASTNode**)realloc(parent->children, sizeof(ASTNode*)*  (parent->child_count + 1));
+	if (!parent || !child) return;
+	ASTNode** new_children = (ASTNode**)realloc(parent->children, sizeof(ASTNode*)*  (parent->child_count + 1));
 
-    if (!new_children) return;
-    parent->children = new_children;
-    parent->children[parent->child_count] = child;
-    parent->child_count++;
+	if (!new_children) return;
+	parent->children = new_children;
+	parent->children[parent->child_count] = child;
+	parent->child_count++;
 }
 
 //

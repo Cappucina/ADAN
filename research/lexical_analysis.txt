@@ -1,13 +1,13 @@
 
 
-		Understanding Tokenization using Lexical Analysis			-	Tokenization vs. Lexical Analysis
+				Understanding Tokenization using Lexical Analysis					   -	  Tokenization vs. Lexical Analysis
 
-Lexing can be made very easy by simply understanding what the tokenization process is,     The main difference between tokenization and
-and what it actually means. Tokenization just refers to turning a set of ASCII		   Lexical Analysis (or Lexer/Lexing for short)
-characters into an array of tokens. Let me show you by example.				   is that tokenization is the PROCESS itself
-											   of turning ASCII characters into tokens,
-The code block:										   and lexing is the name we assigned to that
-```adn											   process.
+Lexing can be made very easy by simply understanding what the tokenization process is,	 The main difference between tokenization and
+and what it actually means. Tokenization just refers to turning a set of ASCII		     Lexical Analysis (or Lexer/Lexing for short)
+characters into an array of tokens. Let me show you by example.				   			 is that tokenization is the PROCESS itself
+																						 of turning ASCII characters into tokens,
+The code block:																			 and lexing is the name we assigned to that
+```adn																					 process.
 include adan.io;
 
 program::void main() {
