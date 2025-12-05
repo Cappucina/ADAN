@@ -115,27 +115,7 @@ bool symbol_in_scope(SymbolTable* table, const char* name) {
 
 // 
 //  AST Traversal / Semantic Checks
-// 
-void analyze_program(ASTNode* root, SymbolTable* table) {
-	if (root == NULL || table == NULL) return;
-	if (root->type != AST_PROGRAM) return;
-
-	ASTNode* return_type_node = root->children[0];
-	ASTNode* program_name_node = root->children[1];
-	ASTNode* params_node = root->children[2];
-	ASTNode* block_node = root->children[3];
-
-	enter_scope(table);
-	if (params_node && params_node->type == AST_PARAMS) {
-		for (int i = 0; i < params_node->child_count; i++) {
-			ASTNode* param = params_node->children[i];
-		}
-	}
-
-	if (block_node && block_node->type == AST_BLOCK) analyze_block(block_node, table);
-	exit_scope(table);
-}
-
+//
 void analyze_block(ASTNode* block, SymbolTable* table) {
 	if (block == NULL || table == NULL) return;
 	if (block->type != AST_BLOCK) return;
@@ -200,10 +180,7 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 	}
 }
 
-// 
-//  for (index::int = 0; int <= 10; int++) { ... }
-// 
-void analyze_function(ASTNode* func_node, SymbolTable* table) {
+void analyze_program(ASTNode* func_node, SymbolTable* table) {
 	if (!func_node || !table) return;
 	if (func_node->type != AST_PROGRAM) return;
 
@@ -223,9 +200,9 @@ void analyze_function(ASTNode* func_node, SymbolTable* table) {
 	if (params_node && params_node->type == AST_PARAMS) {
 		for (int i = 0; i < params_node->child_count; i++) {
 			ASTNode* param = params_node->children[i];
-			Type param_type = get_expression_type(param->children[0], table); // type node
+			Type param_type = get_expression_type(param->children[0], table);
 
-			const char* param_name = param->children[1]->token.text;		 // name node
+			const char* param_name = param->children[1]->token.text;
 			if (!add_symbol(table, param_name, param_type, param)) {
 				semantic_error(param, SemanticErrorMessages[SEMANTIC_DUPLICATE_SYMBOL], param_name);
 			}
@@ -256,6 +233,9 @@ void analyze_function(ASTNode* func_node, SymbolTable* table) {
 	exit_scope(table);
 }
 
+void analyze_for(ASTNode* for_node, SymbolTable* table) {
+    
+}
 
 void analyze_if(ASTNode* if_node, SymbolTable* table) {
 
