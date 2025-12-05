@@ -234,18 +234,41 @@ void analyze_program(ASTNode* func_node, SymbolTable* table) {
 }
 
 void analyze_for(ASTNode* for_node, SymbolTable* table) {
-    
+    if (!for_node || !table) return;
+    if (for_node->type != AST_FOR) return;
+
+    ASTNode* assignment_node = for_node->children[0];
+	ASTNode* condition_node = for_node->children[1];
+	ASTNode* increment_node = for_node->children[2];
+	ASTNode* block_node = for_node->children[3];
+
+    enter_scope(table);
+
+    if (assignment_node == NULL) return;
+
+    analyze_statement(assignment_node, table);
+    if (get_expression_type(condition_node, table) != TYPE_BOOLEAN) {
+        semantic_error(for_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], for_node->token.text, TYPE_BOOLEAN);
+    }
+
+    // do later
 }
 
 void analyze_if(ASTNode* if_node, SymbolTable* table) {
+    if (!if_node || !table) return;
+    if (if_node->type != AST_IF) return;
 
 }
 
 void analyze_while(ASTNode* while_node, SymbolTable* table) {
+    if (!while_node || !table) return;
+    if (while_node->type != AST_WHILE) return;
 
 }
 
 void analyze_return(ASTNode* return_node, SymbolTable* table) {
+    if (!return_node || !table) return;
+    if (return_node->type != AST_RETURN) return;
 
 }
 
