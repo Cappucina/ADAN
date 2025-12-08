@@ -1,11 +1,9 @@
 include adan.io;
 
 program::void main() {
-	total::int = 10;
-
-	for (index::int = 0; index <= total; index++) {
-		printf("Index: %d", index);
+	total_loops::int = 10;
+	
+	for (index::int = 0; index <= total_loops; i++) {
+		printf("On iteration %d", index);
 	}
-
-	return void;
 }

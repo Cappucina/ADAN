@@ -1,0 +1,22 @@
+
+   Phase 1: AST (Current)              Phase 2: IR (Next Step)
+  ------------------------            -------------------------
+         (ASSIGN)                        t1 = b + c
+        /        \                       t2 = t1 * d
+       a         (MUL)                    a = t2
+                /     \
+             (ADD)     d                (This is often called
+             /   \                       Three-Address Code)
+            b     c
+
+
+  IR_Program (Linked List Head)
+  	|
+  	v
+  +------------------+       +------------------+       +------------------+
+  | Instruction 1    |  next | Instruction 2    |  next | Instruction 3    |
+  | OP: IR_LOAD      | ----> | OP: IR_ADD       | ----> | OP: IR_STORE     |
+  | Arg1: "x"        |       | Arg1: "x"        |       | Arg1: "_t0"      |
+  | Arg2: NULL       |       | Arg2: "5"        |       | Arg2: NULL       |
+  | Res:  "_t0"      |       | Res:  "_t1"      |       | Res:  "y"        |
+  +------------------+       +------------------+       +------------------+

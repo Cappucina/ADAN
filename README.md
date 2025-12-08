@@ -22,8 +22,8 @@ The ADAN language is open for contributions. If you have found a bug and you wou
 
 | Stage | Lexical Analysis | Parser | Semantic Analysis | IR | Optimization | Code Generator | Linking |
 |-------|-------|--------|-----------------|----|-------------|----------------|--------|
-| Finished | Yes | Yes | Yes | No | No | No | No |
-| Completion | 100% | 100% | 100% | 0% | 0% | 0% | 0% |
+| Finished | Yes | Yes | Yes | Yes | No | No | No |
+| Completion | 100% | 100% | 100% | 100% | 0% | 0% | 0% |
 
 ## Installing ADAN
 Since **November 20th**, **2025**, ADAN is not available for installation. Public releases may come in the near future.
