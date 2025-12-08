@@ -45,7 +45,7 @@ ExpectedNode* create_expected_assignment() {
 
 	ExpectedNode* assignment_node = malloc(sizeof(ExpectedNode));
 
-	assignment_node->type = AST_ASSIGNMENT;
+	assignment_node->type = AST_DECLARATION;
 	assignment_node->token_text = NULL;
 	assignment_node->child_count = 3;
 	assignment_node->children = malloc(sizeof(ExpectedNode*) * 3);
@@ -228,7 +228,7 @@ ExpectedNode* create_expected_for() {
 }
 
 ExpectedNode* create_expected_program() {
-	ExpectedNode* assign = create_expected_assignment();
+	ExpectedNode* decl = create_expected_assignment();
 	ExpectedNode* type = malloc(sizeof(ExpectedNode));
 	
 	type->type = AST_TYPE;
@@ -256,7 +256,7 @@ ExpectedNode* create_expected_program() {
 	block->token_text = NULL;
 	block->child_count = 1;
 	block->children = malloc(sizeof(ExpectedNode*));
-	block->children[0] = assign;
+	block->children[0] = decl;
 
 	ExpectedNode* program_node = malloc(sizeof(ExpectedNode));
 	

@@ -1,0 +1,29 @@
+
+     [ analyze_assignment ]
+               |
+               v
+   [ 1. Lookup Identifier ]
+   (Search SymbolTable for 'x')
+   (Does it exist? Is it a variable?)
+         /           \
+      (No)          (Yes)
+       |              |
+    [ ERROR ]         v
+ "Undefined       [ 2. Get Target Type ]
+  Variable"       (Retrieve 'x's type from the
+                   Symbol you just found.
+                   e.g., TYPE_INT)
+                      |
+                      v
+              [ 3. Analyze Expression ]
+              (Recurse on "y + 5")
+              (Get expr->annotated_type)
+                      |
+                      v
+              [ 4. COMPARE TYPES ]
+              (Does Target Type == Expr Type?)
+               /              \
+            (Yes)            (No)
+              |                |
+          [ SUCCESS ]      [ ERROR ]
+                          "Type Mismatch"

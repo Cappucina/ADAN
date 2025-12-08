@@ -99,6 +99,10 @@ ASTNode* parse_program(Parser* parser);
 // 
 ASTNode* parse_params(Parser* parser);
 
+// 
+//  Handles variable declaration, with an identifier followed by
+//   a type and an assignment on the right-hand side.
+// 
 ASTNode* parse_declaration(Parser* parser);
 
 //

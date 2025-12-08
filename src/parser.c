@@ -213,7 +213,7 @@ ASTNode* parse_statement(Parser* parser) {
 		case TOKEN_IDENTIFIER:
 			switch(parser->peek_token.type) {
 				case TOKEN_TYPE_DECL:
-					return parse_assignment(parser);
+					return parse_declaration(parser);
 					break;
 				case TOKEN_LPAREN:
 					return parse_function_call(parser);
@@ -407,7 +407,7 @@ ASTNode* parse_params(Parser* parser) {
 	return node;
 }
 
-ASTNode* parse_assignment(Parser* parser) {
+ASTNode* parse_declaration(Parser* parser) {
 	Token identifier_token = parser->current_token;
 	if (identifier_token.text) {
 		identifier_token.text = strdup(identifier_token.text);
@@ -446,7 +446,7 @@ ASTNode* parse_assignment(Parser* parser) {
 		return NULL;
 	}
 
-	ASTNode* assignment_node = create_ast_node(AST_ASSIGNMENT, identifier_token);
+	ASTNode* assignment_node = create_ast_node(AST_DECLARATION, identifier_token);
 
 	if (parser->current_token.type == TOKEN_ASSIGN) {
 		match(parser, TOKEN_ASSIGN);
@@ -486,6 +486,61 @@ ASTNode* parse_assignment(Parser* parser) {
 		assignment_node->children[0] = identifier;
 		assignment_node->children[1] = type;
 	}
+
+	return assignment_node;
+}
+
+ASTNode* parse_assignment(Parser* parser) {
+	Token identifier_token = parser->current_token;
+
+	if (!expect(parser, TOKEN_IDENTIFIER, PARSER_EXPECTED, "identifier", parser->current_token.text)) {
+		return NULL;
+	}
+
+	ASTNode* identifier = create_ast_node(AST_IDENTIFIER, identifier_token);
+	ASTNode* assignment_node = create_ast_node(AST_ASSIGNMENT, identifier_token);
+
+	if (!identifier || !assignment_node) {
+		set_error(parser, PARSER_FAILED_AST, "assignment AST nodes");
+		return NULL;
+	}
+
+	if (!expect(parser, TOKEN_ASSIGN, PARSER_EXPECTED, "'='", parser->current_token.text)) {
+		free_ast(identifier);
+		free_ast(assignment_node);
+	
+		return NULL;
+	}
+
+	ASTNode* expression = parse_expression(parser);
+	if (!expression) {
+		set_error(parser, PARSER_EXPECTED, "expression", parser->current_token.text);
+		free_ast(identifier);
+		free_ast(assignment_node);
+		return NULL;
+	}
+
+	if (!expect(parser, TOKEN_SEMICOLON, PARSER_EXPECTED, "';'", parser->current_token.text)) {
+		free_ast(identifier);
+		free_ast(expression);
+		free_ast(assignment_node);
+	
+		return NULL;
+	}
+
+	assignment_node->child_count = 2;
+	assignment_node->children = malloc(sizeof(ASTNode*) * 2);
+	
+	if (!assignment_node->children) {
+		free_ast(identifier);
+		free_ast(expression);
+		free_ast(assignment_node);
+
+		return NULL;
+	}
+
+	assignment_node->children[0] = identifier;
+	assignment_node->children[1] = expression;
 
 	return assignment_node;
 }

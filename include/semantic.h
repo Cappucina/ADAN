@@ -7,6 +7,7 @@ typedef struct Symbol {
 	char* name;
 	Type type;
 	ASTNode* node;
+	int usage_count;
 	struct Symbol* next;
 } Symbol;
 
@@ -52,6 +53,26 @@ void analyze_break(ASTNode* break_node, SymbolTable* table);
 void analyze_declaration(ASTNode* declaration_node, SymbolTable* table);
 
 void analyze_assignment(ASTNode* assignment_node, SymbolTable* table);
+
+void analyze_include(ASTNode* include_node, SymbolTable* table);
+
+void analyze_function_call(ASTNode* call_node, SymbolTable* table);
+
+void check_entry_point(SymbolTable* table);
+
+void analyze_array_literal(ASTNode* node, SymbolTable* table);
+
+bool validate_array_element_types(ASTNode* array_node, SymbolTable* table);
+
+void check_unreachable_code(ASTNode* block, SymbolTable* table);
+
+bool has_all_paths_return(ASTNode* block, Type return_type);
+
+void analyze_variable_usage(SymbolTable* table);
+
+void check_type_cast_validity(Type from, Type to, ASTNode* node);
+
+Type analyze_array_access(ASTNode* node, SymbolTable* table);
 
 Type analyze_expression(ASTNode* expr_node, SymbolTable* table);
 

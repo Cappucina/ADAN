@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+const char* type_to_string(Type type);
+
 SymbolTable* init_symbol_table() {
 	SymbolTable* table = malloc(sizeof(SymbolTable));
 
@@ -80,6 +82,7 @@ bool add_symbol(SymbolTable* table, const char* name, Type type, ASTNode* node) 
 
 	new_symbol->type = type;
 	new_symbol->node = node;
+	new_symbol->usage_count = 0;
 	new_symbol->next = table->buckets[index];
 
 	table->buckets[index] = new_symbol;
@@ -101,6 +104,7 @@ Symbol* lookup_symbol(SymbolTable* table, const char* name) {
 		Symbol* current_symbol = table->buckets[index];
 		while (current_symbol) {
 			if (strcmp(current_symbol->name, name) == 0) {
+				current_symbol->usage_count++;
 				return current_symbol;
 			}
 			current_symbol = current_symbol->next;
@@ -168,6 +172,14 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 		case AST_BLOCK:
 			analyze_block(statement, table);
 			break;
+
+		case AST_INCLUDE:
+			analyze_include(statement, table);
+			break;
+
+		case AST_ARRAY_ACCESS:
+			analyze_array_access(statement, table);
+			break;
 		
 		case AST_EXPRESSION:
 		case AST_BINARY_OP:
@@ -180,6 +192,7 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 			break;
 		
 		case AST_FUNCTION_CALL:
+			analyze_function_call(statement, table);
 			break;
 		
 		case AST_IDENTIFIER:
@@ -246,22 +259,22 @@ void analyze_program(ASTNode* func_node, SymbolTable* table) {
 }
 
 void analyze_for(ASTNode* for_node, SymbolTable* table) {
-    if (!for_node || !table) return;
-    if (for_node->type != AST_FOR) return;
+	if (!for_node || !table) return;
+	if (for_node->type != AST_FOR) return;
 
-    ASTNode* assignment_node = for_node->children[0];
+	ASTNode* assignment_node = for_node->children[0];
 	ASTNode* condition_node = for_node->children[1];
 	ASTNode* increment_node = for_node->children[2];
 	ASTNode* block_node = for_node->children[3];
 
-    if (assignment_node == NULL) return;
+	if (assignment_node == NULL) return;
 
 	enter_scope(table);
-    analyze_statement(assignment_node, table);
+	analyze_statement(assignment_node, table);
 
-    if (get_expression_type(condition_node, table) != TYPE_BOOLEAN) {
-        semantic_error(for_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], for_node->token.text, TYPE_BOOLEAN);
-    }
+	if (get_expression_type(condition_node, table) != TYPE_BOOLEAN) {
+		semantic_error(for_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], for_node->token.text, TYPE_BOOLEAN);
+	}
 
 	if (increment_node == NULL) {
 		semantic_tip(for_node, SemanticTipMessages[SEMANTIC_TIP_PREFER_WHILE_LOOP]);
@@ -279,8 +292,8 @@ void analyze_for(ASTNode* for_node, SymbolTable* table) {
 }
 
 void analyze_if(ASTNode* if_node, SymbolTable* table) {
-    if (!if_node || !table) return;
-    if (if_node->type != AST_IF) return;
+	if (!if_node || !table) return;
+	if (if_node->type != AST_IF) return;
 
 	ASTNode* condition_node = if_node->children[0];
 	ASTNode* block_node = if_node->children[1];
@@ -291,8 +304,8 @@ void analyze_if(ASTNode* if_node, SymbolTable* table) {
 	analyze_statement(condition_node, table);
 
 	if (get_expression_type(condition_node, table) != TYPE_BOOLEAN) {
-        semantic_error(if_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], if_node->token.text, TYPE_BOOLEAN);
-    }
+		semantic_error(if_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], if_node->token.text, TYPE_BOOLEAN);
+	}
 
 	if (block_node && block_node->type == AST_BLOCK) {
 		analyze_block(block_node, table);
@@ -313,8 +326,8 @@ void analyze_if(ASTNode* if_node, SymbolTable* table) {
 }
 
 void analyze_while(ASTNode* while_node, SymbolTable* table) {
-    if (!while_node || !table) return;
-    if (while_node->type != AST_WHILE) return;
+	if (!while_node || !table) return;
+	if (while_node->type != AST_WHILE) return;
 
 	ASTNode* condition_node = while_node->children[0];
 	ASTNode* block_node = while_node->children[1];
@@ -325,8 +338,8 @@ void analyze_while(ASTNode* while_node, SymbolTable* table) {
 	analyze_statement(condition_node, table);
 
 	if (get_expression_type(condition_node, table) != TYPE_BOOLEAN) {
-        semantic_error(while_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], while_node->token.text, TYPE_BOOLEAN);
-    }
+		semantic_error(while_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], while_node->token.text, TYPE_BOOLEAN);
+	}
 
 	if (block_node && block_node->type == AST_BLOCK) {
 		table->loop_depth++;
@@ -338,15 +351,16 @@ void analyze_while(ASTNode* while_node, SymbolTable* table) {
 }
 
 void analyze_return(ASTNode* return_node, SymbolTable* table) {
-    if (!return_node || !table) return;
-    if (return_node->type != AST_RETURN) return;
+	if (!return_node || !table) return;
+	if (return_node->type != AST_RETURN) return;
 
 	Type return_type = table->current_return_type;
 	if (return_node->child_count > 0) {
 		ASTNode* child_node = return_node->children[0];
-		analyze_expression(child_node, table);
-		Type actual_type = get_expression_type(child_node, table);
 	
+		analyze_expression(child_node, table);
+	
+		Type actual_type = get_expression_type(child_node, table);
 		if (return_type != actual_type) semantic_error(return_node, SemanticErrorMessages[SEMANTIC_RETURN_KEYWORD_TYPE_MISMATCH]);
 	} else {
 		if (return_type != TYPE_VOID) semantic_error(return_node, SemanticErrorMessages[SEMANTIC_RETURN_KEYWORD_TYPE_MISMATCH]);
@@ -354,8 +368,8 @@ void analyze_return(ASTNode* return_node, SymbolTable* table) {
 }
 
 void analyze_break(ASTNode* break_node, SymbolTable* table) {
-    if (!break_node || !table) return;
-    if (break_node->type != AST_BREAK) return;
+	if (!break_node || !table) return;
+	if (break_node->type != AST_BREAK) return;
 
 	int depth = table->loop_depth;
 	if (depth <= 0) {
@@ -366,23 +380,480 @@ void analyze_break(ASTNode* break_node, SymbolTable* table) {
 void analyze_declaration(ASTNode* declaration_node, SymbolTable* table) {
 	if (!declaration_node || !table) return;
 
+	ASTNode* identifier_node = declaration_node->children[0];
+	ASTNode* type_node = declaration_node->children[1];
+
+	Type expected_type = get_expression_type(type_node, table);
+	if (declaration_node->child_count >= 3) {
+		ASTNode* expression_node = declaration_node->children[2];
+	
+		analyze_expression(expression_node, table);
+	
+		Type actual_type = get_expression_type(expression_node, table);
+		if (actual_type != expected_type) {
+			semantic_error(declaration_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], type_node->token.text, expression_node->token.text);
+			return;
+		}
+	}
+
+	add_symbol(table, identifier_node->token.text, expected_type, declaration_node);
 }
 
+// 
+//  See the visualized form (Tree): `../diagrams/variable_assignment.txt`
+// 
 void analyze_assignment(ASTNode* assignment_node, SymbolTable* table) {
 	if (!assignment_node || !table) return;
 	
+	ASTNode* identifier_node = assignment_node->children[0];
+	ASTNode* expression_node = assignment_node->children[1];
+
+	analyze_expression(expression_node, table);
+
+	Symbol* identifier_symbol = lookup_symbol(table, identifier_node->token.text);
+	Type expression_type = get_expression_type(expression_node, table);
+	
+	if (identifier_symbol == NULL) {
+		semantic_error(assignment_node, SemanticErrorMessages[SEMANTIC_UNKNOWN_VARIABLE], identifier_node->token.text);
+		return;
+	}
+
+	// 
+	//  STRICT: No implicit type conversion in assignment
+	// 
+	if (identifier_symbol->type != expression_type) {
+		semantic_error(assignment_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], type_to_string(expression_type), type_to_string(identifier_symbol->type));
+		return;
+	}
+}
+
+// 
+//  include <publisher>.<package>;
+// 
+//  include adan.io; // Import ADAN's native I/O library.
+// 
+void analyze_include(ASTNode* include_node, SymbolTable* table) {
+	if (!include_node || !table) return;
+	if (include_node->type != AST_INCLUDE) return;
+	if (include_node->child_count < 2) return;
+
+	ASTNode* publisher_node = include_node->children[0];
+	ASTNode* package_node = include_node->children[1];
+
+	if (!publisher_node || !package_node) return;
+	if (!publisher_node->token.text || !package_node->token.text) return;
+}
+
+void analyze_function_call(ASTNode* call_node, SymbolTable* table) {
+	if (!call_node || !table) return;
+	if (call_node->type != AST_FUNCTION_CALL) return;
+	if (call_node->child_count < 1) return;
+
+	ASTNode* func_name_node = call_node->children[0];
+	Symbol* func_symbol = lookup_symbol(table, func_name_node->token.text);
+
+	if (func_symbol == NULL) {
+		semantic_error(call_node, SemanticErrorMessages[SEMANTIC_FUNCTION_NOT_FOUND], func_name_node->token.text);
+		return;
+	}
+
+	int arg_count = call_node->child_count - 1;
+	if (call_node->child_count > 1) {
+		ASTNode* params_node = call_node->children[1];
+		if (params_node && params_node->type == AST_PARAMS) {
+			int expected_count = params_node->child_count;
+
+			if (arg_count != expected_count) {
+				semantic_error(call_node, SemanticErrorMessages[SEMANTIC_WRONG_ASSIGNMENT_COUNT], expected_count, arg_count);
+				return;
+			}
+
+			for (int i = 0; i < arg_count; i++) {
+				ASTNode* arg = params_node->children[i];
+				analyze_expression(arg, table);
+			}
+		}
+	}
+}
+
+void check_entry_point(SymbolTable* table) {
+	if (!table) return;
+
+	Symbol* main_symbol = lookup_symbol(table, "main");
+
+	if (main_symbol == NULL) return;
+}
+
+void analyze_array_literal(ASTNode* node, SymbolTable* table) {
+	if (!node || node->type != AST_ARRAY_LITERAL) return;
+	if (!validate_array_element_types(node, table)) semantic_error(node, SemanticErrorMessages[SEMANTIC_ARRAY_CHILDREN_NOT_MATCHING_TYPES]);
+}
+
+bool validate_array_element_types(ASTNode* array_node, SymbolTable* table) {
+	if (array_node->child_count == 0) return true;
+
+	Type first_type = get_expression_type(array_node->children[0], table);
+	for (int i = 1; i < array_node->child_count; i++) {
+		Type current_type = get_expression_type(array_node->children[i], table);
+		if (current_type != first_type) return false;
+	}
+
+	return true;
+}
+
+void check_unreachable_code(ASTNode* block, SymbolTable* table) {
+	if (!block || block->type != AST_BLOCK) return;
+	for (int i = 0; i < block->child_count - 1; i++) {
+		ASTNode* statement = block->children[i];
+		
+		if (statement->type == AST_RETURN || statement->type == AST_BREAK) {
+			ASTNode* next_statement = block->children[i + 1];
+			semantic_warning(next_statement, SemanticWarningMessages[SEMANTIC_UNREACHABLE_CODE], next_statement->token.text);
+		}
+	}
+}
+
+bool has_all_paths_return(ASTNode* block, Type return_type) {
+	if (!block || block->type != AST_BLOCK) return false;
+	for (int i = block->child_count - 1; i >= 0; i--) {
+		ASTNode* statement = block->children[i];
+
+		if (statement->type == AST_RETURN) return true;
+		if (statement->type == AST_IF) {
+			if (statement->child_count >= 3) {
+				ASTNode* then_block = statement->children[1];
+				ASTNode* else_block = statement->children[2];
+
+				if (has_all_paths_return(then_block, return_type) &&
+					has_all_paths_return(else_block, return_type)) {
+						return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+void analyze_variable_usage(SymbolTable* table) {
+	if (!table || !table->buckets) return;
+	
+	for (int i = 0; i < table->bucket_count; i++) {
+		Symbol* symbol = table->buckets[i];
+		while (symbol) {
+			if (symbol->usage_count == 0 && symbol->node) {
+				semantic_warning(symbol->node, SemanticWarningMessages[SEMANTIC_UNUSED_VARIABLE], symbol->name);
+			}
+			symbol = symbol->next;
+		}
+	}
+	
+	if (table->parent) {
+		analyze_variable_usage(table->parent);
+	}
+}
+
+// 
+//  Note: || = Disallow
+//        && = Allow
+// 
+void check_type_cast_validity(Type from, Type to, ASTNode* node) {
+	// 
+	//  Same types are always valid
+	// 
+	if (from == to) return;
+
+	// 
+	//  Disallow IMPLICIT conversions between numeric types (int <-> float)
+	// 
+	if (is_numeric_type(from) && is_numeric_type(to)) return;
+	
+	// 
+	//  Disallow casting from char to int (ASCII/UNICODE value conversion)
+	// 
+	if (from == TYPE_CHAR && to == TYPE_INT) return;
+	
+	// 
+	//  Disallow casting from int to char (truncate to ASCII/UNICODE character)
+	// 
+	if (from == TYPE_INT && to == TYPE_CHAR) return;
+	
+	// 
+	//  Disallow casting from boolean to int (false = 0, true = 1)
+	// 
+	if (from == TYPE_BOOLEAN && to == TYPE_INT) return;
+	
+	// 
+	//  Disallow casting from int to boolean (0 = false, non-zero = true)
+	// 
+	if (from == TYPE_INT && to == TYPE_BOOLEAN) return;
+	
+	// 
+	//  Disallow casting from/to void (void is not a value type)
+	// 
+	if (from == TYPE_VOID || to == TYPE_VOID) {
+		semantic_error(node, "Cannot cast to or from void type");
+		return;
+	}
+	
+	// 
+	//  Disallow casting from/to null in most cases (null is special)
+	// 
+	if (from == TYPE_NULL || to == TYPE_NULL) {
+		semantic_error(node, "Cannot cast to or from null type");
+		return;
+	}
+	
+	// 
+	//  Disallow casting between arrays and primitives
+	// 
+	if (from == TYPE_ARRAY || to == TYPE_ARRAY) {
+		semantic_error(node, "Cannot cast arrays to or from other types");
+		return;
+	}
+	
+	// 
+	//  Disallow casting between string and numeric types directly
+	// 
+	if ((from == TYPE_STRING && is_numeric_type(to)) || 
+		(is_numeric_type(from) && to == TYPE_STRING)) {
+		semantic_error(node, "Cannot cast between string and numeric types");
+		return;
+	}
+	
+	// 
+	//  Disallow casting between string and boolean
+	// 
+	if ((from == TYPE_STRING && to == TYPE_BOOLEAN) || 
+		(from == TYPE_BOOLEAN && to == TYPE_STRING)) {
+		semantic_error(node, "Cannot cast between string and boolean");
+		return;
+	}
+	
+	// 
+	//  Disallow unknown type casts
+	// 
+	if (from == TYPE_UNKNOWN || to == TYPE_UNKNOWN) {
+		semantic_error(node, "Cannot cast unknown types");
+		return;
+	}
+}
+
+// ...existing code...
+
+Type analyze_array_access(ASTNode* node, SymbolTable* table) {
+	if (!node || node->child_count < 2) {
+		return TYPE_UNKNOWN;
+	}
+
+	ASTNode* array_node = node->children[0];
+	ASTNode* index_node = node->children[1];
+
+	Type array_type = get_expression_type(array_node, table);
+
+	if (array_type != TYPE_ARRAY) {
+		semantic_error(node, SemanticErrorMessages[SEMANTIC_INVALID_ARRAY_ACCESS], array_node->token.text ? array_node->token.text : "unknown");
+		return TYPE_UNKNOWN;
+	}
+
+	Type index_type = get_expression_type(index_node, table);
+
+	if (index_type != TYPE_INT) {
+		semantic_error(node, SemanticErrorMessages[SEMANTIC_ARRAY_INDEX_NOT_INTEGER], "non-integer");
+		return TYPE_UNKNOWN;
+	}
+
+	return TYPE_UNKNOWN;
 }
 
 Type analyze_expression(ASTNode* expr_node, SymbolTable* table) {
-	
+	if (!expr_node) {
+		return TYPE_UNKNOWN;
+	}
+
+	Type result = TYPE_UNKNOWN;
+
+	if (expr_node->type == AST_BINARY_OP || expr_node->type == AST_BINARY_EXPR ||
+		expr_node->type == AST_COMPARISON || expr_node->type == AST_LOGICAL_OP) {
+		result = analyze_binary_op(expr_node, table);
+	} else if (expr_node->type == AST_UNARY_OP || expr_node->type == AST_UNARY_EXPR) {
+		result = analyze_unary_op(expr_node, table);
+	} else if (expr_node->type == AST_ARRAY_ACCESS) {
+		result = analyze_array_access(expr_node, table);
+	} else {
+		result = get_expression_type(expr_node, table);
+	}
+
+	annotate_node_type(expr_node, result);
+	return result;
 }
 
 Type analyze_binary_op(ASTNode* binary_node, SymbolTable* table) {
+	if (!binary_node || binary_node->child_count < 2) {
+		return TYPE_UNKNOWN;
+	}
 
+	Type left_type = get_expression_type(binary_node->children[0], table);
+	Type right_type = get_expression_type(binary_node->children[1], table);
+
+	if (left_type == TYPE_UNKNOWN || right_type == TYPE_UNKNOWN) {
+		return TYPE_UNKNOWN;
+	}
+
+	// 
+	//  STRICT: No void in expressions
+	// 
+	if (left_type == TYPE_VOID || right_type == TYPE_VOID) {
+		semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_VOID_IN_EXPRESSION]);
+		return TYPE_UNKNOWN;
+	}
+
+	// 
+	//  STRICT: No null in arithmetic
+	// 
+	if (left_type == TYPE_NULL || right_type == TYPE_NULL) {
+		semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_NULL_IN_ARITHMETIC]);
+		return TYPE_UNKNOWN;
+	}
+
+	// 
+	//  STRICT: No arrays in arithmetic
+	// 
+	if (left_type == TYPE_ARRAY || right_type == TYPE_ARRAY) {
+		semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_ARRAY_IN_ARITHMETIC]);
+		return TYPE_UNKNOWN;
+	}
+
+	TokenType op_type = binary_node->token.type;
+
+	// 
+	//  Arithmetic operators: +, -, *, /, %, ^
+	// 
+	if (op_type == TOKEN_PLUS || op_type == TOKEN_MINUS || op_type == TOKEN_ASTERISK ||
+		op_type == TOKEN_SLASH || op_type == TOKEN_PERCENT || op_type == TOKEN_CAROT) {
+		
+		// 
+		//  STRICT: String in arithmetic
+		// 
+		if (left_type == TYPE_STRING || right_type == TYPE_STRING) {
+			semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_STRING_NUMERIC_OPERATION]);
+			return TYPE_UNKNOWN;
+		}
+
+		// 
+		//  STRICT: Boolean in arithmetic
+		// 
+		if (left_type == TYPE_BOOLEAN || right_type == TYPE_BOOLEAN) {
+			semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_BOOLEAN_NUMERIC_OPERATION]);
+			return TYPE_UNKNOWN;
+		}
+
+		// 
+		//  STRICT: Both operands must be numeric
+		// 
+		if (!is_numeric_type(left_type) || !is_numeric_type(right_type)) {
+			semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_INCOMPATIBLE_OPERAND_TYPES],
+				type_to_string(left_type), type_to_string(right_type), binary_node->token.text);
+			return TYPE_UNKNOWN;
+		}
+
+		// 
+		//  STRICT: No implicit int/float conversion - both must be same type
+		// 
+		if (left_type != right_type) {
+			semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_INT_FLOAT_MISMATCH]);
+			return TYPE_UNKNOWN;
+		}
+
+		// 
+		//  Check for division by zero
+		// 
+		if (op_type == TOKEN_SLASH) {
+			if (binary_node->children[1]->type == AST_LITERAL &&
+				strcmp(binary_node->children[1]->token.text, "0") == 0) {
+				semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_DIVISION_BY_ZERO]);
+			}
+		}
+
+		return left_type;
+	}
+
+	// 
+	//  Comparison operators: ==, !=, >, <, >=, <=
+	// 
+	if (op_type == TOKEN_EQUALS || op_type == TOKEN_NOT_EQUALS ||
+		op_type == TOKEN_GREATER || op_type == TOKEN_LESS ||
+		op_type == TOKEN_GREATER_EQUALS || op_type == TOKEN_LESS_EQUALS) {
+		
+		// 
+		//  STRICT: Both operands must be numeric for comparison
+		// 
+		if (!is_numeric_type(left_type) || !is_numeric_type(right_type)) {
+			semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_INCOMPATIBLE_OPERAND_TYPES],
+				type_to_string(left_type), type_to_string(right_type), binary_node->token.text);
+			return TYPE_UNKNOWN;
+		}
+
+		// 
+		//  STRICT: Must be same type for comparison
+		// 
+		if (left_type != right_type) {
+			semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_NO_IMPLICIT_CONVERSION],
+				type_to_string(left_type), type_to_string(right_type));
+			return TYPE_UNKNOWN;
+		}
+
+		return TYPE_BOOLEAN;
+	}
+
+	// 
+	//  Logical operators: &&
+	// 
+	if (op_type == TOKEN_AND) {
+		// 
+		//  STRICT: Both operands must be boolean
+		// 
+		if (!is_boolean_type(left_type) || !is_boolean_type(right_type)) {
+			semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_INCOMPATIBLE_OPERAND_TYPES],
+				type_to_string(left_type), type_to_string(right_type), binary_node->token.text);
+			return TYPE_UNKNOWN;
+		}
+		return TYPE_BOOLEAN;
+	}
+
+	return TYPE_UNKNOWN;
 }
 
 Type analyze_unary_op(ASTNode* unary_node, SymbolTable* table) {
+	if (!unary_node || unary_node->child_count < 1) {
+		return TYPE_UNKNOWN;
+	}
 
+	Type operand_type = get_expression_type(unary_node->children[0], table);
+
+	if (operand_type == TYPE_UNKNOWN) {
+		return TYPE_UNKNOWN;
+	}
+
+	TokenType op_type = unary_node->token.type;
+
+	if (op_type == TOKEN_NOT) {
+		if (!is_boolean_type(operand_type)) {
+			semantic_error(unary_node, SemanticErrorMessages[SEMANTIC_UNARY_OP_INVALID_TYPE], unary_node->token.text, "boolean");
+			return TYPE_UNKNOWN;
+		}
+		return TYPE_BOOLEAN;
+	}
+
+	if (op_type == TOKEN_MINUS) {
+		if (!is_numeric_type(operand_type)) {
+			semantic_error(unary_node, SemanticErrorMessages[SEMANTIC_UNARY_OP_INVALID_TYPE], unary_node->token.text, "numeric");
+			return TYPE_UNKNOWN;
+		}
+		return operand_type;
+	}
+
+	return TYPE_UNKNOWN;
 }
 
 // 
@@ -398,6 +869,7 @@ Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 			case TOKEN_INT_LITERAL:
 				inferred = TYPE_INT;
 				break;
+
 			case TOKEN_FLOAT_LITERAL:
 				inferred = TYPE_FLOAT;
 				break;
@@ -515,6 +987,43 @@ bool is_numeric_type(Type type) {
 
 bool is_boolean_type(Type type) {
 	return type == TYPE_BOOLEAN;
+}
+
+// 
+//  Convert Type enum to string for error messages
+// 
+const char* type_to_string(Type type) {
+	switch (type) {
+		case TYPE_INT:
+			return "int";
+		
+		case TYPE_FLOAT:
+			return "float";
+		
+		case TYPE_STRING:
+			return "string";
+		
+		case TYPE_BOOLEAN:
+			return "boolean";
+		
+		case TYPE_CHAR:
+			return "char";
+		
+		case TYPE_NULL:
+			return "null";
+		
+		case TYPE_VOID:
+			return "void";
+		
+		case TYPE_ARRAY:
+			return "array";
+		
+		case TYPE_UNKNOWN:
+			return "unknown";
+		
+		default:
+			return "<invalid>";
+	}
 }
 
 //
