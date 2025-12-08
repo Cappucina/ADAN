@@ -6,4 +6,6 @@ program::void main() {
 	for (index::int = 0; index <= total; index++) {
 		printf("Index: %d", index);
 	}
+
+	return void;
 }

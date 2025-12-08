@@ -684,7 +684,6 @@ ASTNode* parse_if_statement(Parser* parser) {
 				return NULL;
 		}
 		match(parser, t);
-		
 
 		ASTNode* right = parse_statement(parser);
 		if (!right) {
@@ -701,12 +700,26 @@ ASTNode* parse_if_statement(Parser* parser) {
 
 	if (!expect(parser, TOKEN_RPAREN, PARSER_EXPECTED, "')'", parser->current_token.text)) return NULL;
 
-	ASTNode* block = parse_block(parser);
+	ASTNode* then_block = parse_block(parser);
 
-	if_node->child_count = 2;
-	if_node->children = malloc(sizeof(ASTNode*) * if_node->child_count);
-	if_node->children[0] = condition;
-	if_node->children[1] = block;
+	if (match(parser, TOKEN_ELSE)) {
+		if_node->child_count = 3;
+		if_node->children = malloc(sizeof(ASTNode*) * 3);
+		if_node->children[0] = condition;
+		if_node->children[1] = then_block;
+
+		if (parser->current_token.type == TOKEN_IF) {
+			if_node->children[2] = parse_if_statement(parser);
+		} else {
+			ASTNode* else_block = parse_block(parser);
+			if_node->children[2] = else_block;
+		}
+	} else {
+		if_node->child_count = 2;
+		if_node->children = malloc(sizeof(ASTNode*) * 2);
+		if_node->children[0] = condition;
+		if_node->children[1] = then_block;
+	}
 
 	return if_node;
 }
@@ -930,11 +943,14 @@ ASTNode* parse_function_call(Parser* parser) {
 	ASTNode* node = create_ast_node(AST_FUNCTION_CALL, parser->current_token);
 	ASTNode* identifier = parse_primary(parser);
 	ASTNode* params = parse_primary(parser);
+	
 	expect(parser, TOKEN_SEMICOLON, PARSER_EXPECTED, "';'", parser->current_token.text);
+	
 	node->child_count = 2;
 	node->children = malloc(sizeof(ASTNode*) * 2);
 	node->children[0] = identifier;
 	node->children[1] = params;
+
 	return node;
 }
 

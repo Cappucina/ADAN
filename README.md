@@ -11,10 +11,10 @@ The ADAN language is open for contributions. If you have found a bug and you wou
 ## Progress Report
 > Review ADAN's development and progress (in percentage form) for completion, separated in tabs, organized by pieces of the compiler.
 
-| Stage | Lexer | Parser | Semantic Analysis | IR | Optimization | Code Generator | Linking |
+| Stage | Lexical Analysis | Parser | Semantic Analysis | IR | Optimization | Code Generator | Linking |
 |-------|-------|--------|-----------------|----|-------------|----------------|--------|
-| Finished | Yes | Yes | No | No | No | No | No |
-| Completion | 100% | 100% | ~30% | 0% | 0% | 0% | 0% |
+| Finished | Yes | No | No | No | No | No | No |
+| Completion | 100% | ~95% | ~70% | 0% | 0% | 0% | 0% |
 
 ## Installing ADAN
 Since **November 20th**, **2025**, ADAN is not available for installation. Public releases may come in the near future.

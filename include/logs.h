@@ -7,7 +7,7 @@ typedef enum {
 	LEXER_TEXT_MISMATCH
 } LexerErrors;
 
-static const char *LexerErrorMessages[] = {
+static const char* LexerErrorMessages[] = {
 	[LEXER_TYPE_MISMATCH] = "Token %d type mismatch in lexer: found '%d', expected '%d'\n",
 	[LEXER_TEXT_MISMATCH] = "Token %d text mismatch in lexer: found '%s', expected '%s'\n"
 };
@@ -26,7 +26,7 @@ typedef enum {
 	PARSER_AST_MISMATCH
 } ParserErrors;
 
-static const char *ParserErrorMessages[] = {
+static const char* ParserErrorMessages[] = {
 	[PARSER_INITIALIZATION_FAILURE] = "Couldn't initialize the parser due to a failure when fetching the initial tokens.",
 	[PARSER_UNEXPECTED_TOKEN] = "Couldn't parse statements because of an unexpected token: %s",
 	[PARSER_EXPECTED] = "Expected %s, instead got %s",
@@ -58,10 +58,12 @@ typedef enum {
 	SEMANTIC_ARRAY_INDEX_NOT_INTEGER,
 	SEMANTIC_INVALID_ARRAY_ACCESS,
 	SEMANTIC_BREAK_OUTSIDE_LOOP,
-	SEMANTIC_DIVISION_BY_ZERO
+	SEMANTIC_DIVISION_BY_ZERO,
+	SEMANTIC_UNKNOWN_STATEMENT,
+	SEMANTIC_RETURN_KEYWORD_TYPE_MISMATCH
 } SemanticErrors;
 
-static const char *SemanticErrorMessages[] = {
+static const char* SemanticErrorMessages[] = {
 	[SEMANTIC_DUPLICATE_SYMBOL] = "Duplicate symbol detected: %s.",
 	[SEMANTIC_TYPE_MISMATCH] = "Type mismatch: cannot assign %s to %s.",
 	[SEMANTIC_INVALID_ASSIGNMENT] = "Invalid assignment: left-hand side must be a variable.",
@@ -78,8 +80,10 @@ static const char *SemanticErrorMessages[] = {
 	[SEMANTIC_ARGUMENT_TYPE_MISMATCH] = "Function %s argument type mismatch at position %d: expected %s, got %s.",
 	[SEMANTIC_ARRAY_INDEX_NOT_INTEGER] = "Array index must be an integer, got %s.",
 	[SEMANTIC_INVALID_ARRAY_ACCESS] = "Invalid array access: %s is not an array or index out of bounds.",
-	[SEMANTIC_BREAK_OUTSIDE_LOOP] = "Break statement used outside of a loop.",
-	[SEMANTIC_DIVISION_BY_ZERO] = "Division by zero detected."
+	[SEMANTIC_DIVISION_BY_ZERO] = "Division by zero detected.",
+	[SEMANTIC_UNKNOWN_STATEMENT] = "Unknown statement type: %s.",
+	[SEMANTIC_BREAK_OUTSIDE_LOOP] = "Cannot use the 'break' keyword outside of loops.",
+	[SEMANTIC_RETURN_KEYWORD_TYPE_MISMATCH] = "Types did not match when attempting a return."
 };
 
 
@@ -91,7 +95,7 @@ typedef enum {
 	SEMANTIC_UNREACHABLE_CODE
 } SemanticWarnings;
 
-static const char *SemanticWarningMessages[] = {
+static const char* SemanticWarningMessages[] = {
 	[SEMANTIC_UNUSED_VARIABLE] = "Warning: Variable %s is declared but never used.",
 	[SEMANTIC_POSSIBLE_NULL_REFERENCE] = "Warning: Possible null reference detected for %s.",
 	[SEMANTIC_DEPRECATED_FUNCTION] = "Warning: Function %s is deprecated and may be removed in future versions.",
@@ -103,9 +107,11 @@ static const char *SemanticWarningMessages[] = {
 typedef enum {
 	SEMANTIC_TIP_SIMPLIFY_EXPRESSION,
 	SEMANTIC_TIP_REPLACE_LOOP_WITH_ITERATOR,
+	SEMANTIC_TIP_PREFER_WHILE_LOOP
 } SemanticTips;
 
-static const char *SemanticTipMessages[] = {
+static const char* SemanticTipMessages[] = {
 	[SEMANTIC_TIP_SIMPLIFY_EXPRESSION] = "Tip: Expression %s can be simplified for better performance or clarity.",
 	[SEMANTIC_TIP_REPLACE_LOOP_WITH_ITERATOR] = "Tip: Consider using an iterator instead of a manual loop over %s.",
+	[SEMANTIC_TIP_PREFER_WHILE_LOOP] = "Tip: You should prefer using a while loop instead of a for loop that doesn't increment."
 };

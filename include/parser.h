@@ -99,6 +99,8 @@ ASTNode* parse_program(Parser* parser);
 // 
 ASTNode* parse_params(Parser* parser);
 
+ASTNode* parse_declaration(Parser* parser);
+
 //
 //  Parses an identifier followed by "=" and an expression
 //   on its right-hand side, ending with a semicolon.

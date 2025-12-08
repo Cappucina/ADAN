@@ -14,6 +14,8 @@ typedef struct SymbolTable {
 	Symbol** buckets;
 	int bucket_count;
 	struct SymbolTable* parent;
+	int loop_depth;
+	Type current_return_type;
 } SymbolTable;
 
 SymbolTable* init_symbol_table();
@@ -44,6 +46,10 @@ void analyze_if(ASTNode* if_node, SymbolTable* table);
 void analyze_while(ASTNode* while_node, SymbolTable* table);
 
 void analyze_return(ASTNode* return_node, SymbolTable* table);
+
+void analyze_break(ASTNode* break_node, SymbolTable* table);
+
+void analyze_declaration(ASTNode* declaration_node, SymbolTable* table);
 
 void analyze_assignment(ASTNode* assignment_node, SymbolTable* table);
 

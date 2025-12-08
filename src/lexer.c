@@ -4,7 +4,7 @@
 #include <string.h>
 
 Lexer* create_lexer(const char *src) {
-	Lexer *new_lex = (Lexer*) malloc(sizeof(Lexer));
+	Lexer* new_lex = (Lexer*) malloc(sizeof(Lexer));
 	new_lex->src = src;
 	
 	new_lex->position = 0;
@@ -13,7 +13,7 @@ Lexer* create_lexer(const char *src) {
 	return new_lex;
 }
 
-Token* make_token(Lexer *lexer, TokenType type, const char *texts[], int count) {
+Token* make_token(Lexer* lexer, TokenType type, const char* texts[], int count) {
 	Token *new_token = malloc(sizeof(Token));
 	if (!new_token) return NULL;
 
@@ -22,7 +22,7 @@ Token* make_token(Lexer *lexer, TokenType type, const char *texts[], int count) 
 		total_len += strlen(texts[i]);
 	}
 
-	char *combined = malloc(total_len + 1);
+	char* combined = malloc(total_len + 1);
 	combined[0] = '\0';
 
 	for (int i = 0; i < count; i++) {
@@ -40,14 +40,14 @@ Token* make_token(Lexer *lexer, TokenType type, const char *texts[], int count) 
 	return new_token;
 }
 
-char* capture_word(Lexer *lexer) {
+char* capture_word(Lexer* lexer) {
 	int start = lexer->position;
 	while ((lexer->src[lexer->position] >= 'a' && lexer->src[lexer->position] <= 'z') || (lexer->src[lexer->position] >= 'A' && lexer->src[lexer->position] <= 'Z') || is_digit(lexer->src[lexer->position]) || lexer->src[lexer->position] == '_') {
 		advance(lexer);
 	}
 
 	int length = lexer->position - start;
-	char *word = malloc(length + 1);
+	char* word = malloc(length + 1);
 
 	strncpy(word, lexer->src + start, length);
 	word[length] = '\0';
@@ -55,7 +55,7 @@ char* capture_word(Lexer *lexer) {
 	return word;
 }
 
-Token* next_token(Lexer *lexer) {
+Token* next_token(Lexer* lexer) {
 	while (is_whitespace(lexer->src[lexer->position])) advance(lexer);
 	
 	char c = lexer->src[lexer->position];
@@ -98,6 +98,7 @@ Token* next_token(Lexer *lexer) {
 			{"false", TOKEN_FALSE},
 			{"program", TOKEN_PROGRAM},
 			{"return", TOKEN_RETURN},
+			{"else", TOKEN_ELSE},
 		};
 
 		TokenType type = TOKEN_IDENTIFIER;
@@ -108,7 +109,7 @@ Token* next_token(Lexer *lexer) {
 			}
 		}
 
-		Token *token = malloc(sizeof(Token));
+		Token* token = malloc(sizeof(Token));
 		token->type = type;
 		token->text = word;
 		token->line = lexer->line;
@@ -159,12 +160,12 @@ Token* next_token(Lexer *lexer) {
 
 			while (is_digit(lexer->src[lexer->position])) advance(lexer);
 			int length = lexer->position - start;
-			char *text = malloc(length + 1);
+			char* text = malloc(length + 1);
 			
 			strncpy(text, lexer->src + start, length);
 			text[length] = '\0';
 
-			Token *token = malloc(sizeof(Token));
+			Token* token = malloc(sizeof(Token));
 			token->type = TOKEN_FLOAT_LITERAL;
 			token->text = text;
 			token->line = lexer->line;
@@ -172,12 +173,12 @@ Token* next_token(Lexer *lexer) {
 			return token;
 		} else {
 			int length = lexer->position - start;
-			char *text = malloc(length + 1);
+			char* text = malloc(length + 1);
 
 			strncpy(text, lexer->src + start, length);
 			text[length] = '\0';
 
-			Token *token = malloc(sizeof(Token));
+			Token* token = malloc(sizeof(Token));
 			token->type = TOKEN_INT_LITERAL;
 			token->text = text;
 			token->line = lexer->line;
@@ -190,15 +191,16 @@ Token* next_token(Lexer *lexer) {
 	return NULL;
 }
 
-void free_token(Token *token) {
+void free_token(Token* token) {
 	if (NULL == token) return;
 	if (token->text != NULL) {
 		free(token->text);
 		token->text = NULL;
 	}
+	free(token);
 }
 
-void print_token(Token *token) {
+void print_token(Token* token) {
 	printf("Token line: %d | Token type: %d | Token text: '%s'\n",
 	   token->line, token->type, token->text);
 }

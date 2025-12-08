@@ -2,7 +2,11 @@
 #include "util.h"
 #include "ast.h"
 #include <string.h>
+#include "parser.h"
 #include "logs.h"
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 SymbolTable* init_symbol_table() {
 	SymbolTable* table = malloc(sizeof(SymbolTable));
@@ -10,13 +14,19 @@ SymbolTable* init_symbol_table() {
 	table->bucket_count = 64;
 	table->buckets = calloc(table->bucket_count, sizeof(Symbol*));
 	table->parent = NULL;
+	table->loop_depth = 0;
+	table->current_return_type = TYPE_VOID;
 
 	return table;
 }
 
 void enter_scope(SymbolTable* table) {
 	SymbolTable* new_table = init_symbol_table();
+	
 	new_table->parent = table;
+	new_table->loop_depth = table->loop_depth;
+	new_table->current_return_type = table->current_return_type;
+
 	*table = *new_table;
 	free(new_table);
 }
@@ -28,8 +38,10 @@ void exit_scope(SymbolTable* table) {
 			Symbol* sym = table->buckets[i];
 			while (sym) {
 				Symbol* next = sym->next;
+				
 				free(sym->name);
 				free(sym);
+
 				sym = next;
 			}
 		}
@@ -58,8 +70,9 @@ bool add_symbol(SymbolTable* table, const char* name, Type type, ASTNode* node) 
 	//  Allocate a new symbol
 	// 
 	Symbol* new_symbol = malloc(sizeof(Symbol));
-	
 	if (!new_symbol) return false;
+
+	new_symbol->name = strdup(name);
 	if (!new_symbol->name) {
 		free(new_symbol);
 		return false;
@@ -149,13 +162,11 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 			break;
 		
 		case AST_BREAK:
+			analyze_break(statement, table);
 			break;
 		
 		case AST_BLOCK:
 			analyze_block(statement, table);
-			break;
-		
-		case AST_INCLUDE:
 			break;
 		
 		case AST_EXPRESSION:
@@ -176,6 +187,7 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 			break;
 		
 		default:
+			semantic_error(statement, SemanticErrorMessages[SEMANTIC_UNKNOWN_STATEMENT], statement->token.text);
 			break;
 	}
 }
@@ -242,42 +254,127 @@ void analyze_for(ASTNode* for_node, SymbolTable* table) {
 	ASTNode* increment_node = for_node->children[2];
 	ASTNode* block_node = for_node->children[3];
 
-    enter_scope(table);
-
     if (assignment_node == NULL) return;
 
+	enter_scope(table);
     analyze_statement(assignment_node, table);
+
     if (get_expression_type(condition_node, table) != TYPE_BOOLEAN) {
         semantic_error(for_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], for_node->token.text, TYPE_BOOLEAN);
     }
 
-    // do later
+	if (increment_node == NULL) {
+		semantic_tip(for_node, SemanticTipMessages[SEMANTIC_TIP_PREFER_WHILE_LOOP]);
+	} else {
+		analyze_statement(increment_node, table);
+	}
+
+	if (block_node && block_node->type == AST_BLOCK) {
+		table->loop_depth++;
+		analyze_block(block_node, table);
+		table->loop_depth--;
+	}
+
+	exit_scope(table);
 }
 
 void analyze_if(ASTNode* if_node, SymbolTable* table) {
     if (!if_node || !table) return;
     if (if_node->type != AST_IF) return;
 
+	ASTNode* condition_node = if_node->children[0];
+	ASTNode* block_node = if_node->children[1];
+
+	if (condition_node == NULL) return;
+
+	enter_scope(table);
+	analyze_statement(condition_node, table);
+
+	if (get_expression_type(condition_node, table) != TYPE_BOOLEAN) {
+        semantic_error(if_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], if_node->token.text, TYPE_BOOLEAN);
+    }
+
+	if (block_node && block_node->type == AST_BLOCK) {
+		analyze_block(block_node, table);
+	}
+
+	exit_scope(table);
+
+	if (if_node->child_count >= 3) {
+		ASTNode* else_block = if_node->children[2];
+		if (else_block && else_block->type == AST_BLOCK) {
+			enter_scope(table);
+			analyze_block(else_block, table);
+			exit_scope(table);
+		} else if (else_block && else_block->type == AST_IF) {
+			analyze_statement(else_block, table);
+		}
+	}
 }
 
 void analyze_while(ASTNode* while_node, SymbolTable* table) {
     if (!while_node || !table) return;
     if (while_node->type != AST_WHILE) return;
 
+	ASTNode* condition_node = while_node->children[0];
+	ASTNode* block_node = while_node->children[1];
+
+	if (condition_node == NULL) return;
+
+	enter_scope(table);
+	analyze_statement(condition_node, table);
+
+	if (get_expression_type(condition_node, table) != TYPE_BOOLEAN) {
+        semantic_error(while_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], while_node->token.text, TYPE_BOOLEAN);
+    }
+
+	if (block_node && block_node->type == AST_BLOCK) {
+		table->loop_depth++;
+		analyze_block(block_node, table);
+		table->loop_depth--;
+	}
+
+	exit_scope(table);
 }
 
 void analyze_return(ASTNode* return_node, SymbolTable* table) {
     if (!return_node || !table) return;
     if (return_node->type != AST_RETURN) return;
 
+	Type return_type = table->current_return_type;
+	if (return_node->child_count > 0) {
+		ASTNode* child_node = return_node->children[0];
+		analyze_expression(child_node, table);
+		Type actual_type = get_expression_type(child_node, table);
+	
+		if (return_type != actual_type) semantic_error(return_node, SemanticErrorMessages[SEMANTIC_RETURN_KEYWORD_TYPE_MISMATCH]);
+	} else {
+		if (return_type != TYPE_VOID) semantic_error(return_node, SemanticErrorMessages[SEMANTIC_RETURN_KEYWORD_TYPE_MISMATCH]);
+	}
+}
+
+void analyze_break(ASTNode* break_node, SymbolTable* table) {
+    if (!break_node || !table) return;
+    if (break_node->type != AST_BREAK) return;
+
+	int depth = table->loop_depth;
+	if (depth <= 0) {
+		semantic_error(break_node, SemanticErrorMessages[SEMANTIC_BREAK_OUTSIDE_LOOP]);
+	}
+}
+
+void analyze_declaration(ASTNode* declaration_node, SymbolTable* table) {
+	if (!declaration_node || !table) return;
+
 }
 
 void analyze_assignment(ASTNode* assignment_node, SymbolTable* table) {
-
+	if (!assignment_node || !table) return;
+	
 }
 
 Type analyze_expression(ASTNode* expr_node, SymbolTable* table) {
-
+	
 }
 
 Type analyze_binary_op(ASTNode* binary_node, SymbolTable* table) {
@@ -424,15 +521,37 @@ bool is_boolean_type(Type type) {
 //  Error Handling (Errors, Warnings, Tips, etc.)
 // 
 void semantic_error(ASTNode* node, const char* fmt, ...) {
+	if (node == NULL) return;
 
+	fprintf(stderr, "[Line %d:%d] \033[1;31mError:\033[0m ", node->token.line, node->token.column);
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(stderr, fmt, args);
+	va_end(args);
+	fprintf(stderr, "\n");
+	exit(1);
 }
 
 void semantic_warning(ASTNode* node, const char* fmt, ...) {
+	if (node == NULL) return;
 
+	fprintf(stdout, "[Line %d:%d] \033[1;33mWarning:\033[0m ", node->token.line, node->token.column);
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(stdout, fmt, args);
+	va_end(args);
+	fprintf(stdout, "\n");
 }
 
 void semantic_tip(ASTNode* node, const char* fmt, ...) {
+	if (node == NULL) return;
 
+	fprintf(stdout, "[Line %d:%d] \033[1;32mTip:\033[0m ", node->token.line, node->token.column);
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(stdout, fmt, args);
+	va_end(args);
+	fprintf(stdout, "\n");
 }
 
 // 
