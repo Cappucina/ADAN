@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "ir.h"
+#include "ast.h"
 
 static IRInstruction* ir_head = NULL;
 static IRInstruction* ir_tail = NULL;
@@ -84,5 +85,21 @@ void print_ir() {
 				break;
 		}
 		current = current->next;
+	}
+}
+
+char* generate_ir(ASTNode* node) {
+
+}
+
+void free_ir() {
+	while (ir_head != NULL) {
+		IRInstruction* temp = ir_head;
+		ir_head = ir_head->next;
+		
+		free(temp->arg1);
+		free(temp->arg2);
+		free(temp->result);
+		free(temp);
 	}
 }

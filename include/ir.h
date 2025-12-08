@@ -1,6 +1,8 @@
 #ifndef IR_H
 #define IR_H
 
+#include "ast.h"
+
 // 
 //  Opcodes for the IR language.
 // 
@@ -36,5 +38,9 @@ IRInstruction* create_instruction(IROp op, char* arg1, char* arg2, char* result)
 void emit(IRInstruction* instruction);
 
 void print_ir();
+
+char* generate_ir(ASTNode* node);
+
+void free_ir();
 
 #endif
