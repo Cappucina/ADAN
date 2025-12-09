@@ -3,12 +3,6 @@
 #include "ir.h"
 #include "ast.h"
 
-// 
-//  TODO:
-// 		- Do IR for if-statements
-// 		- Control flow
-// 
-
 static IRInstruction* ir_head = NULL;
 static IRInstruction* ir_tail = NULL;
 
@@ -75,15 +69,43 @@ void print_ir() {
 				break;
 			
 			case IR_LABEL:
-				printf("%s:\n", current->result);
+				printf("%s:\n", current->arg1);
 				break;
 			
 			case IR_JMP:
-				printf("GOTO %s\n", current->result);
+				printf("GOTO %s\n", current->arg1);
 				break;
 			
 			case IR_JEQ:
 				printf("IF %s == %s GOTO %s\n", current->arg1, current->arg2, current->result);
+				break;
+			
+			case IR_JNE:
+				printf("IF %s != %s GOTO %s\n", current->arg1, current->arg2, current->result);
+				break;
+			
+			case IR_LT:
+				printf("IF %s < %s GOTO %s\n", current->arg1, current->arg2, current->result);
+				break;
+			
+			case IR_GT:
+				printf("IF %s > %s GOTO %s\n", current->arg1, current->arg2, current->result);
+				break;
+			
+			case IR_LTE:
+				printf("IF %s <= %s GOTO %s\n", current->arg1, current->arg2, current->result);
+				break;
+			
+			case IR_GTE:
+				printf("IF %s >= %s GOTO %s\n", current->arg1, current->arg2, current->result);
+				break;
+			
+			case IR_PARAM:
+				printf("PARAM %s\n", current->arg1);
+				break;
+			
+			case IR_CALL:
+				printf("%s = CALL %s\n", current->result, current->arg1);
 				break;
 		}
 		current = current->next;
@@ -212,7 +234,6 @@ char* generate_ir(ASTNode* node) {
 
 			ASTNode* function = node->children[0];
 			const char* fname = function->token.text ? function->token.text : NULL;
-
 			if (!fname) return NULL;
 			if (node->child_count > 1) {
 				ASTNode* params = node->children[1];
@@ -234,6 +255,244 @@ char* generate_ir(ASTNode* node) {
 			emit(new_instruction);
 
 			return result_var;
+		}
+
+		case AST_UNARY_OP:
+		case AST_UNARY_EXPR: {
+			if (node->child_count < 1) return NULL;
+			char* operand = generate_ir(node->children[0]);
+			if (!operand) return NULL;
+			char* temp = new_temporary();
+			if (node->token.type == TOKEN_MINUS || node->token.type == TOKEN_NOT) {
+				IRInstruction* new_instruction = create_instruction(IR_SUB, operand, NULL, temp);
+				emit(new_instruction);
+				free(operand);
+				return temp;
+			}
+
+			free(operand);
+			free(temp);
+
+			return NULL;
+		}
+
+		case AST_COMPARISON: {
+			if (node->child_count < 2) return NULL;
+			char* left = generate_ir(node->children[0]);
+			char* right = generate_ir(node->children[1]);
+			if (!left || !right) {
+				free(left);
+				free(right);
+				return NULL;
+			}
+
+			char* result = new_temporary();
+			
+			IROp opcode;
+			switch (node->token.type) {
+				case TOKEN_EQUALS:
+					opcode = IR_JEQ;
+					break;
+				case TOKEN_NOT_EQUALS:
+					opcode = IR_JNE;
+					break;
+				case TOKEN_LESS:
+					opcode = IR_LT;
+					break;
+				case TOKEN_GREATER:
+					opcode = IR_GT;
+					break;
+				case TOKEN_LESS_EQUALS:
+					opcode = IR_LTE;
+					break;
+				case TOKEN_GREATER_EQUALS:
+					opcode = IR_GTE;
+					break;
+				default:
+					opcode = IR_JEQ;
+					break;
+			}
+
+			IRInstruction* new_instruction = create_instruction(opcode, left, right, result);
+			emit(new_instruction);
+
+			free(left);
+			free(right);
+
+			return result;
+		}
+
+		case AST_BLOCK: {
+			char* last_result = NULL;
+			for (int i = 0; i < node->child_count; i++) {
+				if (last_result) free(last_result);
+				last_result = generate_ir(node->children[i]);
+			}
+
+			return last_result;
+		}
+
+		case AST_IF: {
+			if (node->child_count < 2) return NULL;
+			
+			char* cond_temp = generate_ir(node->children[0]);
+			if (!cond_temp) return NULL;
+			
+			char* l_else = new_temporary();
+			char* l_end = new_temporary();
+			
+			IRInstruction* jump_else = create_instruction(IR_JEQ, cond_temp, "0", l_else);
+			emit(jump_else);
+			
+			generate_ir(node->children[1]);
+			
+			IRInstruction* jump_end = create_instruction(IR_JMP, l_end, NULL, NULL);
+			emit(jump_end);
+			
+			IRInstruction* else_label = create_instruction(IR_LABEL, l_else, NULL, NULL);
+			emit(else_label);
+			
+			if (node->child_count > 2) {
+				generate_ir(node->children[2]);
+			}
+			
+			IRInstruction* end_label = create_instruction(IR_LABEL, l_end, NULL, NULL);
+			emit(end_label);
+			
+			free(cond_temp);
+			free(l_else);
+			free(l_end);
+			
+			return NULL;
+		}
+
+		case AST_WHILE: {
+			if (node->child_count < 2) return NULL;
+
+			char* loop_label = new_temporary();
+			char* end_label = new_temporary();
+
+			IRInstruction* label_inst = create_instruction(IR_LABEL, loop_label, NULL, NULL);
+			emit(label_inst);
+
+			char* condition = generate_ir(node->children[0]);
+			if (!condition) {
+				free(loop_label);
+				free(end_label);
+				return NULL;
+			}
+
+			IRInstruction* jump_inst = create_instruction(IR_JEQ, condition, "0", end_label);
+			emit(jump_inst);
+
+			generate_ir(node->children[1]);
+
+			IRInstruction* loop_jump = create_instruction(IR_JMP, loop_label, NULL, NULL);
+			emit(loop_jump);
+
+			IRInstruction* end_label_inst = create_instruction(IR_LABEL, end_label, NULL, NULL);
+			emit(end_label_inst);
+
+			free(loop_label);
+			free(end_label);
+			free(condition);
+
+			return NULL;
+		}
+
+		case AST_FOR: {
+			if (node->child_count < 3) return NULL;
+
+			char* init_result = generate_ir(node->children[0]);
+			free(init_result);
+
+			char* loop_label = new_temporary();
+			char* end_label = new_temporary();
+
+			IRInstruction* label_inst = create_instruction(IR_LABEL, loop_label, NULL, NULL);
+			emit(label_inst);
+
+			char* condition = generate_ir(node->children[1]);
+			if (!condition) {
+				free(loop_label);
+				free(end_label);
+				return NULL;
+			}
+
+			IRInstruction* jump_inst = create_instruction(IR_JEQ, condition, "0", end_label);
+			emit(jump_inst);
+
+			if (node->child_count > 3) {
+				generate_ir(node->children[3]);
+			}
+
+			char* incr_result = generate_ir(node->children[2]);
+			free(incr_result);
+
+			IRInstruction* loop_jump = create_instruction(IR_JMP, loop_label, NULL, NULL);
+			emit(loop_jump);
+
+			IRInstruction* end_label_inst = create_instruction(IR_LABEL, end_label, NULL, NULL);
+			emit(end_label_inst);
+
+			free(loop_label);
+			free(end_label);
+			free(condition);
+
+			return NULL;
+		}
+
+		case AST_RETURN: {
+			if (node->child_count > 0) {
+				char* return_value = generate_ir(node->children[0]);
+				if (return_value) {
+					free(return_value);
+				}
+			}
+
+			return NULL;
+		}
+
+		case AST_ARRAY_LITERAL: {
+			for (int i = 0; i < node->child_count; i++) {
+				char* element = generate_ir(node->children[i]);
+				if (element) {
+					IRInstruction* param_inst = create_instruction(IR_PARAM, element, NULL, NULL);
+					emit(param_inst);
+					free(element);
+				}
+			}
+			return NULL;
+		}
+
+		case AST_ARRAY_ACCESS: {
+			if (node->child_count < 2) return NULL;
+			char* array = generate_ir(node->children[0]);
+			char* index = generate_ir(node->children[1]);
+			if (!array || !index) {
+				free(array);
+				free(index);
+
+				return NULL;
+			}
+
+			char* result = new_temporary();
+			
+			IRInstruction* access_inst = create_instruction(IR_ASSIGN, array, index, result);
+			emit(access_inst);
+			free(array);
+			free(index);
+
+			return result;
+		}
+
+		case AST_PROGRAM: {
+			char* last_result = NULL;
+			for (int i = 0; i < node->child_count; i++) {
+				if (last_result) free(last_result);
+				last_result = generate_ir(node->children[i]);
+			}
+			return last_result;
 		}
 
 		default:
