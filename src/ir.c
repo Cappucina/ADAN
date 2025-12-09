@@ -88,6 +88,9 @@ void print_ir() {
 	}
 }
 
+// Label counter for generating unique labels in control flow
+static int label_counter = 0;
+
 char* generate_ir(ASTNode* node) {
 	if (node == NULL) return NULL;
 	
@@ -129,10 +132,11 @@ char* generate_ir(ASTNode* node) {
 			} else if (strcmp(node->token.text, "/") == 0) {
 				op = IR_DIV;
 			} else {
-				// Unknown operator, just create an assignment
+				// Unknown operator, cannot generate IR
 				free(left);
 				free(right);
-				return result;
+				free(result);
+				return NULL;
 			}
 			
 			// Emit the instruction
@@ -195,7 +199,7 @@ char* generate_ir(ASTNode* node) {
 		}
 		
 		case AST_FUNCTION_CALL: {
-			// For function calls like print, emit IR_PRINT
+			// For function calls like printf, emit IR_PRINT
 			if (node->token.text && strcmp(node->token.text, "printf") == 0) {
 				// Generate IR for arguments
 				for (int i = 0; i < node->child_count; i++) {
@@ -226,7 +230,6 @@ char* generate_ir(ASTNode* node) {
 			if (node->child_count < 2) return NULL;
 			
 			// Generate labels
-			static int label_counter = 0;
 			char else_label[32], end_label[32];
 			snprintf(else_label, 32, "L%d", label_counter++);
 			snprintf(end_label, 32, "L%d", label_counter++);
@@ -268,10 +271,9 @@ char* generate_ir(ASTNode* node) {
 			if (node->child_count < 2) return NULL;
 			
 			// Generate labels
-			static int while_counter = 0;
 			char start_label[32], end_label[32];
-			snprintf(start_label, 32, "L%d", while_counter++);
-			snprintf(end_label, 32, "L%d", while_counter++);
+			snprintf(start_label, 32, "L%d", label_counter++);
+			snprintf(end_label, 32, "L%d", label_counter++);
 			
 			// Start label
 			IRInstruction* start_lbl = create_instruction(IR_LABEL, NULL, NULL, start_label);
@@ -301,7 +303,9 @@ char* generate_ir(ASTNode* node) {
 		
 		case AST_FOR: {
 			// FOR loops: typically has initialization, condition, increment, and body
-			// Process all children sequentially
+			// NOTE: Simplified implementation - does not generate proper loop control flow
+			// A complete implementation would need to extract initialization, condition, and increment
+			// and generate proper labels and jumps similar to while loops
 			for (int i = 0; i < node->child_count; i++) {
 				char* result = generate_ir(node->children[i]);
 				free(result);
