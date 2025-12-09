@@ -233,7 +233,7 @@ char* generate_ir(ASTNode* node) {
 			if (node->child_count < 1) return NULL;
 
 			ASTNode* function = node->children[0];
-			const char* fname = function->token.text ? function->token.text : NULL;
+			char* fname = function->token.text ? function->token.text : NULL;
 			if (!fname) return NULL;
 			if (node->child_count > 1) {
 				ASTNode* params = node->children[1];
@@ -283,6 +283,7 @@ char* generate_ir(ASTNode* node) {
 			if (!left || !right) {
 				free(left);
 				free(right);
+				
 				return NULL;
 			}
 

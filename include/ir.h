@@ -33,6 +33,7 @@ typedef struct IRInstruction {
 	char* arg2;                    // Input 2 (can be NULL)
 	char* result;                  // Where the answer goes (can be NULL)
 	struct IRInstruction* next;    // Linked List pointer
+	int index;
 } IRInstruction;
 
 void init_ir();
