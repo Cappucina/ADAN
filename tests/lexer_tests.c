@@ -7,34 +7,40 @@
 #include "lexer_tests.h"
 #include "logs.h"
 
-void run_lexer_test(LexerTest test) {
+int run_lexer_test(LexerTest test) {
 	Lexer *lexer = create_lexer(test.input);
+	int passed = 1;
 
 	for (int i = 0; i < test.expected_count; i++) {
 		Token *token = next_token(lexer);
-		
+        
 		if (!token) {
-			printf("LEXER FAIL: token %d is NULL\n", i);
-			assert(token != NULL);
+			printf("LEXER FAIL: input '%s' token %d is NULL\n", test.input, i);
+			passed = 0;
+			break;
 		}
 
 		if (token->type != test.expected_types[i]) {
-			printf(LexerErrorMessages[LEXER_TYPE_MISMATCH], i, token->type, test.expected_types[i]);
+			printf("LEXER FAIL: input '%s' token %d type mismatch (got %d, expected %d)\n",
+				test.input, i, token->type, test.expected_types[i]);
+			passed = 0;
 		}
-		assert(token->type == test.expected_types[i]);
 
 		if (strcmp(token->text, test.expected_texts[i]) != 0) {
-			printf(LexerErrorMessages[LEXER_TEXT_MISMATCH], i, token->text, test.expected_texts[i]);
+			printf("LEXER FAIL: input '%s' token %d text mismatch (got '%s', expected '%s')\n",
+				test.input, i, token->text, test.expected_texts[i]);
+			passed = 0;
 		}
-		assert(strcmp(token->text, test.expected_texts[i]) == 0);
 
 		free_token(token);
+		if (!passed) break;
 	}
 
 	free(lexer);
+	return passed;
 }
 
-void create_lexer_tests() {
+int create_lexer_tests() {
 	LexerTest tests[] = {
 		{ "x::int;",
 			{ 
@@ -187,7 +193,12 @@ void create_lexer_tests() {
 	};
 
 	int num_tests = sizeof(tests) / sizeof(tests[0]);
+	int passed = 0;
 	for (int i = 0; i < num_tests; i++) {
-		run_lexer_test(tests[i]);
+		if (run_lexer_test(tests[i])) passed++;
 	}
+
+	int failed = num_tests - passed;
+	printf("Lexer tests: %d passed, %d failed\n", passed, failed);
+	return failed;
 }

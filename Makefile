@@ -1,5 +1,7 @@
 .SILENT:
 
+# Default: build and run tests locally
+all: test
 docker:
 	clear || cls
 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
@@ -15,10 +17,30 @@ docker:
 
 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
 
-compile: docker
+
+
+# Build the main binary (used by tests)
+compile:
+	rm -rf compiled && mkdir -p compiled
+	gcc src/*.c tests/*.c -I include -o compiled/main
+
+compile-docker: docker
 	docker exec -i adan-dev-container sh -c "rm -rf compiled && mkdir -p compiled && gcc src/*.c tests/*.c -I include -o compiled/main"
 
+
+# Run the compiled binary locally
 run: compile
+	compiled/main
+
+# Run tests (explicit)
+test: compile
+	./compiled/main
+
+# Run tests inside Docker (explicit)
+test-docker: compile-docker
+	docker exec -it adan-dev-container compiled/main
+
+run-docker: compile-docker
 	docker exec -it adan-dev-container compiled/main
 
 # 
@@ -27,3 +49,8 @@ run: compile
 codespace:
 	chmod +x ./scripts/codespaces.sh
 	./scripts/codespaces.sh setup
+
+clean:
+	rm -rf compiled
+
+.PHONY: all compile compile-docker run run-docker test test-docker clean docker codespace

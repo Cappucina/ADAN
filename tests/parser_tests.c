@@ -282,9 +282,10 @@ void free_expected_ast(ExpectedNode* node) {
 	free(node);
 }
 
-void run_parser_test(const char* input, ExpectedNode* expected_ast) {
+int run_parser_test(const char* input, ExpectedNode* expected_ast) {
 	Lexer* lexer = create_lexer(input);
 	Parser parser;
+	int passed = 1;
 
 	init_parser(&parser, lexer);
 
@@ -292,18 +293,22 @@ void run_parser_test(const char* input, ExpectedNode* expected_ast) {
 
 	if (parser.error) {
 		printf("PARSE FAIL: '%s'\n  Error: %s\n", input, parser.error_message ? parser.error_message : "Unknown error");
+		passed = 0;
 	} else if (!ast) {
 		printf("PARSE FAIL: '%s'\n  Error: %s\n", input, ParserErrorMessages[PARSER_NULL_TEST]);
+		passed = 0;
 	} else if (!compare_ast(ast, expected_ast)) {
 		printf("PARSE FAIL: '%s'\n  Error: %s\n", input, ParserErrorMessages[PARSER_AST_MISMATCH]);
+		passed = 0;
 	}
 
 	if (ast) free_ast(ast);
 	free_parser(&parser);
 	free(lexer);
+	return passed;
 }
 
-void create_parser_tests() {
+int create_parser_tests() {
 	ParserTest tests[] = {
 		{ "x::int = 5;", create_expected_assignment() },
 		{ "if (x) {}", create_expected_if() },
@@ -313,8 +318,13 @@ void create_parser_tests() {
 	};
 
 	int num_tests = sizeof(tests) / sizeof(tests[0]);
+	int passed = 0;
 	for (int i = 0; i < num_tests; i++) {
-		run_parser_test(tests[i].input, tests[i].expected_ast);
+		if (run_parser_test(tests[i].input, tests[i].expected_ast)) passed++;
 		free_expected_ast(tests[i].expected_ast);
 	}
+
+	int failed = num_tests - passed;
+	printf("Parser tests: %d passed, %d failed\n", passed, failed);
+	return failed;
 }

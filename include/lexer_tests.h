@@ -10,8 +10,8 @@ typedef struct {
 	int expected_count;
 } LexerTest;
 
-void run_lexer_test(LexerTest test);
+int run_lexer_test(LexerTest test);
 
-void create_lexer_tests();
+int create_lexer_tests();
 
 #endif

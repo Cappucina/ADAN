@@ -114,7 +114,7 @@ Type analyze_binary_op(ASTNode* binary_node, SymbolTable* table) {
 make
 
 # Run tests
-make run
+make test
 
 # Clean build artifacts
 make clean

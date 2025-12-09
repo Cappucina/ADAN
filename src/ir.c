@@ -89,7 +89,7 @@ void print_ir() {
 }
 
 char* generate_ir(ASTNode* node) {
-
+	return NULL; // Placeholder for future implementation and to minigate errors
 }
 
 void free_ir() {
