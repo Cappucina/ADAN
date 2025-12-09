@@ -15,7 +15,8 @@ typedef enum {
 	IR_LABEL,	  // L1:
 	IR_JMP,       // GOTO L1
 	IR_JEQ,       // IF a == b GOTO L1
-	IR_PRINT      // PRINT a
+	IR_PARAM,	  // Handle function params
+	IR_CALL	  // Handle function calls
 } IROp;
 
 // 
