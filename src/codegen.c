@@ -26,6 +26,22 @@ Lexer *convertToLogic(char* input_file) {
 
     lexer = create_lexer(source_code);
 
+    Token* tokens[] = NULL;
+
+    int token_count = 0;
+
+    while (1) {
+        Token* token = next_token(lexer);
+        if (token->type == TOKEN_EOF) {
+            free_token(token);
+            break;
+        }
+        tokens[token_count] = token;
+        token_count++;
+    }
+
+    printf("Total tokens generated: %d\n", token_count);
+
 out:
     fclose(file);
     free(source_code);

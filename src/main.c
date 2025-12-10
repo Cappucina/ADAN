@@ -46,8 +46,9 @@ int main(int argc, char **argv) {
 		
 		int lexer_failures = create_lexer_tests();
 		int parser_failures = create_parser_tests();
+		int codegen_failures = create_codegen_tests();
 
-		int total_failures = lexer_failures + parser_failures;
+		int total_failures = lexer_failures + parser_failures + codegen_failures;
 
 		if (total_failures == 0) {
 			printf("All tests passed\n");

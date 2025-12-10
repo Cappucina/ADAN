@@ -61,7 +61,7 @@ Token* next_token(Lexer* lexer) {
 	char c = lexer->src[lexer->position];
 	char next = lexer->src[lexer->position + 1];
 
-	if (c == '\0') {
+	if (c == 0) {
 		Token *token = malloc(sizeof(Token));
 		token->type = TOKEN_EOF;
 		token->text = NULL;
