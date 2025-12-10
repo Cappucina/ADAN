@@ -4,6 +4,7 @@
 #include "lexer.h"
 #include "compiler_flags.h"
 #include "compiler_handler.h"
+#include "codegen_tests.h"
 
 // ============================================================================
 // MAIN ENTRY POINT
