@@ -891,6 +891,9 @@ Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 				case TOKEN_NULL:
 				inferred = TYPE_NULL;
 				break;
+			default:
+				inferred = TYPE_UNKNOWN;
+				break;
 		}
 
 		annotate_node_type(expr_node, inferred);

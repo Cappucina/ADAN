@@ -22,8 +22,8 @@ ExpectedNode* create_expected_program();
 
 void free_expected_ast(ExpectedNode* node);
 
-void run_parser_test(const char* input, ExpectedNode* expected_ast);
+int run_parser_test(const char* input, ExpectedNode* expected_ast);
 
-void create_parser_tests();
+int create_parser_tests();
 
 #endif
