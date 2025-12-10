@@ -66,7 +66,7 @@ void allocate_registers(LiveInterval* head_interval) {
 			registries_in_use[found_registry] = true;
 			active_intervals[found_registry] = current;
 
-			printf("Allocated %s to Registry %d\n", current->variable_name, found_registry);
+			// printf("Allocated %s to Registry %d\n", current->variable_name, found_registry);
 		} else {
 			// FAILURE: No registers left. We must SPILL!!
 
