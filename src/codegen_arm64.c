@@ -23,7 +23,25 @@ int arm64_code_generation_handler(CompilerFlags* flags) {
         goto out;
     }
 
-
+    for (size_t i = 0; tokens[i] != NULL; i++) {
+        // Process each token for ARM64 code generation
+        // This is a placeholder; actual implementation would generate machine code
+        printf("Processing token type: %d, text: '%s'\n", tokens[i]->type, tokens[i]->text);
+        
+        switch (tokens[i]->type)
+        {
+            case TOKEN_INT:
+                // Generate ARM64 code for integer type
+                break;
+            case TOKEN_FLOAT:
+                // Generate ARM64 code for float type
+                break;
+            // Handle other token types...
+            default:
+                // Handle unknown token types
+                break;
+        }
+    }
 
     printf("Successfully generated ARM64 code to output file: %s\n", flags->output_file);
     return 0;
