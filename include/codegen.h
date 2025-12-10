@@ -2,6 +2,8 @@
 #define CODEGEN_H
 
 #include <stdio.h>
+#include "liveness.h"
+#include "ir.h"
 #include <stdbool.h>
 
 // 
@@ -15,9 +17,6 @@ typedef struct TargetConfig {
 	int caller_saved_count;       // Number of caller-saved entries.
 	int spill_slot_size;          // Size (bytes) per spilled slot on stack.
 } TargetConfig;
-
-typedef struct IRInstruction IRInstruction;
-typedef struct LiveInterval LiveInterval;
 
 // 
 //  Initialize target descriptor. `register_names` and `caller_saved_indices`
@@ -39,6 +38,7 @@ const char* get_register_name(const TargetConfig* cfg, int index);
 //  High level entry: generate assembly from IR and the computed liveness/intervals.
 //   `out` may be stdout or a FILE* you open.
 // 
+void get_location(char* result_buffer, char* variable_name, LiveInterval* intervals, const TargetConfig* cfg);
 void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetConfig* cfg, FILE* out);
 
 // 

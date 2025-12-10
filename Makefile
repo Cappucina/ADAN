@@ -16,9 +16,12 @@ docker:
 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
 
 compile: docker
+	docker exec -i adan-dev-container sh -c "rm -rf compiled && mkdir -p compiled && gcc src/*.c tests/*.c -I include -o compiled/main.s"
+
+compile-binary: docker
 	docker exec -i adan-dev-container sh -c "rm -rf compiled && mkdir -p compiled && gcc src/*.c tests/*.c -I include -o compiled/main"
 
-run: compile
+run: compile-binary
 	docker exec -it adan-dev-container compiled/main
 
 # 
