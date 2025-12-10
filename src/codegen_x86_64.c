@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "codegen_arm64.h"
+#include "codegen_x86_64.h"
 
-int arm64_code_generation_handler(CompilerFlags* flags) {
+int x86_64_code_generation_handler(CompilerFlags* flags) {
     int res = 0;
 
     if (flags == NULL) {
@@ -12,7 +12,7 @@ int arm64_code_generation_handler(CompilerFlags* flags) {
         goto out;
     }
 
-    printf("Starting ARM64 code generation for input file: %s\n", flags->input_file);
+    printf("Starting x86_64 code generation for input file: %s\n", flags->input_file);
     Token** tokens = convertToLogic(flags->input_file);
 
     if (tokens == NULL) {
@@ -23,7 +23,7 @@ int arm64_code_generation_handler(CompilerFlags* flags) {
 
     
 
-    printf("Successfully generated ARM64 code to output file: %s\n", flags->output_file);
+    printf("Successfully generated x86_64 code to output file: %s\n", flags->output_file);
     return 0;
 
 out:

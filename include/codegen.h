@@ -2,6 +2,7 @@
 #define CODEGEN_H
 
 #include "codegen_arm64.h"
+#include "codegen_x86_64.h"
 #include "lexer.h"
 
 Token** convertToLogic(const char *input_file);

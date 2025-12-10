@@ -56,7 +56,7 @@ CompilerFlags* flags_init(void) {
 	#elif defined(__linux__)
 		flags->host_os = OS_LINUX;
 		#if defined(__aarch64__) || defined(__arm64__)
-			flags->host_arch = TARGET_AARCH64;
+			flags->host_arch = TARGET_ARM64;
 		#elif defined(__x86_64__) || defined(__i386__)
 			flags->host_arch = TARGET_X86_64;
 		#else
@@ -65,7 +65,7 @@ CompilerFlags* flags_init(void) {
 	#elif defined(_WIN32) || defined(_WIN64)
 		flags->host_os = OS_WINDOWS;
 		#if defined(_M_ARM64) || defined(__aarch64__) || defined(__arm64__)
-			flags->host_arch = TARGET_AARCH64;
+			flags->host_arch = TARGET_ARM64;
 		#elif defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__)
 			flags->host_arch = TARGET_X86_64;
 		#else
@@ -260,7 +260,6 @@ const char* arch_to_string(TargetArch arch) {
 	switch (arch) {
 		case TARGET_ARM64: return "arm64";
 		case TARGET_X86_64: return "x86-64";
-		case TARGET_AARCH64: return "aarch64";
 		case TARGET_WASM: return "wasm";
 		default: return "unknown";
 	}
@@ -280,7 +279,6 @@ TargetArch string_to_arch(const char* str) {
 	if (str == NULL) return TARGET_UNKNOWN;
 	if (strcmp(str, "arm64") == 0 || strcmp(str, "aarch64") == 0) return TARGET_ARM64;
 	if (strcmp(str, "x86-64") == 0 || strcmp(str, "x86_64") == 0 || strcmp(str, "x86") == 0) return TARGET_X86_64;
-	if (strcmp(str, "aarch64") == 0) return TARGET_AARCH64;
 	if (strcmp(str, "wasm") == 0 || strcmp(str, "wasm32") == 0) return TARGET_WASM;
 	return TARGET_UNKNOWN;
 }
@@ -308,8 +306,7 @@ char* get_target_triple(CompilerFlags* flags) {
 
 	switch (flags->target_arch) {
 		case TARGET_ARM64:
-		case TARGET_AARCH64:
-			arch_part = "aarch64";
+			arch_part = "arm64";
 			break;
 		case TARGET_X86_64:
 			arch_part = "x86_64";

@@ -17,9 +17,8 @@
 // ============================================================================
 
 typedef enum {
-	TARGET_ARM64,      // Apple Silicon M1, M2, M3, etc.
+	TARGET_ARM64,      // Apple Silicon M1, M2, M3, etc. As well as other devices like Raspberry Pi, etc. with manufactures like Qualcomm, etc.
 	TARGET_X86_64,     // Intel/AMD 64-bit
-	TARGET_AARCH64,    // ARM64 (generic, for Linux ARM servers)
 	TARGET_WASM,       // WebAssembly (future)
 	TARGET_UNKNOWN
 } TargetArch;

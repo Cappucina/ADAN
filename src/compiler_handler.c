@@ -1,6 +1,6 @@
 #include "compiler_handler.h"
 #include "compiler_flags.h"
-#include "codegen_arm64.h"
+#include "codegen.h"
 
 int compileHandler(CompilerFlags* flags) {
     int res = 0;
@@ -20,14 +20,7 @@ int compileHandler(CompilerFlags* flags) {
             res = arm64_code_generation_handler(flags);
             break;
         case TARGET_X86_64:
-            // TODO: implement x86_64 handler
-            fprintf(stderr, "Error: x86_64 codegen not implemented\n");
-            res = -1;
-            break;
-        case TARGET_AARCH64:
-            // TODO: implement generic aarch64 handler
-            fprintf(stderr, "Error: aarch64 codegen not implemented\n");
-            res = -1;
+            res = x86_64_code_generation_handler(flags);
             break;
         case TARGET_WASM:
             fprintf(stderr, "Error: wasm codegen not implemented\n");
