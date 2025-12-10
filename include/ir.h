@@ -12,10 +12,16 @@ typedef enum {
 	IR_MUL,       // *
 	IR_DIV,       // /
 	IR_ASSIGN,    // =
-	IR_LABEL,	  // L1:
+	IR_LABEL,     // L1:
 	IR_JMP,       // GOTO L1
 	IR_JEQ,       // IF a == b GOTO L1
-	IR_PRINT      // PRINT a
+	IR_JNE,       // IF a != b GOTO L1
+	IR_LT,        // IF a < b GOTO L1
+	IR_GT,        // IF a > b GOTO L1
+	IR_LTE,       // IF a <= b GOTO L1
+	IR_GTE,       // IF a >= b GOTO L1
+	IR_PARAM,     // Handle function params
+	IR_CALL       // Handle function calls
 } IROp;
 
 // 
@@ -27,6 +33,7 @@ typedef struct IRInstruction {
 	char* arg2;                    // Input 2 (can be NULL)
 	char* result;                  // Where the answer goes (can be NULL)
 	struct IRInstruction* next;    // Linked List pointer
+	int index;
 } IRInstruction;
 
 void init_ir();
