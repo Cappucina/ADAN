@@ -2,6 +2,7 @@
 #define CODEGEN_ARM64_H
 
 #include "compiler_flags.h"
+#include "codegen.h"
 
 int arm64_code_generation_handler(CompilerFlags* flags);
 
