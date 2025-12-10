@@ -83,6 +83,7 @@ typedef struct {
 	int show_help;
 	int show_version;
     int test_compiler;
+    int show_system_info;
 } CompilerFlags;
 
 // ============================================================================
@@ -140,6 +141,11 @@ TargetOS string_to_os(const char* str);
  * Get the target triple string (e.g., "aarch64-apple-darwin")
  */
 char* get_target_triple(CompilerFlags* flags);
+
+/**
+ * Show system information based on flags
+ */
+void show_system_info(CompilerFlags* flags);
 
 /**
  * Free allocated memory in flags

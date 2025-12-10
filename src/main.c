@@ -23,6 +23,12 @@ int main(int argc, char **argv) {
 	}
 	
 	// Handle help/version flags
+	if (flags->show_system_info) {
+		show_system_info(flags);
+		flags_free(flags);
+		return 0;
+	}
+
 	if (flags->show_help) {
 		flags_print_help(argv[0]);
 		flags_free(flags);
@@ -52,13 +58,6 @@ int main(int argc, char **argv) {
 			flags_free(flags);
 			return -1;
 		}
-	}
-
-	// Validate flags
-	if (flags_validate(flags) != 0) {
-		fprintf(stderr, "Error: Invalid compiler flags\n");
-		flags_free(flags);
-		return -1;
 	}
 	
 	// Print configuration if verbose

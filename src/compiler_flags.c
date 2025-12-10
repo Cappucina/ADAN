@@ -39,35 +39,46 @@ CompilerFlags* flags_init(void) {
 	flags->show_help = 0;
 	flags->show_version = 0;
     flags->test_compiler = 0;
+    flags->show_system_info = 0;
 
-	// Try to set sensible defaults based on host system
-#ifdef __APPLE__
-# ifdef __aarch64__
-	flags->target_arch = TARGET_ARM64;
-# else
-	flags->target_arch = TARGET_X86_64;
-# endif
-	flags->target_os = OS_MACOS;
-	flags->host_arch = flags->target_arch;
-	flags->host_os = flags->target_os;
-#elif __linux__
-	flags->target_os = OS_LINUX;
-# ifdef __aarch64__
-	flags->target_arch = TARGET_AARCH64;
-# else
-	flags->target_arch = TARGET_X86_64;
-# endif
-	flags->host_arch = flags->target_arch;
-	flags->host_os = flags->target_os;
-#elif _WIN32
-	flags->target_os = OS_WINDOWS;
-	flags->target_arch = TARGET_X86_64;
-	flags->host_arch = flags->target_arch;
-	flags->host_os = flags->target_os;
-#else
-	flags->target_arch = TARGET_UNKNOWN;
-	flags->target_os = OS_UNKNOWN;
-#endif
+		// Try to set sensible defaults based on host system using multiple
+		// predefined macros for wider compiler compatibility.
+	#if defined(__APPLE__)
+		flags->host_os = OS_MACOS;
+		// Apple M-series may define __aarch64__ or __arm64__
+		#if defined(__aarch64__) || defined(__arm64__)
+			flags->host_arch = TARGET_ARM64;
+		#elif defined(__x86_64__) || defined(__i386__)
+			flags->host_arch = TARGET_X86_64;
+		#else
+			flags->host_arch = TARGET_UNKNOWN;
+		#endif
+	#elif defined(__linux__)
+		flags->host_os = OS_LINUX;
+		#if defined(__aarch64__) || defined(__arm64__)
+			flags->host_arch = TARGET_AARCH64;
+		#elif defined(__x86_64__) || defined(__i386__)
+			flags->host_arch = TARGET_X86_64;
+		#else
+			flags->host_arch = TARGET_UNKNOWN;
+		#endif
+	#elif defined(_WIN32) || defined(_WIN64)
+		flags->host_os = OS_WINDOWS;
+		#if defined(_M_ARM64) || defined(__aarch64__) || defined(__arm64__)
+			flags->host_arch = TARGET_AARCH64;
+		#elif defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__)
+			flags->host_arch = TARGET_X86_64;
+		#else
+			flags->host_arch = TARGET_UNKNOWN;
+		#endif
+	#else
+		flags->host_arch = TARGET_UNKNOWN;
+		flags->host_os = OS_UNKNOWN;
+	#endif
+
+		// Default target equals host unless overridden later
+		flags->target_arch = flags->host_arch;
+		flags->target_os = flags->host_os;
 
 	return flags;
 }
@@ -77,23 +88,33 @@ CompilerFlags* flags_init(void) {
 // ============================================================================
 
 int flags_parse(int argc, char** argv, CompilerFlags* flags) {
-	// If no arguments supplied, keep defaults and return success.
-	if (argc < 2) {
-		return 0;
-	}
-	
+    if (argc < 2) {
+        flags->show_help = 1;
+        return 0;
+    }
+
 	// Simple parsing loop for common options. This is intentionally
 	// lightweight so the compiler can run with no args during tests.
 	for (int i = 1; i < argc; ++i) {
 		const char* a = argv[i];
 
-		if (strcmp(a, "-h") == 0 || strcmp(a, "--help") == 0 || argc == 1) {
+		if (strcmp(a, "-t") == 0 || strcmp(a, "--test") == 0 || strcmp(a, "--tests") == 0) {
+			flags->test_compiler = 1;
+			return 0;
+		}
+
+		if (strcmp(a, "-h") == 0 || strcmp(a, "--help") == 0) {
 			flags->show_help = 1;
 			return 0;
 		}
 
 		if (strcmp(a, "--version") == 0) {
 			flags->show_version = 1;
+			return 0;
+		}
+
+		if (strcmp(a, "--system-info") == 0 || strcmp(a, "-i") == 0) {
+			flags->show_system_info = 1;
 			return 0;
 		}
 
@@ -141,20 +162,17 @@ int flags_parse(int argc, char** argv, CompilerFlags* flags) {
 			continue;
 		}
 
-        if (strcmp(a, "-t") == 0 || strcmp(a, "--test") == 0 || strcmp(a, "--tests") == 0) {
-            flags->test_compiler = 1;
-            continue;
-        }
-
 		// positional argument: input file
 		if (flags->input_file == NULL) {
 			flags->input_file = strdup(a);
 			continue;
 		}
 
-	// If the user did not explicitly set a target arch/os, use host values
-	if (flags->target_arch == TARGET_UNKNOWN) flags->target_arch = flags->host_arch;
-	if (flags->target_os == OS_UNKNOWN) flags->target_os = flags->host_os;
+		// Unknown flag/argument
+		fprintf(stderr, "Unknown argument: %s\n", a);
+		flags_print_help(argv[0]);
+		return -1;
+	}
 
 	// Mark cross-compile if target differs from detected host
 	if (flags->target_arch != flags->host_arch || flags->target_os != flags->host_os) {
@@ -170,10 +188,6 @@ int flags_parse(int argc, char** argv, CompilerFlags* flags) {
 	}
 
 	return 0;
-		fprintf(stderr, "Unknown argument: %s\n", a);
-		flags_print_help(argv[0]);
-		return -1;
-	}
 	//   --target=<arch>        or -t <arch>       (arm64, x86-64, aarch64, wasm)
 	//   --os=<os>              or -o <os>         (macos, linux, windows, web)
 	//   --optimize=<level>     or -O<level>       (0, s, 2, 3)
@@ -196,13 +210,45 @@ int flags_parse(int argc, char** argv, CompilerFlags* flags) {
 // ============================================================================
 
 int flags_validate(CompilerFlags* flags) {
-	// TODO: Check that input_file is set
-	// TODO: Check that target_arch is not UNKNOWN
-	// TODO: Check that target_os is not UNKNOWN
-	// TODO: Ensure output_file is set (or generate default)
-	// TODO: Warn if cross-compiling without explicit --target-triple
-	// TODO: Return 0 if valid, -1 if invalid
-	
+    if (flags->input_file == NULL) {
+        fprintf(stderr, "Error: No input file specified\n");
+        return -1;
+    }
+
+    if (flags->target_arch == TARGET_UNKNOWN) {
+        fprintf(stderr, "Error: Target architecture is UNKNOWN\n");
+        return -1;
+    }
+
+    if (flags->target_os == OS_UNKNOWN) {
+        fprintf(stderr, "Error: Target OS is UNKNOWN\n");
+        return -1;
+    }
+
+	if (flags->output_file == NULL) {
+		// Provide a sensible default instead of failing
+		flags->output_file = strdup("a.out");
+		if (flags->output_file == NULL) {
+			fprintf(stderr, "Error: Failed to allocate default output filename\n");
+			return -1;
+		}
+		fprintf(stderr, "Notice: No output file specified, defaulting to 'a.out'\n");
+	}
+
+    if (flags->is_cross_compile && flags->target_triple == NULL) {
+        fprintf(stderr, "Warning: Cross-compiling without explicit target triple\n");
+    }
+
+    if (flags->target_triple == NULL) {
+        char* triple = get_target_triple(flags);
+        if (triple) {
+            flags->target_triple = triple; // ownership transferred
+        } else {
+            fprintf(stderr, "Error: Failed to generate target triple\n");
+            return -1;
+        }
+    }
+
 	return 0;
 }
 
@@ -334,8 +380,18 @@ void flags_print_help(const char* program_name) {
 }
 
 void flags_print_version(void) {
-	printf("ADAN Compiler v0.X.X\n"); // TODO: For someone who manages versioning to update with current version or make a automated system
+	printf("ADAN Compiler v0.X.X\n"); // FIXME: For someone who manages versioning to update with current version or make a automated system
 	printf("Written in C with love\n");
+}
+
+void show_system_info(CompilerFlags* flags) {
+    printf("System Information:\n");
+
+    printf("  Host Architecture: %s\n", arch_to_string(flags->host_arch));
+    printf("  Host OS: %s\n", os_to_string(flags->host_os));
+    printf("  Target Architecture: %s\n", arch_to_string(flags->target_arch));
+    printf("  Target OS: %s\n", os_to_string(flags->target_os));
+    printf("  Target Triple: %s\n", flags->target_triple ? flags->target_triple : "not set");
 }
 
 // ============================================================================
