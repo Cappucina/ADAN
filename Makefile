@@ -30,11 +30,11 @@ compile-docker: docker
 
 # Run the compiled binary locally
 run: compile
-	compiled/main
+	./compiled/main
 
 # Run tests (explicit)
 test: compile
-	./compiled/main
+	./compiled/main -t
 
 # Run tests inside Docker (explicit)
 test-docker: compile-docker
