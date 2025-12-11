@@ -36,6 +36,8 @@ bool symbol_in_scope(SymbolTable* table, const char* name);
 // 
 void analyze_program(ASTNode* root, SymbolTable* table);
 
+void analyze_file(ASTNode* root, SymbolTable* table);
+
 void analyze_block(ASTNode* block, SymbolTable* table);
 
 void analyze_statement(ASTNode* statement, SymbolTable* table);

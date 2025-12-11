@@ -16,13 +16,17 @@ docker:
 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
 
 compile: docker
-	docker exec -i adan-dev-container sh -c "rm -rf compiled && mkdir -p compiled && gcc src/*.c tests/*.c -I include -o compiled/main.s"
+	docker exec -i adan-dev-container sh -c "sudo rm -rf compiled"
+	docker exec -i adan-dev-container sh -c "sudo mkdir -p compiled"
+	docker exec -i adan-dev-container sh -c "sudo gcc src/*.c tests/*.c lib/adan/*.c -I include -o compiled/main"
 
-compile-binary: docker
-	docker exec -i adan-dev-container sh -c "rm -rf compiled && mkdir -p compiled && gcc src/*.c tests/*.c -I include -o compiled/main"
+execute:
+	docker exec -i adan-dev-container sh -c "sudo compiled/main examples/my-program.adn"
+	docker exec -i adan-dev-container sh -c "sudo gcc -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program"
+	docker exec -i adan-dev-container sh -c "sudo ./compiled/program"
 
-run: compile-binary
-	docker exec -it adan-dev-container compiled/main
+debug: compile
+	make execute -silent
 
 # 
 #  CODESPACES EXCLUSIVE

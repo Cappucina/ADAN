@@ -23,6 +23,7 @@ typedef enum {
 	// 
 	//  Keywords
 	// 
+	AST_FILE,
 	AST_PROGRAM,
 	AST_IF,
 	AST_WHILE,
@@ -93,6 +94,7 @@ typedef struct ExpectedNode {
 
 static inline const char* node_type_to_string(ASTNodeType type) {
 	switch (type) {
+		case AST_FILE: return "AST_FILE";
 		case AST_PROGRAM: return "AST_PROGRAM";
 		case AST_ASSIGNMENT: return "AST_ASSIGNMENT";
 		case AST_IDENTIFIER: return "AST_IDENTIFIER";

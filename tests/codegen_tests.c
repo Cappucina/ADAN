@@ -20,7 +20,7 @@ void test_init_target_config() {
 	assert(cfg.caller_saved_count == 2);
 	assert(cfg.spill_slot_size == 8);
 	
-	printf("CODE GENERATION PASSED: init_target_config\n");
+	// printf("CODE GENERATION PASSED: init_target_config\n");
 }
 
 void test_get_register_name() {
@@ -37,7 +37,7 @@ void test_get_register_name() {
 	assert(get_register_name(&cfg, -1) == NULL);
 	assert(get_register_name(NULL, 0) == NULL);
 	
-	printf("CODE GENERATION PASSED: get_register_name\n");
+	// printf("CODE GENERATION PASSED: get_register_name\n");
 }
 
 void test_assign_stack_offsets() {
@@ -77,7 +77,7 @@ void test_assign_stack_offsets() {
 	assert(interval2.stack_offset == 0);
 	assert(interval3.stack_offset == -16);
 	
-	printf("CODE GENERATION PASSED: assign_stack_offsets\n");
+	// printf("CODE GENERATION PASSED: assign_stack_offsets\n");
 }
 
 void test_compute_spill_frame_size() {
@@ -111,7 +111,7 @@ void test_compute_spill_frame_size() {
 	int frame_size = compute_spill_frame_size(&interval1, &cfg);
 	assert(frame_size == 16);
 	
-	printf("CODE GENERATION PASSED: compute_spill_frame_size\n");
+	// printf("CODE GENERATION PASSED: compute_spill_frame_size\n");
 }
 
 void test_emit_prologue_epilogue() {
@@ -153,7 +153,7 @@ void test_emit_prologue_epilogue() {
 	
 	fclose(temp_file);
 	
-	printf("CODE GENERATION PASSED: emit_prologue and emit_epilogue\n");
+	// printf("CODE GENERATION PASSED: emit_prologue and emit_epilogue\n");
 }
 
 void test_get_location() {
@@ -194,7 +194,7 @@ void test_get_location() {
 	get_location(result, "unknown", &interval1, &cfg);
 	assert(strcmp(result, "unknown") == 0);
 	
-	printf("CODE GENERATION PASSED: get_location\n");
+	// printf("CODE GENERATION PASSED: get_location\n");
 }
 
 void test_generate_asm_add() {
@@ -253,7 +253,7 @@ void test_generate_asm_add() {
 	
 	fclose(temp_file);
 	
-	printf("CODE GENERATION PASSED: generate_asm IR_ADD\n");
+	// printf("CODE GENERATION PASSED: generate_asm IR_ADD\n");
 }
 
 void test_generate_asm_label_jmp() {
@@ -298,7 +298,7 @@ void test_generate_asm_label_jmp() {
 	
 	fclose(temp_file);
 	
-	printf("CODE GENERATION PASSED: generate_asm IR_LABEL and IR_JMP\n");
+	// printf("CODE GENERATION PASSED: generate_asm IR_LABEL and IR_JMP\n");
 }
 
 void test_generate_asm_comparison() {
@@ -349,7 +349,7 @@ void test_generate_asm_comparison() {
 	
 	fclose(temp_file);
 	
-	printf("CODE GENERATION PASSED: generate_asm comparison operations\n");
+	// printf("CODE GENERATION PASSED: generate_asm comparison operations\n");
 }
 
 void test_print_target_config() {
@@ -385,7 +385,7 @@ void test_print_target_config() {
 	
 	fclose(temp_file);
 	
-	printf("CODE GENERATION PASSED: print_target_config\n");
+	// printf("CODE GENERATION PASSED: print_target_config\n");
 }
 
 void create_codegen_tests() {

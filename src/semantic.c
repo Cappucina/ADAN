@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "library.h"
 
 const char* type_to_string(Type type);
 
@@ -23,34 +24,35 @@ SymbolTable* init_symbol_table() {
 }
 
 void enter_scope(SymbolTable* table) {
-	SymbolTable* new_table = init_symbol_table();
-	
-	new_table->parent = table;
-	new_table->loop_depth = table->loop_depth;
-	new_table->current_return_type = table->current_return_type;
+	SymbolTable* saved = malloc(sizeof(SymbolTable));
+	if (!saved) return;
 
-	*table = *new_table;
-	free(new_table);
+	*saved = *table;
+
+	table->parent = saved;
+	table->buckets = calloc(saved->bucket_count, sizeof(Symbol*));
+	table->loop_depth = saved->loop_depth;
+	table->current_return_type = saved->current_return_type;
 }
 
 void exit_scope(SymbolTable* table) {
-	if (table->parent) {
-		SymbolTable* parent = table->parent;
-		for (int i = 0; i < table->bucket_count; i++) {
-			Symbol* sym = table->buckets[i];
-			while (sym) {
-				Symbol* next = sym->next;
-				
-				free(sym->name);
-				free(sym);
+	if (!table->parent) return;
 
-				sym = next;
-			}
+	for (int i = 0; i < table->bucket_count; i++) {
+		Symbol* sym = table->buckets[i];
+		while (sym) {
+			Symbol* next = sym->next;
+			free(sym->name);
+			free(sym);
+			sym = next;
 		}
-
-		free(table->buckets);
-		*table = *parent;
 	}
+
+	free(table->buckets);
+
+	SymbolTable* parent = table->parent;
+	*table = *parent;
+	free(parent);
 }
 
 bool add_symbol(SymbolTable* table, const char* name, Type type, ASTNode* node) {
@@ -148,6 +150,10 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 		case AST_ASSIGNMENT:
 			analyze_assignment(statement, table);
 			break;
+
+		case AST_DECLARATION:
+			analyze_declaration(statement, table);
+			break;
 		
 		case AST_IF:
 			analyze_if(statement, table);
@@ -190,6 +196,10 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 		case AST_LOGICAL_OP:
 			analyze_expression(statement, table);
 			break;
+
+		case AST_INCREMENT_EXPR:
+			analyze_expression(statement, table);
+			break;
 		
 		case AST_FUNCTION_CALL:
 			analyze_function_call(statement, table);
@@ -205,6 +215,20 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 	}
 }
 
+void analyze_file(ASTNode* file_node, SymbolTable* table) {
+	if (!file_node || !table) return;
+	if (file_node->type != AST_FILE) return;
+	
+	for (int i = 0; i < file_node->child_count; i++) {
+		ASTNode* child = file_node->children[i];
+		if (child->type == AST_INCLUDE) {
+			analyze_include(child, table);
+		} else if (child->type == AST_PROGRAM) {
+			analyze_program(child, table);
+		}
+	}
+}
+
 void analyze_program(ASTNode* func_node, SymbolTable* table) {
 	if (!func_node || !table) return;
 	if (func_node->type != AST_PROGRAM) return;
@@ -215,6 +239,8 @@ void analyze_program(ASTNode* func_node, SymbolTable* table) {
 	ASTNode* block_node = func_node->children[3];
 
 	Type return_type = get_expression_type(return_type_node, table);
+	
+	table->current_return_type = return_type;
 
 	if (!add_symbol(table, func_name_node->token.text, return_type, func_node)) {
 		semantic_error(func_name_node, SemanticErrorMessages[SEMANTIC_DUPLICATE_SYMBOL], func_name_node->token.text);
@@ -225,9 +251,9 @@ void analyze_program(ASTNode* func_node, SymbolTable* table) {
 	if (params_node && params_node->type == AST_PARAMS) {
 		for (int i = 0; i < params_node->child_count; i++) {
 			ASTNode* param = params_node->children[i];
-			Type param_type = get_expression_type(param->children[0], table);
+			Type param_type = get_expression_type(param->children[1], table);
 
-			const char* param_name = param->children[1]->token.text;
+			const char* param_name = param->children[0]->token.text;
 			if (!add_symbol(table, param_name, param_type, param)) {
 				semantic_error(param, SemanticErrorMessages[SEMANTIC_DUPLICATE_SYMBOL], param_name);
 			}
@@ -361,9 +387,15 @@ void analyze_return(ASTNode* return_node, SymbolTable* table) {
 		analyze_expression(child_node, table);
 	
 		Type actual_type = get_expression_type(child_node, table);
-		if (return_type != actual_type) semantic_error(return_node, SemanticErrorMessages[SEMANTIC_RETURN_KEYWORD_TYPE_MISMATCH]);
+		if (return_type != actual_type) {
+			semantic_error(return_node, SemanticErrorMessages[SEMANTIC_RETURN_VALUE_TYPE_MISMATCH], 
+				type_to_string(actual_type), type_to_string(return_type));
+		}
 	} else {
-		if (return_type != TYPE_VOID) semantic_error(return_node, SemanticErrorMessages[SEMANTIC_RETURN_KEYWORD_TYPE_MISMATCH]);
+		if (return_type != TYPE_VOID) {
+			semantic_error(return_node, SemanticErrorMessages[SEMANTIC_NON_VOID_RETURN_WITHOUT_VALUE], 
+				type_to_string(return_type));
+		}
 	}
 }
 
@@ -434,14 +466,32 @@ void analyze_assignment(ASTNode* assignment_node, SymbolTable* table) {
 // 
 void analyze_include(ASTNode* include_node, SymbolTable* table) {
 	if (!include_node || !table) return;
+	
 	if (include_node->type != AST_INCLUDE) return;
 	if (include_node->child_count < 2) return;
-
+	
 	ASTNode* publisher_node = include_node->children[0];
 	ASTNode* package_node = include_node->children[1];
-
+	
 	if (!publisher_node || !package_node) return;
 	if (!publisher_node->token.text || !package_node->token.text) return;
+	
+	extern LibraryRegistry* global_library_registry;
+	
+	Library* lib = load_library(global_library_registry, 
+								publisher_node->token.text, 
+								package_node->token.text);
+	
+	if (!lib) {
+		log_semantic_error(include_node, "Failed to load library %s.%s", 
+						  publisher_node->token.text, package_node->token.text);
+		return;
+	}
+	
+	if (!import_library_symbols(lib, table)) {
+		log_semantic_error(include_node, "Failed to import symbols from %s.%s",
+						  publisher_node->token.text, package_node->token.text);
+	}
 }
 
 void analyze_function_call(ASTNode* call_node, SymbolTable* table) {
@@ -457,21 +507,56 @@ void analyze_function_call(ASTNode* call_node, SymbolTable* table) {
 		return;
 	}
 
-	int arg_count = call_node->child_count - 1;
+	int arg_count = 0;
+	Type first_arg_type = TYPE_UNKNOWN;
 	if (call_node->child_count > 1) {
 		ASTNode* params_node = call_node->children[1];
 		if (params_node && params_node->type == AST_PARAMS) {
-			int expected_count = params_node->child_count;
-
-			if (arg_count != expected_count) {
-				semantic_error(call_node, SemanticErrorMessages[SEMANTIC_WRONG_ASSIGNMENT_COUNT], expected_count, arg_count);
-				return;
-			}
-
+			arg_count = params_node->child_count;
 			for (int i = 0; i < arg_count; i++) {
 				ASTNode* arg = params_node->children[i];
 				analyze_expression(arg, table);
+				if (i == 0) {
+					first_arg_type = get_expression_type(arg, table);
+				}
 			}
+		}
+	}
+
+	// Auto-resolve print/println to type-specific variants
+	const char* resolved_name = func_name_node->token.text;
+	char resolved_buffer[256];
+	if ((strcmp(resolved_name, "print") == 0 || strcmp(resolved_name, "println") == 0) && arg_count == 1) {
+		if (first_arg_type == TYPE_INT) {
+			snprintf(resolved_buffer, sizeof(resolved_buffer), "%s_int", resolved_name);
+			resolved_name = resolved_buffer;
+			// Update the function name in the AST
+			free((char*)func_name_node->token.text);
+			func_name_node->token.text = strdup(resolved_name);
+		} else if (first_arg_type == TYPE_FLOAT) {
+			snprintf(resolved_buffer, sizeof(resolved_buffer), "%s_float", resolved_name);
+			resolved_name = resolved_buffer;
+			// Update the function name in the AST
+			free((char*)func_name_node->token.text);
+			func_name_node->token.text = strdup(resolved_name);
+		}
+	}
+
+	extern LibraryRegistry* global_library_registry;
+	if (global_library_registry) {
+		Library* lib = global_library_registry->libraries;
+		while (lib) {
+			LibraryFunction* func = lib->functions;
+			while (func) {
+				if (strcmp(func->name, resolved_name) == 0) {
+					if (arg_count != func->param_count) {
+						semantic_error(call_node, SemanticErrorMessages[SEMANTIC_WRONG_ARGUMENT_COUNT], arg_count, func->param_count);
+					}
+					return;
+				}
+				func = func->next;
+			}
+			lib = lib->next;
 		}
 	}
 }
@@ -486,7 +571,7 @@ void check_entry_point(SymbolTable* table) {
 
 void analyze_array_literal(ASTNode* node, SymbolTable* table) {
 	if (!node || node->type != AST_ARRAY_LITERAL) return;
-	if (!validate_array_element_types(node, table)) semantic_error(node, SemanticErrorMessages[SEMANTIC_ARRAY_CHILDREN_NOT_MATCHING_TYPES]);
+	if (!validate_array_element_types(node, table)) semantic_error(node, SemanticErrorMessages[SEMANTIC_ARRAY_MIXED_TYPES]);
 }
 
 bool validate_array_element_types(ASTNode* array_node, SymbolTable* table) {
@@ -666,6 +751,21 @@ Type analyze_array_access(ASTNode* node, SymbolTable* table) {
 	return TYPE_UNKNOWN;
 }
 
+Type analyze_increment_expr(ASTNode* node, SymbolTable* table) {
+	if (!node || node->child_count < 2) return TYPE_UNKNOWN;
+
+	ASTNode* target = node->children[0];
+	Type target_type = get_expression_type(target, table);
+
+	if (!is_numeric_type(target_type)) {
+		semantic_error(node, SemanticErrorMessages[SEMANTIC_INCOMPATIBLE_OPERAND_TYPES],
+					type_to_string(target_type), "numeric", node->children[1]->token.text);
+		return TYPE_UNKNOWN;
+	}
+
+	return target_type;
+}
+
 Type analyze_expression(ASTNode* expr_node, SymbolTable* table) {
 	if (!expr_node) {
 		return TYPE_UNKNOWN;
@@ -680,6 +780,8 @@ Type analyze_expression(ASTNode* expr_node, SymbolTable* table) {
 		result = analyze_unary_op(expr_node, table);
 	} else if (expr_node->type == AST_ARRAY_ACCESS) {
 		result = analyze_array_access(expr_node, table);
+	} else if (expr_node->type == AST_INCREMENT_EXPR) {
+		result = analyze_increment_expr(expr_node, table);
 	} else {
 		result = get_expression_type(expr_node, table);
 	}
@@ -861,6 +963,46 @@ Type analyze_unary_op(ASTNode* unary_node, SymbolTable* table) {
 // 
 Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 	if (!expr_node) return TYPE_UNKNOWN;
+
+	if (expr_node->type == AST_TYPE) {
+		switch (expr_node->token.type) {
+			case TOKEN_INT:
+				annotate_node_type(expr_node, TYPE_INT);
+				return TYPE_INT;
+
+			case TOKEN_FLOAT:
+				annotate_node_type(expr_node, TYPE_FLOAT);
+				return TYPE_FLOAT;
+
+			case TOKEN_STRING:
+				annotate_node_type(expr_node, TYPE_STRING);
+				return TYPE_STRING;
+
+			case TOKEN_BOOLEAN:
+				annotate_node_type(expr_node, TYPE_BOOLEAN);
+				return TYPE_BOOLEAN;
+
+			case TOKEN_CHAR:
+				annotate_node_type(expr_node, TYPE_CHAR);
+				return TYPE_CHAR;
+
+			case TOKEN_NULL:
+				annotate_node_type(expr_node, TYPE_NULL);
+				return TYPE_NULL;
+
+			case TOKEN_VOID:
+				annotate_node_type(expr_node, TYPE_VOID);
+				return TYPE_VOID;
+
+			case TOKEN_ARRAY:
+				annotate_node_type(expr_node, TYPE_ARRAY);
+				return TYPE_ARRAY;
+
+			default:
+				annotate_node_type(expr_node, TYPE_UNKNOWN);
+				return TYPE_UNKNOWN;
+		}
+	}
 	if (expr_node->type == AST_LITERAL) {
 		TokenType tt = expr_node->token.type;
 		Type inferred = TYPE_UNKNOWN;
@@ -956,9 +1098,27 @@ Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 		return inner;
 	}
 
+	if (expr_node->type == AST_INCREMENT_EXPR) {
+		Type t = get_expression_type(expr_node->children[0], table);
+		annotate_node_type(expr_node, t);
+		return t;
+	}
+
 	if (expr_node->type == AST_ARRAY_LITERAL) {
 		annotate_node_type(expr_node, TYPE_ARRAY);
 		return TYPE_ARRAY;
+	}
+
+	if (expr_node->type == AST_FUNCTION_CALL) {
+		if (expr_node->child_count < 1) {
+			annotate_node_type(expr_node, TYPE_UNKNOWN);
+			return TYPE_UNKNOWN;
+		}
+		ASTNode* func_name_node = expr_node->children[0];
+		Symbol* func_symbol = lookup_symbol(table, func_name_node->token.text);
+		Type ret_type = func_symbol ? func_symbol->type : TYPE_UNKNOWN;
+		annotate_node_type(expr_node, ret_type);
+		return ret_type;
 	}
 
 	if (expr_node->child_count > 0) {
@@ -1032,35 +1192,38 @@ const char* type_to_string(Type type) {
 void semantic_error(ASTNode* node, const char* fmt, ...) {
 	if (node == NULL) return;
 
-	fprintf(stderr, "[Line %d:%d] \033[1;31mError:\033[0m ", node->token.line, node->token.column);
 	va_list args;
 	va_start(args, fmt);
-	vfprintf(stderr, fmt, args);
+	char buffer[1024];
+	vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
-	fprintf(stderr, "\n");
+	
+	log_semantic_error(node, "%s", buffer);
 	exit(1);
 }
 
 void semantic_warning(ASTNode* node, const char* fmt, ...) {
 	if (node == NULL) return;
 
-	fprintf(stdout, "[Line %d:%d] \033[1;33mWarning:\033[0m ", node->token.line, node->token.column);
 	va_list args;
 	va_start(args, fmt);
-	vfprintf(stdout, fmt, args);
+	char buffer[1024];
+	vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
-	fprintf(stdout, "\n");
+	
+	log_semantic_warning(node, "%s", buffer);
 }
 
 void semantic_tip(ASTNode* node, const char* fmt, ...) {
 	if (node == NULL) return;
 
-	fprintf(stdout, "[Line %d:%d] \033[1;32mTip:\033[0m ", node->token.line, node->token.column);
 	va_list args;
 	va_start(args, fmt);
-	vfprintf(stdout, fmt, args);
+	char buffer[1024];
+	vsnprintf(buffer, sizeof(buffer), fmt, args);
 	va_end(args);
-	fprintf(stdout, "\n");
+	
+	log_semantic_tip(node, "%s", buffer);
 }
 
 // 

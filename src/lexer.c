@@ -32,6 +32,7 @@ Token* make_token(Lexer* lexer, TokenType type, const char* texts[], int count) 
 	new_token->type = type;
 	new_token->text = combined;
 	new_token->line = lexer->line;
+	new_token->column = lexer->position;
 
 	for (int i = 0; i < total_len; i++) {
 		advance(lexer);
@@ -66,6 +67,7 @@ Token* next_token(Lexer* lexer) {
 		token->type = TOKEN_EOF;
 		token->text = NULL;
 		token->line = lexer->line;
+		token->column = lexer->position;
 		
 		return token;
 	}
@@ -113,7 +115,30 @@ Token* next_token(Lexer* lexer) {
 		token->type = type;
 		token->text = word;
 		token->line = lexer->line;
+		token->column = lexer->position - strlen(word);
 	
+		return token;
+	}
+
+	if (c == '"') {
+		advance(lexer);
+		int start = lexer->position;
+
+		while (lexer->src[lexer->position] != '"' && lexer->src[lexer->position] != '\0') advance(lexer);
+
+		int length = lexer->position - start;
+		char* text = malloc(length + 1);
+		strncpy(text, lexer->src + start, length);
+		text[length] = '\0';
+
+		if (lexer->src[lexer->position] == '"') advance(lexer);
+
+		Token* token = malloc(sizeof(Token));
+		token->type = TOKEN_STRING;
+		token->text = text;
+		token->line = lexer->line;
+		token->column = start - 1;
+
 		return token;
 	}
 
@@ -141,7 +166,6 @@ Token* next_token(Lexer* lexer) {
 		case ',': return make_token(lexer, TOKEN_COMMA, (const char*[]){","}, 1);
 		case '.': return make_token(lexer, TOKEN_PERIOD, (const char*[]){"."}, 1);
 		case '\'': return make_token(lexer, TOKEN_APOSTROPHE, (const char*[]){"'"}, 1);
-		case '"': return make_token(lexer, TOKEN_QUOTATION, (const char*[]){"\""}, 1);
 		case '>': return make_token(lexer, TOKEN_GREATER, (const char*[]){">"}, 1);
 		case '<': return make_token(lexer, TOKEN_LESS, (const char*[]){"<"}, 1);
 		case '!': return make_token(lexer, TOKEN_NOT, (const char*[]){"!"}, 1);
@@ -169,6 +193,7 @@ Token* next_token(Lexer* lexer) {
 			token->type = TOKEN_FLOAT_LITERAL;
 			token->text = text;
 			token->line = lexer->line;
+			token->column = start;
 
 			return token;
 		} else {
@@ -182,6 +207,7 @@ Token* next_token(Lexer* lexer) {
 			token->type = TOKEN_INT_LITERAL;
 			token->text = text;
 			token->line = lexer->line;
+			token->column = start;
 			
 			return token;
 		}

@@ -93,6 +93,11 @@ ASTNode* parse_return_statement(Parser* parser);
 //
 ASTNode* parse_program(Parser* parser);
 
+//
+//  Parse entire file with includes and program definition
+//
+ASTNode* parse_file(Parser* parser);
+
 // 
 //  Handles program parameters when either declaring a new
 //   program or calling an existing one.

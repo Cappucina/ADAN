@@ -36,7 +36,15 @@ typedef struct IRInstruction {
 	int index;
 } IRInstruction;
 
+typedef struct StringLiteral {
+	char* label;
+	char* value;
+	struct StringLiteral* next;
+} StringLiteral;
+
 void init_ir();
+
+void init_ir_full();
 
 char* new_temporary();
 
@@ -47,6 +55,10 @@ void emit(IRInstruction* instruction);
 void print_ir();
 
 char* generate_ir(ASTNode* node);
+
+IRInstruction* get_ir_head();
+
+StringLiteral* get_string_literals();
 
 void free_ir();
 

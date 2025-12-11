@@ -151,7 +151,7 @@ ExpectedNode* create_expected_for() {
 
 	ExpectedNode* assignment = malloc(sizeof(ExpectedNode));
 
-	assignment->type = AST_ASSIGNMENT;
+	assignment->type = AST_DECLARATION;
 	assignment->token_text = NULL;
 	assignment->child_count = 3;
 	assignment->children = malloc(sizeof(ExpectedNode*) * 3);

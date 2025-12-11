@@ -1,0 +1,16 @@
+IMPORTANT BUGS
+	- More than 1 include statement cannot be used.
+	- For loops do not work, the initializer (typically `i`/`index`) does not register as a variable declaration.
+
+KIND OF IMPORTANT BUGS
+	- Only one error, warning, tip can show at a time.
+
+----------------------
+
+ADD ONTO ADAN
+	- String concatenation
+	- String interpolation
+	- Math in `return` statements
+	- File system library
+	- IO library
+	- Optimization

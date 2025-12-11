@@ -7,7 +7,8 @@ RUN apk add --no-cache \
 	lld \
 	cmake \
 	git \
-	bash
+	bash \
+	sudo
 
 ENV CC=clang
 ENV CXX=clang++

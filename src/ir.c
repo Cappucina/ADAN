@@ -8,12 +8,21 @@ static IRInstruction* ir_head = NULL;
 static IRInstruction* ir_tail = NULL;
 
 static int temp_counter = 0;
+static int string_counter = 0;
+static StringLiteral* string_literals = NULL;
 
 void init_ir() {
 	ir_head = NULL;
 	ir_tail = NULL;
-	
 	temp_counter = 0;
+}
+
+void init_ir_full() {
+	ir_head = NULL;
+	ir_tail = NULL;
+	temp_counter = 0;
+	string_counter = 0;
+	string_literals = NULL;
 }
 
 char* new_temporary() {
@@ -113,10 +122,37 @@ void print_ir() {
 	}
 }
 
+IRInstruction* get_ir_head() {
+	return ir_head;
+}
+
+StringLiteral* get_string_literals() {
+	return string_literals;
+}
+
+char* add_string_literal(const char* value) {
+	char buffer[32];
+	snprintf(buffer, 32, ".STR%d", string_counter);
+	string_counter++;
+
+	StringLiteral* lit = malloc(sizeof(StringLiteral));
+	lit->label = strdup(buffer);
+	lit->value = strdup(value);
+	lit->next = string_literals;
+	string_literals = lit;
+
+	return strdup(buffer);
+}
+
 char* generate_ir(ASTNode* node) {
 	if (node == NULL) return NULL;
 	switch (node->type) {
 		case AST_LITERAL: {
+			if (node->token.type == TOKEN_STRING) {
+				return add_string_literal(node->token.text);
+			}
+			if (node->token.type == TOKEN_TRUE) return strdup("1");
+			if (node->token.type == TOKEN_FALSE) return strdup("0");
 			if (node->token.text) return strdup(node->token.text);
 			return NULL;
 		}
@@ -263,18 +299,69 @@ char* generate_ir(ASTNode* node) {
 			if (node->child_count < 1) return NULL;
 			char* operand = generate_ir(node->children[0]);
 			if (!operand) return NULL;
-			char* temp = new_temporary();
-			if (node->token.type == TOKEN_MINUS || node->token.type == TOKEN_NOT) {
-				IRInstruction* new_instruction = create_instruction(IR_SUB, operand, NULL, temp);
+
+			if (node->token.type == TOKEN_MINUS) {
+				char* temp = new_temporary();
+				IRInstruction* new_instruction = create_instruction(IR_SUB, "0", operand, temp);
 				emit(new_instruction);
 				free(operand);
 				return temp;
 			}
 
+			if (node->token.type == TOKEN_NOT) {
+				char* result = new_temporary();
+				char* l_true = new_temporary();
+				char* l_end = new_temporary();
+
+				IRInstruction* jump_true = create_instruction(IR_JEQ, operand, "0", l_true);
+				emit(jump_true);
+
+				IRInstruction* assign_false = create_instruction(IR_ASSIGN, "0", NULL, result);
+				emit(assign_false);
+
+				IRInstruction* jump_end = create_instruction(IR_JMP, l_end, NULL, NULL);
+				emit(jump_end);
+
+				IRInstruction* true_label = create_instruction(IR_LABEL, l_true, NULL, NULL);
+				emit(true_label);
+
+				IRInstruction* assign_true = create_instruction(IR_ASSIGN, "1", NULL, result);
+				emit(assign_true);
+
+				IRInstruction* end_label = create_instruction(IR_LABEL, l_end, NULL, NULL);
+				emit(end_label);
+
+				free(operand);
+				free(l_true);
+				free(l_end);
+				return result;
+			}
+
 			free(operand);
+			return NULL;
+		}
+
+		case AST_INCREMENT_EXPR: {
+			if (node->child_count < 2) return NULL;
+			char* var = generate_ir(node->children[0]);
+			if (!var) return NULL;
+			TokenType op = node->children[1]->token.type;
+			char* temp = new_temporary();
+
+			if (op == TOKEN_INCREMENT) {
+				IRInstruction* add_inst = create_instruction(IR_ADD, var, "1", temp);
+				emit(add_inst);
+			} else {
+				IRInstruction* sub_inst = create_instruction(IR_SUB, var, "1", temp);
+				emit(sub_inst);
+			}
+
+			IRInstruction* assign_inst = create_instruction(IR_ASSIGN, temp, NULL, var);
+			emit(assign_inst);
+
 			free(temp);
 
-			return NULL;
+			return var;
 		}
 
 		case AST_COMPARISON: {
@@ -284,42 +371,46 @@ char* generate_ir(ASTNode* node) {
 			if (!left || !right) {
 				free(left);
 				free(right);
-				
 				return NULL;
 			}
 
 			char* result = new_temporary();
-			
+			char* l_true = new_temporary();
+			char* l_end = new_temporary();
+
 			IROp opcode;
 			switch (node->token.type) {
-				case TOKEN_EQUALS:
-					opcode = IR_JEQ;
-					break;
-				case TOKEN_NOT_EQUALS:
-					opcode = IR_JNE;
-					break;
-				case TOKEN_LESS:
-					opcode = IR_LT;
-					break;
-				case TOKEN_GREATER:
-					opcode = IR_GT;
-					break;
-				case TOKEN_LESS_EQUALS:
-					opcode = IR_LTE;
-					break;
-				case TOKEN_GREATER_EQUALS:
-					opcode = IR_GTE;
-					break;
-				default:
-					opcode = IR_JEQ;
-					break;
+				case TOKEN_EQUALS: opcode = IR_JEQ; break;
+				case TOKEN_NOT_EQUALS: opcode = IR_JNE; break;
+				case TOKEN_LESS: opcode = IR_LT; break;
+				case TOKEN_GREATER: opcode = IR_GT; break;
+				case TOKEN_LESS_EQUALS: opcode = IR_LTE; break;
+				case TOKEN_GREATER_EQUALS: opcode = IR_GTE; break;
+				default: opcode = IR_JEQ; break;
 			}
 
-			IRInstruction* new_instruction = create_instruction(opcode, left, right, result);
-			emit(new_instruction);
+			IRInstruction* jump_true = create_instruction(opcode, left, right, l_true);
+			emit(jump_true);
+
+			IRInstruction* assign_false = create_instruction(IR_ASSIGN, "0", NULL, result);
+			emit(assign_false);
+
+			IRInstruction* jump_end = create_instruction(IR_JMP, l_end, NULL, NULL);
+			emit(jump_end);
+
+			IRInstruction* true_label = create_instruction(IR_LABEL, l_true, NULL, NULL);
+			emit(true_label);
+
+			IRInstruction* assign_true = create_instruction(IR_ASSIGN, "1", NULL, result);
+			emit(assign_true);
+
+			IRInstruction* end_label = create_instruction(IR_LABEL, l_end, NULL, NULL);
+			emit(end_label);
 
 			free(left);
 			free(right);
+			free(l_true);
+			free(l_end);
 
 			return result;
 		}
@@ -510,6 +601,15 @@ void free_ir() {
 		free(temp->arg1);
 		free(temp->arg2);
 		free(temp->result);
+		free(temp);
+	}
+
+	while (string_literals != NULL) {
+		StringLiteral* temp = string_literals;
+		string_literals = string_literals->next;
+		
+		free(temp->label);
+		free(temp->value);
 		free(temp);
 	}
 }

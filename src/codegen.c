@@ -42,6 +42,11 @@ void get_location(char* result_buffer, char* variable_name, LiveInterval* interv
 		return;
 	}
 
+	if (variable_name[0] == '.' && variable_name[1] == 'S' && variable_name[2] == 'T' && variable_name[3] == 'R') {
+		sprintf(result_buffer, "%s(%%rip)", variable_name);
+		return;
+	}
+
 	LiveInterval* current = intervals;
 	while (current != NULL) {
 		if (strcmp(current->variable_name, variable_name) == 0) {
@@ -63,6 +68,11 @@ void get_location(char* result_buffer, char* variable_name, LiveInterval* interv
 
 void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetConfig* cfg, FILE* out) {
 	IRInstruction* current = ir_head;
+	
+	char arg_locs[8][64];
+	int arg_is_lea[8];
+	int arg_count = 0;
+	const char* arg_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 	char loc1[64];
 	char loc2[64];
@@ -76,6 +86,8 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 		if (current->arg1 != NULL) get_location(loc1, current->arg1, intervals, cfg);
 		if (current->arg2 != NULL) get_location(loc2, current->arg2, intervals, cfg);
 		if (current->result != NULL) get_location(result_loc, current->result, intervals, cfg);
+
+		int reset_args = 1;
 
 		switch (current->op) {
 			case IR_ADD:
@@ -101,11 +113,14 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				fprintf(out, "  movq %%rax, %s\n", result_loc);
 				break;
 
-			case IR_ASSIGN:
+		case IR_ASSIGN:
+			if (current->arg1[0] == '.' && current->arg1[1] == 'S' && current->arg1[2] == 'T' && current->arg1[3] == 'R') {
+				fprintf(out, "  leaq %s, %%rax\n", loc1);
+				fprintf(out, "  movq %%rax, %s\n", result_loc);
+			} else {
 				fprintf(out, "  movq %s, %s\n", loc1, result_loc);
-				break;
-
-			case IR_LABEL:
+			}
+			break;			case IR_LABEL:
 				fprintf(out, "%s:\n", current->arg1);
 				break;
 
@@ -143,15 +158,39 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				fprintf(out, "  jge %s\n", result_loc);
 				break;
 
-			case IR_PARAM:
-				fprintf(out, "  pushq %s\n", loc1);
+			case IR_PARAM: {
+				reset_args = 0;
+				if (arg_count < 8) {
+					strcpy(arg_locs[arg_count], loc1);
+					arg_is_lea[arg_count] = (current->arg1 && strncmp(current->arg1, ".STR", 4) == 0);
+					arg_count++;
+				}
 				break;
+			}
 
-			case IR_CALL:
-				fprintf(out, "  call %s\n", loc1);
+			case IR_CALL: {
+				reset_args = 0;
+				int pass = arg_count;
+				if (pass > 6) pass = 6; // clamp to available registers
+				for (int i = 0; i < pass; i++) {
+					if (arg_is_lea[i]) {
+						fprintf(out, "  leaq %s, %%%s\n", arg_locs[i], arg_regs[i]);
+					} else {
+						fprintf(out, "  movq %s, %%%s\n", arg_locs[i], arg_regs[i]);
+					}
+				}
+				arg_count = 0;
+				const char* target = current->arg1 ? current->arg1 : loc1;
+				fprintf(out, "  call %s\n", target);
 				fprintf(out, "  movq %%rax, %s\n", result_loc);
 				break;
+			}
+
+			default:
+				break;
 		}
+
+			if (reset_args) arg_count = 0;
 
 		current = current->next;
 	}
