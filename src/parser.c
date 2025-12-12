@@ -885,6 +885,7 @@ ASTNode* parse_while_statement(Parser* parser) {
 	return while_node;
 }
 
+
 ASTNode* parse_for_statement(Parser* parser) {
 	if (!expect(parser, TOKEN_FOR, PARSER_EXPECTED, "'for'", parser->current_token.text)) return NULL;
 	if (!expect(parser, TOKEN_LPAREN, PARSER_EXPECTED, "'('", parser->current_token.text)) return NULL;

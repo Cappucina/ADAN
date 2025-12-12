@@ -206,7 +206,6 @@ int main(int argc, char** argv) {
 	}
 	
 	fclose(asm_file);
-
 	free_symbol_table(symbols);
 	free_ast(ast);
 	free_parser(&parser);

@@ -91,71 +91,72 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 
 		switch (current->op) {
 			case IR_ADD:
-				fprintf(out, "  movq %s, %s\n", loc1, result_loc);
-				fprintf(out, "  addq %s, %s\n", loc2, result_loc);
+				fprintf(out, "movq %s, %s\n", loc1, result_loc);
+				fprintf(out, "addq %s, %s\n", loc2, result_loc);
 				break;
 
 			case IR_SUB:
-				fprintf(out, "  movq %s, %s\n", loc1, result_loc);
-				fprintf(out, "  subq %s, %s\n", loc2, result_loc);
+				fprintf(out, "movq %s, %s\n", loc1, result_loc);
+				fprintf(out, "subq %s, %s\n", loc2, result_loc);
 				break;
 
 			case IR_MUL:
-				fprintf(out, "  movq %s, %%rax\n", loc1);
-				fprintf(out, "  imulq %s\n", loc2);
-				fprintf(out, "  movq %%rax, %s\n", result_loc);
+				fprintf(out, "movq %s, %%rax\n", loc1);
+				fprintf(out, "imulq %s\n", loc2);
+				fprintf(out, "movq %%rax, %s\n", result_loc);
 				break;
 
 			case IR_DIV:
-				fprintf(out, "  movq %s, %%rax\n", loc1);
-				fprintf(out, "  cqto\n");
-				fprintf(out, "  idivq %s\n", loc2);
-				fprintf(out, "  movq %%rax, %s\n", result_loc);
+				fprintf(out, "movq %s, %%rax\n", loc1);
+				fprintf(out, "cqto\n");
+				fprintf(out, "idivq %s\n", loc2);
+				fprintf(out, "movq %%rax, %s\n", result_loc);
 				break;
 
 		case IR_ASSIGN:
 			if (current->arg1[0] == '.' && current->arg1[1] == 'S' && current->arg1[2] == 'T' && current->arg1[3] == 'R') {
-				fprintf(out, "  leaq %s, %%rax\n", loc1);
-				fprintf(out, "  movq %%rax, %s\n", result_loc);
+				fprintf(out, "leaq %s, %%rax\n", loc1);
+				fprintf(out, "movq %%rax, %s\n", result_loc);
 			} else {
-				fprintf(out, "  movq %s, %s\n", loc1, result_loc);
+				fprintf(out, "movq %s, %s\n", loc1, result_loc);
 			}
 			break;			case IR_LABEL:
 				fprintf(out, "%s:\n", current->arg1);
 				break;
 
 			case IR_JMP:
-				fprintf(out, "  jmp %s\n", current->arg1);
+				fprintf(out, "jmp %s\n", current->arg1);
 				break;
 
+			// broken
 			case IR_JEQ:
-				fprintf(out, "  cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "  je %s\n", result_loc);
+				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				fprintf(out, "je %s\n", result_loc);
 				break;
 
 			case IR_JNE:
-				fprintf(out, "  cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "  jne %s\n", result_loc);
+				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				fprintf(out, "jne %s\n", result_loc);
 				break;
 
 			case IR_LT:
-				fprintf(out, "  cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "  jl %s\n", result_loc);
+				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				fprintf(out, "jl %s\n", result_loc);
 				break;
 
 			case IR_GT:
-				fprintf(out, "  cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "  jg %s\n", result_loc);
+				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				fprintf(out, "jg %s\n", result_loc);
 				break;
 
 			case IR_LTE:
-				fprintf(out, "  cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "  jle %s\n", result_loc);
+				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				fprintf(out, "jle %s\n", result_loc);
 				break;
 
 			case IR_GTE:
-				fprintf(out, "  cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "  jge %s\n", result_loc);
+				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				fprintf(out, "jge %s\n", result_loc);
 				break;
 
 			case IR_PARAM: {
@@ -174,15 +175,15 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				if (pass > 6) pass = 6; // clamp to available registers
 				for (int i = 0; i < pass; i++) {
 					if (arg_is_lea[i]) {
-						fprintf(out, "  leaq %s, %%%s\n", arg_locs[i], arg_regs[i]);
+						fprintf(out, "leaq %s, %%%s\n", arg_locs[i], arg_regs[i]);
 					} else {
-						fprintf(out, "  movq %s, %%%s\n", arg_locs[i], arg_regs[i]);
+						fprintf(out, "movq %s, %%%s\n", arg_locs[i], arg_regs[i]);
 					}
 				}
 				arg_count = 0;
 				const char* target = current->arg1 ? current->arg1 : loc1;
-				fprintf(out, "  call %s\n", target);
-				fprintf(out, "  movq %%rax, %s\n", result_loc);
+				fprintf(out, "call %s\n", target);
+				fprintf(out, "movq %%rax, %s\n", result_loc);
 				break;
 			}
 
