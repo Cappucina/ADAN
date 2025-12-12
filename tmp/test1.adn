@@ -1,0 +1,7 @@
+program:: int main() {
+    counter :: int = 0;
+    while (counter < 2) {
+        counter = counter + 1;
+    }
+    return 0;
+}

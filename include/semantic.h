@@ -19,6 +19,10 @@ typedef struct SymbolTable {
 	Type current_return_type;
 } SymbolTable;
 
+int semantic_get_error_count();
+int semantic_get_warning_count();
+int semantic_get_tip_count();
+
 SymbolTable* init_symbol_table();
 
 void enter_scope(SymbolTable* table);

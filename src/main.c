@@ -128,6 +128,16 @@ int main(int argc, char** argv) {
 	check_entry_point(symbols);
 	analyze_variable_usage(symbols);
 
+	if (semantic_get_error_count() > 0) {
+		free_symbol_table(symbols);
+		free_ast(ast);
+		free_parser(&parser);
+		free(lexer);
+		free(file_source);
+		free_library_registry(global_library_registry);
+		return 1;
+	}
+
 	char* register_names[] = {"rbx", "r10", "r11", "r12"};
 	int caller_saved[] = {0, 1};
 	TargetConfig config;
@@ -189,8 +199,11 @@ int main(int argc, char** argv) {
 		int frame_size = compute_spill_frame_size(intervals, &config);
 		
 		fprintf(asm_file, ".globl main\n");
-		
-		generate_asm(all_ir, intervals, &config, asm_file);
+		int stack_bytes = frame_size;
+		if (stack_bytes < 0) stack_bytes = 0;
+		// Align to 16 bytes to keep stack ABI compliant when calling
+		stack_bytes = (stack_bytes + 15) & ~15;
+		generate_asm(all_ir, intervals, &config, asm_file, stack_bytes);
 	}
 	
 	fclose(asm_file);

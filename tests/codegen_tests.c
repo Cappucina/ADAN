@@ -238,7 +238,7 @@ void test_generate_asm_add() {
 		.next = NULL
 	};
 	
-	generate_asm(&instr, &interval1, &cfg, temp_file);
+	generate_asm(&instr, &interval1, &cfg, temp_file, 32);
 	
 	rewind(temp_file);
 	char buffer[256];
@@ -283,7 +283,7 @@ void test_generate_asm_label_jmp() {
 	
 	label_instr.next = &jmp_instr;
 	
-	generate_asm(&label_instr, NULL, &cfg, temp_file);
+	generate_asm(&label_instr, NULL, &cfg, temp_file, 32);
 	
 	rewind(temp_file);
 	char buffer[256];
@@ -334,7 +334,7 @@ void test_generate_asm_comparison() {
 		.next = NULL
 	};
 	
-	generate_asm(&instr, &interval1, &cfg, temp_file);
+	generate_asm(&instr, &interval1, &cfg, temp_file, 32);
 	
 	rewind(temp_file);
 	char buffer[256];

@@ -1,13 +1,11 @@
 include adan.io;
 
-program::string silly_message()
+program::int test()
 {
-	hello_you::string = "Hello!! This message was compiled and executed using the ADAN compiler!\n";
-
-	return hello_you;
+    return 2 + 2;
 }
 
 program::void main()
 {
-	print(silly_message());
+    print(test());
 }

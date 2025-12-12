@@ -39,7 +39,7 @@ const char* get_register_name(const TargetConfig* cfg, int index);
 //   `out` may be stdout or a FILE* you open.
 // 
 void get_location(char* result_buffer, char* variable_name, LiveInterval* intervals, const TargetConfig* cfg);
-void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetConfig* cfg, FILE* out);
+void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetConfig* cfg, FILE* out, int stack_bytes);
 
 // 
 //  Emit function prologue/epilogue helpers (useful when assembling functions).

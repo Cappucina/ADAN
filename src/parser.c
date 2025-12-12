@@ -220,6 +220,9 @@ ASTNode* parse_statement(Parser* parser) {
 				case TOKEN_TYPE_DECL:
 					return parse_declaration(parser);
 					break;
+				case TOKEN_ASSIGN:
+					return parse_assignment(parser);
+					break;
 				case TOKEN_LPAREN:
 					return parse_function_call(parser);
 					break;
@@ -849,6 +852,7 @@ ASTNode* parse_if_statement(Parser* parser) {
 	return if_node;
 }
 
+
 ASTNode* parse_while_statement(Parser* parser) {
 	ASTNode* while_node = create_ast_node(AST_WHILE, parser->current_token);
 
@@ -938,15 +942,11 @@ ASTNode* parse_for_statement(Parser* parser) {
 
 	ASTNode* initial_value = parse_expression(parser);
 	if (!initial_value) {
-		if (id_token.text) free(id_token.text);
-		if (type_token.text) free(type_token.text);
 		return NULL;
 	}
 
 	if (!expect(parser, TOKEN_SEMICOLON, PARSER_EXPECTED, "';'", parser->current_token.text)) {
 		free_ast(initial_value);
-		if (id_token.text) free(id_token.text);
-		if (type_token.text) free(type_token.text);
 		return NULL;
 	}
 
@@ -959,17 +959,13 @@ ASTNode* parse_for_statement(Parser* parser) {
 			set_error(parser, PARSER_EXPECTED, "comparison operator", parser->current_token.text);
 			free_ast(left_cond);
 			free_ast(initial_value);
-			if (id_token.text) free(id_token.text);
-			if (type_token.text) free(type_token.text);
 			return NULL;
-	}
+		}
 
 	ASTNode* right_cond = parse_expression(parser);
 	if (!right_cond) {
 		free_ast(left_cond);
 		free_ast(initial_value);
-		if (id_token.text) free(id_token.text);
-		if (type_token.text) free(type_token.text);
 		return NULL;
 	}
 
@@ -988,15 +984,6 @@ ASTNode* parse_for_statement(Parser* parser) {
 	assignment_node->children[1] = type_node;
 	assignment_node->children[2] = initial_value;
 
-	if (id_token.text) {
-		free(id_token.text);
-		id_token.text = NULL;
-	}
-	if (type_token.text) {
-		free(type_token.text);
-		type_token.text = NULL;
-	}
-
 	if (!expect(parser, TOKEN_SEMICOLON, PARSER_EXPECTED, "';'", parser->current_token.text)) {
 		free_ast(assignment_node);
 		free_ast(condition_node);
@@ -1006,7 +993,6 @@ ASTNode* parse_for_statement(Parser* parser) {
 	Token inc_id_token = parser->current_token;
 	if (inc_id_token.text) inc_id_token.text = strdup(inc_id_token.text);
 	if (!expect(parser, TOKEN_IDENTIFIER, PARSER_EXPECTED, "identifier for increment", parser->current_token.text)) {
-		if (inc_id_token.text) free(inc_id_token.text);
 		free_ast(assignment_node);
 		free_ast(condition_node);
 		return NULL;
@@ -1015,8 +1001,6 @@ ASTNode* parse_for_statement(Parser* parser) {
 	Token inc_op_token = parser->current_token;
 	if (inc_op_token.text) inc_op_token.text = strdup(inc_op_token.text);
 	if (!match(parser, TOKEN_INCREMENT) && !match(parser, TOKEN_DECREMENT)) {
-		if (inc_id_token.text) free(inc_id_token.text);
-		if (inc_op_token.text) free(inc_op_token.text);
 		set_error(parser, PARSER_EXPECTED, "increment/decrement operator", parser->current_token.text);
 		free_ast(assignment_node);
 		free_ast(condition_node);
@@ -1030,15 +1014,6 @@ ASTNode* parse_for_statement(Parser* parser) {
 	increment_node->children = malloc(sizeof(ASTNode*) * 2);
 	increment_node->children[0] = inc_var_node;
 	increment_node->children[1] = inc_op_node;
-
-	if (inc_id_token.text) {
-		free(inc_id_token.text);
-		inc_id_token.text = NULL;
-	}
-	if (inc_op_token.text) {
-		free(inc_op_token.text);
-		inc_op_token.text = NULL;
-	}
 
 	if (!expect(parser, TOKEN_RPAREN, PARSER_EXPECTED, "')'", parser->current_token.text)) {
 		free_ast(assignment_node);

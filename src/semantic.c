@@ -9,6 +9,15 @@
 #include <stdio.h>
 #include "library.h"
 
+// Track diagnostics so we can report multiple messages before halting.
+static int semantic_error_count = 0;
+static int semantic_warning_count = 0;
+static int semantic_tip_count = 0;
+
+int semantic_get_error_count() { return semantic_error_count; }
+int semantic_get_warning_count() { return semantic_warning_count; }
+int semantic_get_tip_count() { return semantic_tip_count; }
+
 const char* type_to_string(Type type);
 
 SymbolTable* init_symbol_table() {
@@ -232,14 +241,12 @@ void analyze_file(ASTNode* file_node, SymbolTable* table) {
 void analyze_program(ASTNode* func_node, SymbolTable* table) {
 	if (!func_node || !table) return;
 	if (func_node->type != AST_PROGRAM) return;
-
 	ASTNode* return_type_node = func_node->children[0];
 	ASTNode* func_name_node = func_node->children[1];
 	ASTNode* params_node = func_node->children[2];
 	ASTNode* block_node = func_node->children[3];
 
 	Type return_type = get_expression_type(return_type_node, table);
-	
 	table->current_return_type = return_type;
 
 	if (!add_symbol(table, func_name_node->token.text, return_type, func_node)) {
@@ -298,8 +305,9 @@ void analyze_for(ASTNode* for_node, SymbolTable* table) {
 	enter_scope(table);
 	analyze_statement(assignment_node, table);
 
-	if (get_expression_type(condition_node, table) != TYPE_BOOLEAN) {
-		semantic_error(for_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], for_node->token.text, TYPE_BOOLEAN);
+	Type cond_type = get_expression_type(condition_node, table);
+	if (cond_type != TYPE_BOOLEAN) {
+		semantic_error(for_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], type_to_string(cond_type), type_to_string(TYPE_BOOLEAN));
 	}
 
 	if (increment_node == NULL) {
@@ -329,8 +337,9 @@ void analyze_if(ASTNode* if_node, SymbolTable* table) {
 	enter_scope(table);
 	analyze_statement(condition_node, table);
 
-	if (get_expression_type(condition_node, table) != TYPE_BOOLEAN) {
-		semantic_error(if_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], if_node->token.text, TYPE_BOOLEAN);
+	Type cond_type = get_expression_type(condition_node, table);
+	if (cond_type != TYPE_BOOLEAN) {
+		semantic_error(if_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], type_to_string(cond_type), type_to_string(TYPE_BOOLEAN));
 	}
 
 	if (block_node && block_node->type == AST_BLOCK) {
@@ -363,8 +372,9 @@ void analyze_while(ASTNode* while_node, SymbolTable* table) {
 	enter_scope(table);
 	analyze_statement(condition_node, table);
 
-	if (get_expression_type(condition_node, table) != TYPE_BOOLEAN) {
-		semantic_error(while_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], while_node->token.text, TYPE_BOOLEAN);
+	Type cond_type = get_expression_type(condition_node, table);
+	if (cond_type != TYPE_BOOLEAN) {
+		semantic_error(while_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], type_to_string(cond_type), type_to_string(TYPE_BOOLEAN));
 	}
 
 	if (block_node && block_node->type == AST_BLOCK) {
@@ -454,7 +464,6 @@ void analyze_assignment(ASTNode* assignment_node, SymbolTable* table) {
 	//  STRICT: No implicit type conversion in assignment
 	// 
 	if (identifier_symbol->type != expression_type) {
-		semantic_error(assignment_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], type_to_string(expression_type), type_to_string(identifier_symbol->type));
 		return;
 	}
 }
@@ -770,7 +779,6 @@ Type analyze_expression(ASTNode* expr_node, SymbolTable* table) {
 	if (!expr_node) {
 		return TYPE_UNKNOWN;
 	}
-
 	Type result = TYPE_UNKNOWN;
 
 	if (expr_node->type == AST_BINARY_OP || expr_node->type == AST_BINARY_EXPR ||
@@ -794,7 +802,6 @@ Type analyze_binary_op(ASTNode* binary_node, SymbolTable* table) {
 	if (!binary_node || binary_node->child_count < 2) {
 		return TYPE_UNKNOWN;
 	}
-
 	Type left_type = get_expression_type(binary_node->children[0], table);
 	Type right_type = get_expression_type(binary_node->children[1], table);
 
@@ -963,7 +970,6 @@ Type analyze_unary_op(ASTNode* unary_node, SymbolTable* table) {
 // 
 Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 	if (!expr_node) return TYPE_UNKNOWN;
-
 	if (expr_node->type == AST_TYPE) {
 		switch (expr_node->token.type) {
 			case TOKEN_INT:
@@ -1057,19 +1063,19 @@ Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 			annotate_node_type(expr_node, TYPE_UNKNOWN);
 			return TYPE_UNKNOWN;
 		}
-	
+
 		Type L = get_expression_type(expr_node->children[0], table);
 		Type R = get_expression_type(expr_node->children[1], table);
+
+		if (expr_node->type == AST_COMPARISON || expr_node->type == AST_LOGICAL_OP) {
+			annotate_node_type(expr_node, TYPE_BOOLEAN);
+			return TYPE_BOOLEAN;
+		}
 
 		if (is_numeric_type(L) && is_numeric_type(R)) {
 			Type res = (L == TYPE_FLOAT || R == TYPE_FLOAT) ? TYPE_FLOAT : TYPE_INT;
 			annotate_node_type(expr_node, res);
 			return res;
-		}
-
-		if (expr_node->type == AST_COMPARISON || expr_node->type == AST_LOGICAL_OP) {
-			annotate_node_type(expr_node, TYPE_BOOLEAN);
-			return TYPE_BOOLEAN;
 		}
 
 		if (L == R && L != TYPE_UNKNOWN) {
@@ -1191,6 +1197,7 @@ const char* type_to_string(Type type) {
 // 
 void semantic_error(ASTNode* node, const char* fmt, ...) {
 	if (node == NULL) return;
+	semantic_error_count++;
 
 	va_list args;
 	va_start(args, fmt);
@@ -1199,11 +1206,11 @@ void semantic_error(ASTNode* node, const char* fmt, ...) {
 	va_end(args);
 	
 	log_semantic_error(node, "%s", buffer);
-	exit(1);
 }
 
 void semantic_warning(ASTNode* node, const char* fmt, ...) {
 	if (node == NULL) return;
+	semantic_warning_count++;
 
 	va_list args;
 	va_start(args, fmt);
@@ -1216,6 +1223,7 @@ void semantic_warning(ASTNode* node, const char* fmt, ...) {
 
 void semantic_tip(ASTNode* node, const char* fmt, ...) {
 	if (node == NULL) return;
+	semantic_tip_count++;
 
 	va_list args;
 	va_start(args, fmt);

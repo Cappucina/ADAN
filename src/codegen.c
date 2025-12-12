@@ -66,7 +66,7 @@ void get_location(char* result_buffer, char* variable_name, LiveInterval* interv
 	strcpy(result_buffer, variable_name);
 }
 
-void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetConfig* cfg, FILE* out) {
+void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetConfig* cfg, FILE* out, int stack_bytes) {
 	IRInstruction* current = ir_head;
 	
 	char arg_locs[8][64];
@@ -93,13 +93,31 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 
 		switch (current->op) {
 			case IR_ADD:
-				fprintf(out, "movq %s, %s\n", loc1, result_loc);
-				fprintf(out, "addq %s, %s\n", loc2, result_loc);
+				{
+					int result_is_mem = strchr(result_loc, '(') != NULL;
+					if (result_is_mem) {
+						fprintf(out, "movq %s, %%r11\n", loc1);
+						fprintf(out, "addq %s, %%r11\n", loc2);
+						fprintf(out, "movq %%r11, %s\n", result_loc);
+					} else {
+						fprintf(out, "movq %s, %s\n", loc1, result_loc);
+						fprintf(out, "addq %s, %s\n", loc2, result_loc);
+					}
+				}
 				break;
 
 			case IR_SUB:
-				fprintf(out, "movq %s, %s\n", loc1, result_loc);
-				fprintf(out, "subq %s, %s\n", loc2, result_loc);
+				{
+					int result_is_mem = strchr(result_loc, '(') != NULL;
+					if (result_is_mem) {
+						fprintf(out, "movq %s, %%r11\n", loc1);
+						fprintf(out, "subq %s, %%r11\n", loc2);
+						fprintf(out, "movq %%r11, %s\n", result_loc);
+					} else {
+						fprintf(out, "movq %s, %s\n", loc1, result_loc);
+						fprintf(out, "subq %s, %s\n", loc2, result_loc);
+					}
+				}
 				break;
 
 			case IR_MUL:
@@ -131,12 +149,18 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				}
 				break;
 			
-			case IR_LABEL:
-							if (in_function) emit_epilogue(out, cfg);
-							fprintf(out, "%s:\n", current->arg1);
-							emit_prologue(out, cfg, 32);
-				in_function = true;
+			case IR_LABEL: {
+				int is_block_label = (current->arg1 && current->arg1[0] == '_');
+				if (!is_block_label) {
+					if (in_function) emit_epilogue(out, cfg);
+					fprintf(out, "%s:\n", current->arg1);
+					emit_prologue(out, cfg, stack_bytes);
+					in_function = true;
+				} else {
+					fprintf(out, "%s:\n", current->arg1);
+				}
 				break;
+			}
 
 			case IR_RETURN:
 				fprintf(out, "movq %s, %%rax\n", loc1);
