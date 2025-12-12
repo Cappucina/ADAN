@@ -78,6 +78,8 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 	char loc2[64];
 	char result_loc[64];
 
+	bool in_function = false;  // Start outside; first label begins a function
+
 	while (current != NULL) {
 		loc1[0] = '\0'; 
 		loc2[0] = '\0'; 
@@ -113,51 +115,134 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				fprintf(out, "movq %%rax, %s\n", result_loc);
 				break;
 
-		case IR_ASSIGN:
-			if (current->arg1[0] == '.' && current->arg1[1] == 'S' && current->arg1[2] == 'T' && current->arg1[3] == 'R') {
-				fprintf(out, "leaq %s, %%rax\n", loc1);
-				fprintf(out, "movq %%rax, %s\n", result_loc);
-			} else {
-				fprintf(out, "movq %s, %s\n", loc1, result_loc);
-			}
-			break;			case IR_LABEL:
-				fprintf(out, "%s:\n", current->arg1);
+			case IR_ASSIGN:
+				if (current->arg1[0] == '.' && current->arg1[1] == 'S' && current->arg1[2] == 'T' && current->arg1[3] == 'R') {
+					fprintf(out, "leaq %s, %%rax\n", loc1);
+					fprintf(out, "movq %%rax, %s\n", result_loc);
+				} else {
+					int src_is_mem = (strchr(loc1, '(') != NULL);
+					int dst_is_mem = (strchr(result_loc, '(') != NULL);
+					if (src_is_mem && dst_is_mem) {
+						fprintf(out, "movq %s, %%r11\n", loc1);
+						fprintf(out, "movq %%r11, %s\n", result_loc);
+					} else {
+						fprintf(out, "movq %s, %s\n", loc1, result_loc);
+					}
+				}
+				break;
+			
+			case IR_LABEL:
+							if (in_function) emit_epilogue(out, cfg);
+							fprintf(out, "%s:\n", current->arg1);
+							emit_prologue(out, cfg, 32);
+				in_function = true;
+				break;
+
+			case IR_RETURN:
+				fprintf(out, "movq %s, %%rax\n", loc1);
 				break;
 
 			case IR_JMP:
 				fprintf(out, "jmp %s\n", current->arg1);
 				break;
 
-			// broken
-			case IR_JEQ:
-				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "je %s\n", result_loc);
-				break;
+			case IR_JEQ: {
+				int loc2_is_zero = (strcmp(loc2, "$0") == 0);
+				if (loc2_is_zero && loc1[0] != '$') {
+					// Zero comparison: emit cmpq $0, loc1
+					fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				} else if (loc1[0] == '$' && loc2[0] == '$') {
+					// Both immediate: move loc1 to scratch, then compare
+					fprintf(out, "movq %s, %%r11\n", loc1);
+					fprintf(out, "cmpq %s, %%r11\n", loc2);
+				} else if (loc1[0] == '$') {
+					// loc1 is immediate, loc2 is not; swap for cmpq
+					fprintf(out, "cmpq %s, %s\n", loc1, loc2);
+				} else if (loc2[0] == '$' || loc2[0] == '%') {
+					// loc2 is immediate or register; compare normally
+					fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				} else {
+					// Both memory; move loc2 to scratch
+					fprintf(out, "movq %s, %%r11\n", loc2);
+					fprintf(out, "cmpq %%r11, %s\n", loc1);
+				}
+				fprintf(out, "je %s\n", current->result);
+				break; }
 
-			case IR_JNE:
-				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "jne %s\n", result_loc);
-				break;
+			case IR_JNE: {
+				int loc1_is_imm = (loc1[0] == '$');
+				int loc2_is_reg_or_imm = (loc2[0] == '$' || loc2[0] == '%');
+				if (loc1_is_imm) {
+					fprintf(out, "movq %s, %%r11\n", loc1);
+					fprintf(out, "cmpq %s, %%r11\n", loc2);
+				} else if (loc2_is_reg_or_imm) {
+					fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				} else {
+					fprintf(out, "movq %s, %%r11\n", loc2);
+					fprintf(out, "cmpq %%r11, %s\n", loc1);
+				}
+				fprintf(out, "jne %s\n", current->result);
+				break; }
 
-			case IR_LT:
-				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "jl %s\n", result_loc);
-				break;
+			case IR_LT: {
+				int loc1_is_imm = (loc1[0] == '$');
+				int loc2_is_reg_or_imm = (loc2[0] == '$' || loc2[0] == '%');
+				if (loc1_is_imm) {
+					fprintf(out, "movq %s, %%r11\n", loc1);
+					fprintf(out, "cmpq %s, %%r11\n", loc2);
+				} else if (loc2_is_reg_or_imm) {
+					fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				} else {
+					fprintf(out, "movq %s, %%r11\n", loc2);
+					fprintf(out, "cmpq %%r11, %s\n", loc1);
+				}
+				fprintf(out, "jl %s\n", current->result);
+				break; }
 
-			case IR_GT:
-				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "jg %s\n", result_loc);
-				break;
+			case IR_GT: {
+				int loc1_is_imm = (loc1[0] == '$');
+				int loc2_is_reg_or_imm = (loc2[0] == '$' || loc2[0] == '%');
+				if (loc1_is_imm) {
+					fprintf(out, "movq %s, %%r11\n", loc1);
+					fprintf(out, "cmpq %s, %%r11\n", loc2);
+				} else if (loc2_is_reg_or_imm) {
+					fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				} else {
+					fprintf(out, "movq %s, %%r11\n", loc2);
+					fprintf(out, "cmpq %%r11, %s\n", loc1);
+				}
+				fprintf(out, "jg %s\n", current->result);
+				break; }
 
-			case IR_LTE:
-				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "jle %s\n", result_loc);
-				break;
+			case IR_LTE: {
+				int loc1_is_imm = (loc1[0] == '$');
+				int loc2_is_reg_or_imm = (loc2[0] == '$' || loc2[0] == '%');
+				if (loc1_is_imm) {
+					fprintf(out, "movq %s, %%r11\n", loc1);
+					fprintf(out, "cmpq %s, %%r11\n", loc2);
+				} else if (loc2_is_reg_or_imm) {
+					fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				} else {
+					fprintf(out, "movq %s, %%r11\n", loc2);
+					fprintf(out, "cmpq %%r11, %s\n", loc1);
+				}
+				fprintf(out, "jle %s\n", current->result);
+				break; }
 
-			case IR_GTE:
-				fprintf(out, "cmpq %s, %s\n", loc2, loc1);
-				fprintf(out, "jge %s\n", result_loc);
-				break;
+			case IR_GTE: {
+				int loc1_is_imm = (loc1[0] == '$');
+				int loc2_is_reg_or_imm = (loc2[0] == '$' || loc2[0] == '%');
+				if (loc1_is_imm) {
+					fprintf(out, "movq %s, %%r11\n", loc1);
+					fprintf(out, "cmpq %s, %%r11\n", loc2);
+				} else if (loc2_is_reg_or_imm) {
+					fprintf(out, "cmpq %s, %s\n", loc2, loc1);
+				} else {
+					fprintf(out, "movq %s, %%r11\n", loc2);
+					fprintf(out, "cmpq %%r11, %s\n", loc1);
+				}
+				fprintf(out, "jge %s\n", current->result);
+				break; }
 
 			case IR_PARAM: {
 				reset_args = 0;
@@ -191,27 +276,24 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				break;
 		}
 
-			if (reset_args) arg_count = 0;
+		if (reset_args) arg_count = 0;
 
 		current = current->next;
 	}
+
+	if (in_function) emit_epilogue(out, cfg);
 }
 
 void emit_prologue(FILE* out, const TargetConfig* cfg, int stack_bytes) {
 	if (out == NULL) return;
 	if (stack_bytes < 0) stack_bytes = 0;
 
-	int padded = stack_bytes;
-	int rem = padded % 16;
+	last_frame_adjust = stack_bytes;
 
-	if (rem != 0) padded += 16 - rem;
-
-	last_frame_adjust = padded;
-
-	fprintf(out, "	pushq %%rbp\n");
-	fprintf(out, "	movq %%rsp, %%rbp\n");
-	if (padded > 0) {
-		fprintf(out, "	subq $%d, %%rsp\n", padded);
+	fprintf(out, "\tpushq %%rbp\n");
+	fprintf(out, "\tmovq %%rsp, %%rbp\n");
+	if (stack_bytes > 0) {
+		fprintf(out, "\tsubq $%d, %%rsp\n", stack_bytes);
 	}
 }
 

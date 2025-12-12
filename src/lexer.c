@@ -150,6 +150,7 @@ Token* next_token(Lexer* lexer) {
 	if (c == ':' && next == ':') return make_token(lexer, TOKEN_TYPE_DECL, (const char*[]){":", ":"}, 2);
 	if (c == '+' && next == '+') return make_token(lexer, TOKEN_INCREMENT, (const char*[]){"+", "+"}, 2);
 	if (c == '-' && next == '-') return make_token(lexer, TOKEN_DECREMENT, (const char*[]){"-", "-"}, 2);
+	if (c == '/' && next == '/') return make_token(lexer, TOKEN_SINGLE_COMMENT, (const char*[]){"/", "/"}, 2);
 
 	switch(c) {
 		case '+': return make_token(lexer, TOKEN_PLUS, (const char*[]){"+"}, 1);

@@ -8,7 +8,8 @@ RUN apk add --no-cache \
 	cmake \
 	git \
 	bash \
-	sudo
+	sudo \
+	python3
 
 ENV CC=clang
 ENV CXX=clang++

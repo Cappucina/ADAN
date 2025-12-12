@@ -21,7 +21,8 @@ typedef enum {
 	IR_LTE,       // IF a <= b GOTO L1
 	IR_GTE,       // IF a >= b GOTO L1
 	IR_PARAM,     // Handle function params
-	IR_CALL       // Handle function calls
+	IR_CALL,      // Handle function calls
+	IR_RETURN,    // Handle function returns
 } IROp;
 
 // 

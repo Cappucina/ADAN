@@ -10,6 +10,7 @@ static IRInstruction* ir_tail = NULL;
 static int temp_counter = 0;
 static int string_counter = 0;
 static StringLiteral* string_literals = NULL;
+static char* current_function = NULL;
 
 void init_ir() {
 	ir_head = NULL;
@@ -23,6 +24,7 @@ void init_ir_full() {
 	temp_counter = 0;
 	string_counter = 0;
 	string_literals = NULL;
+	current_function = NULL;
 }
 
 char* new_temporary() {
@@ -85,7 +87,7 @@ void print_ir() {
 			case IR_JMP:
 				printf("GOTO %s\n", current->arg1);
 				break;
-			
+
 			case IR_JEQ:
 				printf("IF %s == %s GOTO %s\n", current->arg1, current->arg2, current->result);
 				break;
@@ -116,6 +118,10 @@ void print_ir() {
 			
 			case IR_CALL:
 				printf("%s = CALL %s\n", current->result, current->arg1);
+				break;
+			
+			case IR_RETURN:
+				printf("RETURN %s\n", current->arg1);
 				break;
 		}
 		current = current->next;
@@ -158,7 +164,16 @@ char* generate_ir(ASTNode* node) {
 		}
 
 		case AST_IDENTIFIER: {
-			if (node->token.text) return strdup(node->token.text);
+			if (node->token.text) {
+				// Scope variable to current function
+				char buffer[128];
+				if (current_function) {
+					snprintf(buffer, sizeof(buffer), "%s.%s", current_function, node->token.text);
+				} else {
+					snprintf(buffer, sizeof(buffer), "%s", node->token.text);
+				}
+				return strdup(buffer);
+			}
 			return NULL;
 		}
 
@@ -226,7 +241,14 @@ char* generate_ir(ASTNode* node) {
 				return NULL;
 			}
 
-			char* dest = strdup(name);
+			// Scope variable to current function
+			char dest_buffer[128];
+			if (current_function) {
+				snprintf(dest_buffer, sizeof(dest_buffer), "%s.%s", current_function, name);
+			} else {
+				snprintf(dest_buffer, sizeof(dest_buffer), "%s", name);
+			}
+			char* dest = strdup(dest_buffer);
 			IRInstruction* new_instruction = create_instruction(IR_ASSIGN, val, NULL, dest);
 
 			emit(new_instruction);
@@ -234,7 +256,7 @@ char* generate_ir(ASTNode* node) {
 			free(val);
 			free(dest);
 
-			return strdup(name);
+			return strdup(dest_buffer);
 		}
 
 		case AST_DECLARATION: {
@@ -251,7 +273,14 @@ char* generate_ir(ASTNode* node) {
 					return NULL;
 				}
 
-				char* dest = strdup(name);
+				// Scope variable to current function
+				char dest_buffer[128];
+				if (current_function) {
+					snprintf(dest_buffer, sizeof(dest_buffer), "%s.%s", current_function, name);
+				} else {
+					snprintf(dest_buffer, sizeof(dest_buffer), "%s", name);
+				}
+				char* dest = strdup(dest_buffer);
 				IRInstruction* new_instruction = create_instruction(IR_ASSIGN, val, NULL, dest);
 
 				emit(new_instruction);
@@ -259,10 +288,33 @@ char* generate_ir(ASTNode* node) {
 				free(val);
 				free(dest);
 
-				return strdup(name);
+				return strdup(dest_buffer);
 			}
 
 			if (node->child_count >= 1 && node->children[0]->token.text) return strdup(node->children[0]->token.text);
+			return NULL;
+		}
+
+		case AST_PROGRAM: {
+			// Save function name for variable scoping
+			// AST_PROGRAM structure: [return_type, name, params, body]
+			const char* func_name = NULL;
+			if (node->child_count > 1 && node->children[1]) {
+				func_name = node->children[1]->token.text;
+			}
+		
+			if (current_function) free(current_function);
+			current_function = func_name ? strdup(func_name) : NULL;
+		
+			IRInstruction* label = create_instruction(IR_LABEL, (char*)func_name, NULL, NULL);
+			emit(label);
+
+			// Process function body (child[3])
+			if (node->child_count > 3 && node->children[3]) {
+				generate_ir(node->children[3]);
+			}
+			// Do not emit an implicit RETURN; rely on explicit AST_RETURN.
+
 			return NULL;
 		}
 
@@ -430,7 +482,6 @@ char* generate_ir(ASTNode* node) {
 			
 			char* cond_temp = generate_ir(node->children[0]);
 			if (!cond_temp) return NULL;
-			
 			char* l_else = new_temporary();
 			char* l_end = new_temporary();
 			
@@ -539,7 +590,9 @@ char* generate_ir(ASTNode* node) {
 			if (node->child_count > 0) {
 				char* return_value = generate_ir(node->children[0]);
 				if (return_value) {
-					free(return_value);
+					IRInstruction* return_inst = create_instruction(IR_RETURN, return_value, NULL, NULL);
+                    emit(return_inst);
+                    free(return_value);
 				}
 			}
 
@@ -577,15 +630,6 @@ char* generate_ir(ASTNode* node) {
 			free(index);
 
 			return result;
-		}
-
-		case AST_PROGRAM: {
-			char* last_result = NULL;
-			for (int i = 0; i < node->child_count; i++) {
-				if (last_result) free(last_result);
-				last_result = generate_ir(node->children[i]);
-			}
-			return last_result;
 		}
 
 		default:

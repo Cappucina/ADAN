@@ -15,6 +15,9 @@ docker:
 
 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
 
+format:
+	docker exec -i adan-dev-container sh -c "python3 ./scripts/beautifier.py --file ./compiled/assembled.s > assembled.tmp && mv assembled.tmp ./compiled/assembled.s"
+
 compile: docker
 	docker exec -i adan-dev-container sh -c "sudo rm -rf compiled"
 	docker exec -i adan-dev-container sh -c "sudo mkdir -p compiled"
@@ -24,6 +27,8 @@ execute:
 	docker exec -i adan-dev-container sh -c "sudo compiled/main examples/my-program.adn"
 	docker exec -i adan-dev-container sh -c "sudo gcc -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program"
 	docker exec -i adan-dev-container sh -c "sudo ./compiled/program"
+	
+	make format -silent
 
 debug: compile
 	make execute -silent

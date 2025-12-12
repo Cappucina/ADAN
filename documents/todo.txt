@@ -1,8 +1,6 @@
 IMPORTANT BUGS
 	- For loops do not work, the initializer (typically `i`/`index`) does not register as a variable declaration.
-	- If statements do not work
-	- Libraries written in ADAN do not work (they get imported properly, but functions don't work properly)
-	- While loops do not work
+	- While loops act strangely. No errors, however nothing gets looped.
 
 KIND OF IMPORTANT BUGS
 	- Only one error, warning, tip can show at a time.

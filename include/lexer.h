@@ -80,6 +80,7 @@ typedef enum {
 	//
 	TOKEN_INT_LITERAL,
 	TOKEN_FLOAT_LITERAL,
+	TOKEN_SINGLE_COMMENT,
 
 	//
 	//  Special

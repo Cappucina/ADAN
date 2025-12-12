@@ -148,9 +148,7 @@ int main(int argc, char** argv) {
 	for (int i = 0; i < ast->child_count; i++) {
 		ASTNode* child = ast->children[i];
 		if (child && child->type == AST_PROGRAM && child->child_count > 3) {
-			IRInstruction* label = create_instruction(IR_LABEL, (char*)child->children[1]->token.text, NULL, NULL);
-			emit(label);
-			generate_ir(child->children[3]);
+			generate_ir(child);
 		}
 	}
 	
@@ -161,9 +159,7 @@ int main(int argc, char** argv) {
 				for (int i = 0; i < lib->ast->child_count; i++) {
 					ASTNode* func_node = lib->ast->children[i];
 					if (func_node && func_node->type == AST_PROGRAM && func_node->child_count > 3) {
-						IRInstruction* label = create_instruction(IR_LABEL, (char*)func_node->children[1]->token.text, NULL, NULL);
-						emit(label);
-						generate_ir(func_node->children[3]);
+						generate_ir(func_node);
 					}
 				}
 			}
@@ -194,15 +190,7 @@ int main(int argc, char** argv) {
 		
 		fprintf(asm_file, ".globl main\n");
 		
-		IRInstruction* first = all_ir;
-		if (first && first->op == IR_LABEL) {
-			fprintf(asm_file, "%s:\n", first->arg1);
-			emit_prologue(asm_file, &config, frame_size);
-			first = first->next;
-		}
-		
-		generate_asm(first, intervals, &config, asm_file);
-		emit_epilogue(asm_file, &config);
+		generate_asm(all_ir, intervals, &config, asm_file);
 	}
 	
 	fclose(asm_file);
@@ -212,6 +200,8 @@ int main(int argc, char** argv) {
 	free(lexer);
 	free(file_source);
 	free_library_registry(global_library_registry);
+
+	// print_ir();
 
 	return 0;
 }

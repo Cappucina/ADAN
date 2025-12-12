@@ -72,6 +72,7 @@ typedef enum {
 	// 
 	AST_LITERAL,
 	AST_ARRAY_LITERAL,
+	AST_SINGLE_COMMENT
 } ASTNodeType;
 
 typedef struct ASTNode ASTNode;

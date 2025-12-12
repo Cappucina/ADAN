@@ -5,6 +5,10 @@
 #include "lexer.h"
 #include "ast.h"
 #include "parser.h"
+#define UNUSED(x) (void)(x)
+
+// Forward declarations for locally defined helpers
+static ASTNode* parse_single_comment(Parser* parser);
 #include "semantic.h"
 #include "logs.h"
 
@@ -246,6 +250,10 @@ ASTNode* parse_statement(Parser* parser) {
 		case TOKEN_INCLUDE:
 			return parse_include_statement(parser);
 			break;
+
+		case TOKEN_SINGLE_COMMENT:
+			return parse_single_comment(parser);
+			break;
 		
 		case TOKEN_INT_LITERAL:
 		case TOKEN_FLOAT_LITERAL:
@@ -261,6 +269,15 @@ ASTNode* parse_statement(Parser* parser) {
 			set_error(parser, PARSER_UNEXPECTED_TOKEN, current_token.text);
 			return NULL;
 	}
+}
+
+static ASTNode* parse_single_comment(Parser* parser) {
+	ASTNode* node = create_ast_node(AST_SINGLE_COMMENT, parser->current_token);
+	if (!match(parser, TOKEN_SINGLE_COMMENT)) {
+		set_error(parser, PARSER_UNEXPECTED_TOKEN, parser->current_token.text);
+		return NULL;
+	}
+	return node;
 }
 
 ASTNode* parse_break_statement(Parser* parser) {
