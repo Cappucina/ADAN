@@ -14,6 +14,39 @@
 #include <signal.h>
 #include <unistd.h>
 
+static char* escape_for_asm(const char* s) {
+	if (!s) return strdup("");
+	int cap = 64, len = 0;
+	char* out = malloc(cap);
+	if (!out) return NULL;
+	for (int i = 0; s[i] != '\0'; i++) {
+		char c = s[i];
+		const char* esc = NULL;
+		char tmp[3] = {0};
+		switch (c) {
+			case '\n': esc = "\\n"; break;
+			case '\t': esc = "\\t"; break;
+			case '\r': esc = "\\r"; break;
+			case '"': esc = "\\\""; break;
+			case '\\': esc = "\\\\"; break;
+			default:
+				tmp[0] = c;
+				esc = tmp;
+				break;
+		}
+		int add = strlen(esc);
+		if (len + add + 1 >= cap) {
+			cap *= 2;
+			char* tmp2 = realloc(out, cap);
+			if (!tmp2) { free(out); return NULL; }
+			out = tmp2;
+		}
+		for (int j = 0; j < add; j++) out[len++] = esc[j];
+	}
+	out[len] = '\0';
+	return out;
+}
+
 LibraryRegistry* global_library_registry = NULL;
 
 static void handle_timeout(int signum) {
@@ -22,7 +55,7 @@ static void handle_timeout(int signum) {
 	exit(1);
 }
 
-char* read_file_source(const char* file_path) {
+static char* compiler_read_file_source(const char* file_path) {
 	FILE* fp = fopen(file_path, "rb");
 	if (!fp) return NULL;
 
@@ -82,7 +115,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	char* file_source = read_file_source(argv[1]);
+	char* file_source = compiler_read_file_source(argv[1]);
 	if (!file_source) {
 		printf("Failed to read source file\n");
 		return 1;
@@ -182,8 +215,10 @@ int main(int argc, char** argv) {
 		fprintf(asm_file, ".section .rodata\n");
 		StringLiteral* current = strings;
 		while (current) {
+			char* esc = escape_for_asm(current->value);
 			fprintf(asm_file, "%s:\n", current->label);
-			fprintf(asm_file, "  .string \"%s\"\n", current->value);
+			fprintf(asm_file, "  .string \"%s\"\n", esc);
+			free(esc);
 			current = current->next;
 		}
 		fprintf(asm_file, "\n");

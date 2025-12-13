@@ -22,4 +22,15 @@ def find_relative_path():
 	ancestor = script_path.parent.parent
 	return ancestor
 
-subprocess.run(["docker", "build", "-q", "-t", CONTAINER_NAME, find_relative_path()], check=True)
+# Force building an amd64 image so that tooling inside the container
+# (assembler, gcc) matches the x86_64 assembly produced by the code
+# generator. On Apple Silicon this avoids generating an arm64 image
+# that cannot assemble x86_64 mnemonics like `pushq`/`movq`.
+try:
+	subprocess.run([
+		"docker", "build", "-q", "-t", CONTAINER_NAME,
+		"--platform", "linux/amd64", find_relative_path()
+	], check=True)
+except subprocess.CalledProcessError:
+	# Fall back to a normal build if the docker version doesn't support --platform
+	subprocess.run(["docker", "build", "-q", "-t", CONTAINER_NAME, find_relative_path()], check=True)
