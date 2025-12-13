@@ -1,0 +1,11 @@
+include adan.io;
+
+i::int = 0;
+
+program::void main() {
+    print_int(G_i);
+    print("\n");
+    i++;
+    print_int(G_i);
+    print("\n");
+}

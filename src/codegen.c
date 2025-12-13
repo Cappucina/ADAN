@@ -47,6 +47,12 @@ void get_location(char* result_buffer, char* variable_name, LiveInterval* interv
 		return;
 	}
 
+	// Global variable label (e.g., 'G_name') should be treated as a global symbol
+	if (variable_name[0] == 'G' && variable_name[1] == '_') {
+		sprintf(result_buffer, "%s(%%rip)", variable_name);
+		return;
+	}
+
 	LiveInterval* current = intervals;
 	while (current != NULL) {
 		if (strcmp(current->variable_name, variable_name) == 0) {

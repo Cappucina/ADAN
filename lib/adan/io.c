@@ -10,6 +10,13 @@ void print(const char* str) {
 	fflush(stdout);
 }
 
+#ifndef BUILDING_COMPILER_MAIN
+void print_int(long long x) {
+	printf("%lld", x);
+	fflush(stdout);
+}
+#endif
+
 // Runtime helper: read a file into a heap-allocated buffer and return it.
 // This function is provided to programs built by the compiler and is
 // intentionally omitted when building the compiler itself (to avoid

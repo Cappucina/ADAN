@@ -5,6 +5,11 @@
 #include "parser_tests.h"
 #include "codegen_tests.h"
 #include "lexer.h"
+#include "logs.h"
+
+// Global verbosity; default is false (0). Can be toggled via command-line
+// flag `--verbose` or `-v`.
+int VERBOSE = 0;
 #include "parser.h"
 #include "semantic.h"
 #include "ir.h"
@@ -55,6 +60,35 @@ static void handle_timeout(int signum) {
 	exit(1);
 }
 
+// Signal handler for runtime signals like SIGSEGV, SIGBUS, SIGFPE.
+// Uses the project's logging utilities for consistent message formatting
+// and provides a helpful hint when stack overflow (infinite recursion)
+// is the likely cause.
+static void runtime_signal_handler(int signum, siginfo_t* info, void* ctx) {
+	(void)ctx;
+	void* addr = info ? info->si_addr : NULL;
+
+	switch (signum) {
+		case SIGSEGV:
+			// Commonly triggered by stack overflow (infinite recursion) or
+			// illegal memory access. Provide a suggestion to the user.
+			log_error(NULL, 0, 0, "Segmentation fault at address %p. This is often caused by a stack overflow (infinite recursion) or an invalid memory access. Try limiting recursion or inspecting stack allocations.", addr);
+			break;
+		case SIGBUS:
+			log_error(NULL, 0, 0, "Bus error (SIGBUS) at address %p: possible unaligned or invalid memory access.", addr);
+			break;
+		case SIGFPE:
+			log_error(NULL, 0, 0, "Floating point exception (SIGFPE): arithmetic error (e.g., division by zero or overflow).");
+			break;
+		default:
+			log_error(NULL, 0, 0, "Unhandled signal %d received.", signum);
+	}
+
+	// Exit with a status that encodes the signal to help in any shell
+	// scenarios where exit codes are examined (128 + signal).
+	_exit(128 + signum);
+}
+
 static char* compiler_read_file_source(const char* file_path) {
 	FILE* fp = fopen(file_path, "rb");
 	if (!fp) return NULL;
@@ -103,11 +137,35 @@ static char* compiler_read_file_source(const char* file_path) {
 int main(int argc, char** argv) {
 	global_library_registry = init_library_registry("lib");
 
+	// Parse an optional verbosity flag. Keep this minimal: if either
+	// `--verbose` or `-v` is present anywhere, enable verbose mode.
+	for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
+			VERBOSE = 1;
+			break;
+		}
+	}
+
+	// Run test build helpers but only output additional debug traces if
+	// verbose mode is enabled. The test functions themselves will still
+	// perform asserts and checks; debug prints are gated by VERBOSE.
 	create_lexer_tests();
 	create_parser_tests();
 	create_codegen_tests();
 
 	signal(SIGALRM, handle_timeout);
+	// Install runtime handlers for signals that indicate hard errors at
+	// runtime (segfault, bus error, FPE). Use sigaction so we can retrieve
+	// additional information via `siginfo_t` (like faulting address).
+	{
+		struct sigaction sa;
+		memset(&sa, 0, sizeof(sa));
+		sa.sa_sigaction = runtime_signal_handler;
+		sa.sa_flags = SA_SIGINFO;
+		sigaction(SIGSEGV, &sa, NULL);
+		sigaction(SIGBUS, &sa, NULL);
+		sigaction(SIGFPE, &sa, NULL);
+	}
 	alarm(10);
 
 	if (argc < 2) {
@@ -190,8 +248,13 @@ int main(int argc, char** argv) {
 	
 	for (int i = 0; i < ast->child_count; i++) {
 		ASTNode* child = ast->children[i];
-		if (child && child->type == AST_PROGRAM && child->child_count > 3) {
-			generate_ir(child);
+		if (child) {
+			if (child->type == AST_DECLARATION) {
+				// Register global variables
+				generate_ir(child);
+			} else if (child->type == AST_PROGRAM && child->child_count > 3) {
+				generate_ir(child);
+			}
 		}
 	}
 	
@@ -224,15 +287,48 @@ int main(int argc, char** argv) {
 		fprintf(asm_file, "\n");
 	}
 	
+	// Emit global variable declarations as data (if any) before .text
+	GlobalVariable* gvars = get_global_variables();
+	if (gvars) {
+		fprintf(asm_file, ".section .data\n");
+		GlobalVariable* cur = gvars;
+		while (cur) {
+			if (cur->is_string && cur->initial) {
+				fprintf(asm_file, "%s: \n", cur->label);
+				fprintf(asm_file, "    .quad %s\n", cur->initial);
+			} else {
+				const char* val = cur->initial ? cur->initial : "0";
+				fprintf(asm_file, "%s: \n", cur->label);
+				fprintf(asm_file, "    .quad %s\n", val);
+			}
+			cur = cur->next;
+		}
+		fprintf(asm_file, "\n");
+	}
+
 	fprintf(asm_file, ".text\n");
 	
 	IRInstruction* all_ir = get_ir_head();
 	if (all_ir) {
+		// Number instructions (always) - this is useful for liveness.
 		number_instructions(all_ir);
+		// Compute liveness and assign stack offsets in either mode.
 		LiveInterval* intervals = compute_liveness(all_ir);
 		assign_stack_offsets(intervals, &config);
+
+		if (VERBOSE) {
+			// Print details only in verbose mode.
+			print_ir();
+			print_liveness(intervals);
+			LiveInterval* it = intervals;
+			fprintf(stderr, "Stack layout:\n");
+			while (it) {
+				fprintf(stderr, "  %s -> reg=%d spilled=%d offset=%d\n", it->variable_name, it->registry, it->spilled, it->stack_offset);
+				it = it->next;
+			}
+		}
+
 		int frame_size = compute_spill_frame_size(intervals, &config);
-		
 		fprintf(asm_file, ".globl main\n");
 		int stack_bytes = frame_size;
 		if (stack_bytes < 0) stack_bytes = 0;
@@ -251,5 +347,5 @@ int main(int argc, char** argv) {
 
 	// print_ir();
 
-	return 0;
 }
+

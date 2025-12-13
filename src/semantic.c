@@ -232,6 +232,8 @@ void analyze_file(ASTNode* file_node, SymbolTable* table) {
 		ASTNode* child = file_node->children[i];
 		if (child->type == AST_INCLUDE) {
 			analyze_include(child, table);
+		} else if (child->type == AST_DECLARATION) {
+			analyze_declaration(child, table);
 		} else if (child->type == AST_PROGRAM) {
 			analyze_program(child, table);
 		}

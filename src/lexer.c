@@ -263,7 +263,7 @@ Token* next_token(Lexer* lexer) {
 		case '-': return make_token(lexer, TOKEN_MINUS, (const char*[]){"-"}, 1);
 		case '*': return make_token(lexer, TOKEN_ASTERISK, (const char*[]){"*"}, 1);
 		case '/': return make_token(lexer, TOKEN_SLASH, (const char*[]){"/"}, 1);
-		case '%': return make_token(lexer, TOKEN_PERCENT, (const char*[]){"%"}, 1);
+		case '%': return make_token(lexer, TOKEN_PERCENT, (const char*[]){"%%"}, 1);
 		case '^': return make_token(lexer, TOKEN_CAROT, (const char*[]){"^"}, 1);
 		case '(': return make_token(lexer, TOKEN_LPAREN, (const char*[]){"("}, 1);
 		case ')': return make_token(lexer, TOKEN_RPAREN, (const char*[]){")"}, 1);

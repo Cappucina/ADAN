@@ -346,9 +346,38 @@ ASTNode* parse_file(Parser* parser) {
 		includes[include_count++] = include;
 	}
 	
+	int declaration_count = 0;
+	ASTNode** declarations = NULL;
+
 	int program_count = 0;
 	ASTNode** programs = NULL;
 	
+	// Accept top-level declarations (e.g. global variables) before programs
+	while (parser->current_token.type == TOKEN_IDENTIFIER && parser->peek_token.type == TOKEN_TYPE_DECL) {
+		ASTNode* decl = parse_declaration(parser);
+		if (!decl) {
+			for (int i = 0; i < include_count; i++) free_ast(includes[i]);
+			for (int i = 0; i < declaration_count; i++) free_ast(declarations[i]);
+			free(includes);
+			free(declarations);
+			free(file_node);
+			return NULL;
+		}
+
+		ASTNode** temp = realloc(declarations, sizeof(ASTNode*) * (declaration_count + 1));
+		if (!temp) {
+			free_ast(decl);
+			for (int i = 0; i < include_count; i++) free_ast(includes[i]);
+			for (int i = 0; i < declaration_count; i++) free_ast(declarations[i]);
+			free(includes);
+			free(declarations);
+			free(file_node);
+			return NULL;
+		}
+		declarations = temp;
+		declarations[declaration_count++] = decl;
+	}
+
 	while (parser->current_token.type == TOKEN_PROGRAM) {
 		ASTNode* program = parse_program(parser);
 		if (!program) {
@@ -386,13 +415,16 @@ ASTNode* parse_file(Parser* parser) {
 		for (int i = 0; i < include_count; i++) {
 			free_ast(includes[i]);
 		}
+		for (int i = 0; i < declaration_count; i++) {
+			free_ast(declarations[i]);
+		}
 		free(includes);
 		free(file_node);
 		set_error(parser, PARSER_EXPECTED, "at least one program function", parser->current_token.text);
 		return NULL;
 	}
 	
-	file_node->child_count = include_count + program_count;
+	file_node->child_count = include_count + declaration_count + program_count;
 	file_node->children = malloc(sizeof(ASTNode*) * file_node->child_count);
 	if (!file_node->children) {
 		for (int i = 0; i < include_count; i++) {
@@ -407,14 +439,20 @@ ASTNode* parse_file(Parser* parser) {
 		return NULL;
 	}
 	
+	int idx = 0;
 	for (int i = 0; i < include_count; i++) {
 		file_node->children[i] = includes[i];
+		idx++;
+	}
+	for (int i = 0; i < declaration_count; i++) {
+		file_node->children[idx++] = declarations[i];
 	}
 	for (int i = 0; i < program_count; i++) {
-		file_node->children[include_count + i] = programs[i];
+		file_node->children[idx++] = programs[i];
 	}
 	
 	free(includes);
+	free(declarations);
 	free(programs);
 	return file_node;
 }
@@ -1124,6 +1162,29 @@ ASTNode* parse_include_statement(Parser* parser) {
 	return include_node;
 }
 
+static int is_expression_like_node(ASTNode* node) {
+	if (!node) return 0;
+	switch (node->type) {
+		case AST_LITERAL:
+		case AST_IDENTIFIER:
+		case AST_INCREMENT_EXPR:
+		case AST_BINARY_EXPR:
+		case AST_BINARY_OP:
+		case AST_UNARY_EXPR:
+		case AST_UNARY_OP:
+		case AST_COMPARISON:
+		case AST_GROUPED_EXPR:
+		case AST_TERNARY_EXPR:
+		case AST_CAST_EXPR:
+		case AST_EXPRESSION:
+		case AST_LOGICAL_OP:
+		case AST_ARRAY_LITERAL:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
 ASTNode* parse_block(Parser* parser) {
 	ASTNode* node = create_ast_node(AST_BLOCK, (Token){0});
 	if (!node) {
@@ -1139,6 +1200,22 @@ ASTNode* parse_block(Parser* parser) {
 		ASTNode* st = parse_statement(parser);
 		if (!st) {
 			set_error(parser, PARSER_EXPECTED, "statement in block", parser->current_token.text);
+			return NULL;
+		}
+
+		// Check for a trailing semicolon; function-call statements consume
+		// their own semicolon, so `parser->current_token` may already be
+		// pointing to the next token. If the current token isn't a
+		// semicolon and this node is an expression-like node, it's an
+		// error.
+		if (parser->current_token.type == TOKEN_SEMICOLON) {
+			if (!expect(parser, TOKEN_SEMICOLON, PARSER_EXPECTED, "';' after expression", parser->current_token.text)) {
+				free_ast(st);
+				return NULL;
+			}
+		} else if (is_expression_like_node(st)) {
+			set_error(parser, PARSER_EXPECTED, "';' after expression", parser->current_token.text);
+			free_ast(st);
 			return NULL;
 		}
 
@@ -1167,12 +1244,26 @@ ASTNode* parse_identifier(Parser* parser) {
 		if (id_token.text) free(id_token.text);
 		return NULL;
 	}
-	ASTNode* identifier_node = create_ast_node(AST_IDENTIFIER, id_token);
-	return identifier_node;
+				ASTNode* identifier_node = create_ast_node(AST_IDENTIFIER, id_token);
+				// After parsing an identifier as primary, allow postfix operator handling
+				if (parser->current_token.type == TOKEN_INCREMENT || parser->current_token.type == TOKEN_DECREMENT) {
+					Token inc_op_token = parser->current_token;
+					if (inc_op_token.text) inc_op_token.text = strdup(inc_op_token.text);
+					match(parser, parser->current_token.type);
+					ASTNode* inc_op_node = create_ast_node(AST_OPERATORS, inc_op_token);
+					ASTNode* increment_node = create_ast_node(AST_INCREMENT_EXPR, (Token){0});
+					increment_node->child_count = 2;
+					increment_node->children = malloc(sizeof(ASTNode*) * 2);
+					increment_node->children[0] = identifier_node;
+					increment_node->children[1] = inc_op_node;
+					return increment_node;
+				}
+				return identifier_node;
 }
 
 ASTNode* parse_primary(Parser* parser) {
 	TokenType type = parser->current_token.type;
+	ASTNode* primary_node = NULL;
 
 	switch (type) {
 		case TOKEN_IDENTIFIER: {
@@ -1234,6 +1325,21 @@ ASTNode* parse_primary(Parser* parser) {
 			}
 			
 			ASTNode* identifier_node = create_ast_node(AST_IDENTIFIER, id_token);
+
+			// After parsing an identifier primary, allow postfix operator handling
+			if (parser->current_token.type == TOKEN_INCREMENT || parser->current_token.type == TOKEN_DECREMENT) {
+				Token inc_op_token = parser->current_token;
+				if (inc_op_token.text) inc_op_token.text = strdup(inc_op_token.text);
+				match(parser, parser->current_token.type);
+
+				ASTNode* inc_op_node = create_ast_node(AST_OPERATORS, inc_op_token);
+				ASTNode* increment_node = create_ast_node(AST_INCREMENT_EXPR, (Token){0});
+				increment_node->child_count = 2;
+				increment_node->children = malloc(sizeof(ASTNode*) * 2);
+				increment_node->children[0] = identifier_node;
+				increment_node->children[1] = inc_op_node;
+				return increment_node;
+			}
 			return identifier_node;
 		}
 		case TOKEN_INT_LITERAL:
@@ -1241,7 +1347,8 @@ ASTNode* parse_primary(Parser* parser) {
 			Token tok = parser->current_token;
 			if (tok.text) tok.text = strdup(tok.text);
 			match(parser, type);
-			return create_ast_node(AST_LITERAL, tok);
+			primary_node = create_ast_node(AST_LITERAL, tok);
+			break;
 		}
 
 		case TOKEN_TRUE:
@@ -1249,7 +1356,8 @@ ASTNode* parse_primary(Parser* parser) {
 			Token tok = parser->current_token;
 			if (tok.text) tok.text = strdup(tok.text);
 			match(parser, type);
-			return create_ast_node(AST_LITERAL, tok);
+			primary_node = create_ast_node(AST_LITERAL, tok);
+			break;
 		}
 
 		case TOKEN_STRING: {
@@ -1267,7 +1375,8 @@ ASTNode* parse_primary(Parser* parser) {
 			}
 
 			if (!has_interp) {
-				return create_ast_node(AST_LITERAL, tok);
+				primary_node = create_ast_node(AST_LITERAL, tok);
+				break;
 			}
 
 			// Build parts: alternating string literals and expression AST nodes
@@ -1348,7 +1457,7 @@ ASTNode* parse_primary(Parser* parser) {
 			free(tok.text);
 
 			if (parts_count == 0) return NULL;
-			if (parts_count == 1) return parts[0];
+			if (parts_count == 1) { primary_node = parts[0]; break; }
 
 			// Build left-to-right concatenation binary plus nodes: left + right + ...
 			ASTNode* left = parts[0];
@@ -1363,7 +1472,8 @@ ASTNode* parse_primary(Parser* parser) {
 			}
 
 			free(parts);
-			return left;
+			primary_node = left;
+			break;
 		}
 
 		case TOKEN_LPAREN: {
@@ -1378,7 +1488,8 @@ ASTNode* parse_primary(Parser* parser) {
 				return NULL;
 			}
 			match(parser, TOKEN_RPAREN);
-			return expr;
+			primary_node = expr;
+			break;
 		}
 
 		case TOKEN_ARRAY: {
@@ -1409,7 +1520,8 @@ ASTNode* parse_primary(Parser* parser) {
 				return NULL;
 			}
 			match(parser, TOKEN_RBRACE);
-			return array_node;
+			primary_node = array_node;
+			break;
 		}
 
 		case TOKEN_MINUS:
@@ -1426,11 +1538,28 @@ ASTNode* parse_primary(Parser* parser) {
 			node->child_count = 1;
 			node->children = malloc(sizeof(ASTNode*));
 			node->children[0] = operand;
-			return node;
+			primary_node = node;
+			break;
 		}
 
 		default:
 			set_error(parser, PARSER_UNEXPECTED_TOKEN, parser->current_token.text);
 			return NULL;
 	}
+
+	// After parsing any primary, allow postfix ++/-- to be applied to the resulting node.
+	if (primary_node && (parser->current_token.type == TOKEN_INCREMENT || parser->current_token.type == TOKEN_DECREMENT)) {
+		Token inc_op_token = parser->current_token;
+		if (inc_op_token.text) inc_op_token.text = strdup(inc_op_token.text);
+		match(parser, parser->current_token.type);
+		ASTNode* inc_op_node = create_ast_node(AST_OPERATORS, inc_op_token);
+		ASTNode* increment_node = create_ast_node(AST_INCREMENT_EXPR, (Token){0});
+		increment_node->child_count = 2;
+		increment_node->children = malloc(sizeof(ASTNode*) * 2);
+		increment_node->children[0] = primary_node;
+		increment_node->children[1] = inc_op_node;
+		return increment_node;
+	}
+
+	return primary_node;
 }

@@ -11,6 +11,16 @@ static int temp_counter = 0;
 static int string_counter = 0;
 static StringLiteral* string_literals = NULL;
 static char* current_function = NULL;
+static GlobalVariable* global_vars = NULL;
+
+static char* find_global_var_label(const char* name) {
+	GlobalVariable* cur = global_vars;
+	while (cur) {
+		if (strcmp(cur->name, name) == 0) return strdup(cur->label);
+		cur = cur->next;
+	}
+	return NULL;
+}
 
 void init_ir() {
 	ir_head = NULL;
@@ -150,6 +160,31 @@ char* add_string_literal(const char* value) {
 	return strdup(buffer);
 }
 
+char* add_global_variable(const char* name, const char* initial_value, int is_string) {
+	char label[128];
+	snprintf(label, sizeof(label), "G_%s", name);
+
+	// Check for existing
+	GlobalVariable* cur = global_vars;
+	while (cur) {
+		if (strcmp(cur->name, name) == 0) return strdup(cur->label);
+		cur = cur->next;
+	}
+
+	GlobalVariable* gv = malloc(sizeof(GlobalVariable));
+	gv->label = strdup(label);
+	gv->name = strdup(name);
+	gv->initial = initial_value ? strdup(initial_value) : NULL;
+	gv->is_string = is_string;
+	gv->next = global_vars;
+	global_vars = gv;
+	return strdup(gv->label);
+}
+
+GlobalVariable* get_global_variables() {
+	return global_vars;
+}
+
 char* generate_ir(ASTNode* node) {
 	if (node == NULL) return NULL;
 	switch (node->type) {
@@ -164,17 +199,19 @@ char* generate_ir(ASTNode* node) {
 		}
 
 		case AST_IDENTIFIER: {
-			if (node->token.text) {
-				// Scope variable to current function
-				char buffer[128];
-				if (current_function) {
-					snprintf(buffer, sizeof(buffer), "%s.%s", current_function, node->token.text);
-				} else {
-					snprintf(buffer, sizeof(buffer), "%s", node->token.text);
-				}
-				return strdup(buffer);
+			if (!node->token.text) return NULL;
+			// If it's a global var, return its label
+			char* gv = find_global_var_label(node->token.text);
+			if (gv) return gv;
+
+			// Scope variable to current function
+			char buffer[128];
+			if (current_function) {
+				snprintf(buffer, sizeof(buffer), "%s.%s", current_function, node->token.text);
+			} else {
+				snprintf(buffer, sizeof(buffer), "%s", node->token.text);
 			}
-			return NULL;
+			return strdup(buffer);
 		}
 
 		case AST_BINARY_OP:
@@ -282,19 +319,31 @@ char* generate_ir(ASTNode* node) {
 				return NULL;
 			}
 
-			// Scope variable to current function
+			// Determine whether this assignment targets a global variable or a
+			// scoped (function-local) variable. If a global variable exists,
+			// use its label (G_<name>); otherwise, scope it to the current
+			// function via "<func>.<name>".
+			char* gv = find_global_var_label(name);
 			char dest_buffer[128];
-			if (current_function) {
-				snprintf(dest_buffer, sizeof(dest_buffer), "%s.%s", current_function, name);
+			char* dest = NULL;
+			if (gv) {
+				dest = gv; // returned value is already strdup'd; use it directly
 			} else {
-				snprintf(dest_buffer, sizeof(dest_buffer), "%s", name);
+				if (current_function) {
+					snprintf(dest_buffer, sizeof(dest_buffer), "%s.%s", current_function, name);
+				} else {
+					snprintf(dest_buffer, sizeof(dest_buffer), "%s", name);
+				}
+				dest = strdup(dest_buffer);
 			}
-			char* dest = strdup(dest_buffer);
 			IRInstruction* new_instruction = create_instruction(IR_ASSIGN, val, NULL, dest);
 
 			emit(new_instruction);
 
 			free(val);
+			// If dest was allocated here, free it; if it came from
+			// find_global_var_label() (gv), it is strdup'd as well and
+			// should be freed too after emission.
 			free(dest);
 
 			return strdup(dest_buffer);
@@ -304,7 +353,23 @@ char* generate_ir(ASTNode* node) {
 			if (node->child_count >= 3) {
 				ASTNode* id = node->children[0];
 				ASTNode* expr = node->children[2];
+				// If this is a top-level/global declaration (no current function), add
+				// a global variable and initialize it in the data section.
+				if (current_function == NULL) {
+					char* val = generate_ir(expr);
+					if (!val) return NULL;
 
+					int is_str = 0;
+					if (val[0] == '.' && val[1] == 'S' && val[2] == 'T' && val[3] == 'R') {
+						is_str = 1;
+					}
+
+					char* g_label = add_global_variable(id->token.text, val, is_str);
+					free(val);
+					return g_label;
+				}
+
+				// Otherwise, local variable inside a function - handle as assignment
 				char* val = generate_ir(expr);
 				if (!val) return NULL;
 
@@ -436,25 +501,51 @@ char* generate_ir(ASTNode* node) {
 
 		case AST_INCREMENT_EXPR: {
 			if (node->child_count < 2) return NULL;
-			char* var = generate_ir(node->children[0]);
-			if (!var) return NULL;
+			ASTNode* target_node = node->children[0];
 			TokenType op = node->children[1]->token.type;
-			char* temp = new_temporary();
 
-			if (op == TOKEN_INCREMENT) {
-				IRInstruction* add_inst = create_instruction(IR_ADD, var, "1", temp);
-				emit(add_inst);
+			// If the operand is an identifier (L-value), implement postfix semantics:
+			// old_val = load(target)
+			// new_val = old_val +/- 1
+			// store(new_val) -> target
+			// return old_val
+			if (target_node->type == AST_IDENTIFIER) {
+				char* var = generate_ir(target_node);
+				if (!var) return NULL;
+
+				char* old_temp = new_temporary();
+				IRInstruction* load_inst = create_instruction(IR_ASSIGN, var, NULL, old_temp);
+				emit(load_inst);
+
+				char* new_temp = new_temporary();
+				if (op == TOKEN_INCREMENT) {
+					IRInstruction* add_inst = create_instruction(IR_ADD, var, "1", new_temp);
+					emit(add_inst);
+				} else {
+					IRInstruction* sub_inst = create_instruction(IR_SUB, var, "1", new_temp);
+					emit(sub_inst);
+				}
+
+				IRInstruction* assign_inst = create_instruction(IR_ASSIGN, new_temp, NULL, var);
+				emit(assign_inst);
+
+				free(new_temp);
+				return old_temp;
 			} else {
-				IRInstruction* sub_inst = create_instruction(IR_SUB, var, "1", temp);
-				emit(sub_inst);
+				// If operand is not an identifier, evaluate it and return the incremented value
+				char* operand_val = generate_ir(target_node);
+				if (!operand_val) return NULL;
+				char* result_temp = new_temporary();
+				if (op == TOKEN_INCREMENT) {
+					IRInstruction* add_inst = create_instruction(IR_ADD, operand_val, "1", result_temp);
+					emit(add_inst);
+				} else {
+					IRInstruction* sub_inst = create_instruction(IR_SUB, operand_val, "1", result_temp);
+					emit(sub_inst);
+				}
+				free(operand_val);
+				return result_temp;
 			}
-
-			IRInstruction* assign_inst = create_instruction(IR_ASSIGN, temp, NULL, var);
-			emit(assign_inst);
-
-			free(temp);
-
-			return var;
 		}
 
 		case AST_COMPARISON: {

@@ -27,8 +27,10 @@ compile: docker
 	docker exec -i adan-dev-container sh -c "sudo gcc -DBUILDING_COMPILER_MAIN src/*.c tests/*.c lib/adan/*.c -I include -o compiled/main"
 
 execute:
-	docker exec -i adan-dev-container sh -c "sudo compiled/main examples/my-program.adn"
-	docker exec -i adan-dev-container sh -c "sudo gcc -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program"
+	docker exec -i adan-dev-container sh -c "sudo compiled/main examples/stack-overflow-test.adn"
+	docker exec -i adan-dev-container sh -c "sudo compiled/main examples/simple.adn"
+# 	docker exec -i adan-dev-container sh -c "sudo compiled/main examples/my-program.adn"
+	docker exec -i adan-dev-container sh -c "sudo gcc -I include -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program"
 	docker exec -i adan-dev-container sh -c "sudo ./compiled/program"
 	
 	make format -silent
