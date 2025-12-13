@@ -215,11 +215,52 @@ char* generate_ir(ASTNode* node) {
 					return NULL;
 			}
 
+			// If either operand has been annotated as a string, generate
+			// a runtime call to `concat` (and cast numeric args) instead
+			// of a plain arithmetic add.
+			Type left_type = node->children[0] ? node->children[0]->annotated_type : TYPE_UNKNOWN;
+			Type right_type = node->children[1] ? node->children[1]->annotated_type : TYPE_UNKNOWN;
+
+			if ((left_type == TYPE_STRING) || (right_type == TYPE_STRING)) {
+				// Convert non-string operands with a cast() call.
+				if (left_type != TYPE_STRING) {
+					char* tmp_cast = new_temporary();
+					IRInstruction* param = create_instruction(IR_PARAM, left, NULL, NULL);
+					IRInstruction* call = create_instruction(IR_CALL, "cast", NULL, tmp_cast);
+					emit(param);
+					emit(call);
+					free(left);
+					left = tmp_cast;
+				}
+
+				if (right_type != TYPE_STRING) {
+					char* tmp_cast = new_temporary();
+					IRInstruction* param = create_instruction(IR_PARAM, right, NULL, NULL);
+					IRInstruction* call = create_instruction(IR_CALL, "cast", NULL, tmp_cast);
+					emit(param);
+					emit(call);
+					free(right);
+					right = tmp_cast;
+				}
+
+				char* tmp_concat = new_temporary();
+				IRInstruction* param1 = create_instruction(IR_PARAM, left, NULL, NULL);
+				IRInstruction* param2 = create_instruction(IR_PARAM, right, NULL, NULL);
+				IRInstruction* call_concat = create_instruction(IR_CALL, "concat", NULL, tmp_concat);
+				emit(param1);
+				emit(param2);
+				emit(call_concat);
+
+				free(left);
+				free(right);
+				return tmp_concat;
+			}
+
 			char* temp = new_temporary();
 			IRInstruction* new_instruction = create_instruction(opcode, left, right, temp);
-			
+            
 			emit(new_instruction);
-			
+            
 			free(left);
 			free(right);
 

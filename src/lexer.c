@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "lexer.h"
 #include <string.h>
+#include "stringUtils.h"
 
 Lexer* create_lexer(const char *src) {
 	Lexer* new_lex = (Lexer*) malloc(sizeof(Lexer));
@@ -147,6 +148,7 @@ Token* next_token(Lexer* lexer) {
 					case '"': outc = '"'; break;
 					case '\'': outc = '\''; break;
 					case '0': outc = '\0'; break;
+					case '$': outc = '$'; break;
 					default: outc = next; break;
 				}
 
@@ -162,6 +164,59 @@ Token* next_token(Lexer* lexer) {
 				// advance past the backslash and the escaped character
 				lexer->position += 2;
 				continue;
+			} else if (ch == '$') {
+				char next = lexer->src[lexer->position + 1];
+				if (next == '{') {
+					// Keep the interpolation marker `${...}` verbatim so the parser can
+					// identify and parse embedded expressions rather than evaluating
+					// them at lexing time.
+					// append '$' and '{' and then all inner characters until '}' and the '}' itself.
+					if (buf_len + 2 >= buf_cap) {
+						buf_cap *= 2;
+						char* tmp = realloc(buf, buf_cap);
+						if (!tmp) { free(buf); return NULL; }
+						buf = tmp;
+					}
+					buf[buf_len++] = '$';
+					buf[buf_len++] = '{';
+
+					// advance past '$' and '{'
+					lexer->position += 2;
+					while (lexer->src[lexer->position] != '\0' && lexer->src[lexer->position] != '}') {
+						char ch2 = lexer->src[lexer->position];
+						if (buf_len + 1 >= buf_cap) {
+							buf_cap *= 2;
+							char* tmp = realloc(buf, buf_cap);
+							if (!tmp) { free(buf); return NULL; }
+							buf = tmp;
+						}
+						buf[buf_len++] = ch2;
+						advance(lexer);
+					}
+
+					// append trailing '}' if present
+					if (lexer->src[lexer->position] == '}') {
+						if (buf_len + 1 >= buf_cap) {
+							buf_cap *= 2;
+							char* tmp = realloc(buf, buf_cap);
+							if (!tmp) { free(buf); return NULL; }
+							buf = tmp;
+						}
+						buf[buf_len++] = '}';
+						advance(lexer);
+					}
+					continue;
+				} else {
+					// Just a normal dollar sign
+					if (buf_len + 1 >= buf_cap) {
+						buf_cap *= 2;
+						char* tmp = realloc(buf, buf_cap);
+						if (!tmp) { free(buf); return NULL; }
+						buf = tmp;
+					}
+					buf[buf_len++] = ch;
+					advance(lexer);
+				}
 			} else {
 				if (buf_len + 1 >= buf_cap) {
 					buf_cap *= 2;

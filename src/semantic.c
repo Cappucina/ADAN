@@ -841,9 +841,16 @@ Type analyze_binary_op(ASTNode* binary_node, SymbolTable* table) {
 	// 
 	if (op_type == TOKEN_PLUS || op_type == TOKEN_MINUS || op_type == TOKEN_ASTERISK ||
 		op_type == TOKEN_SLASH || op_type == TOKEN_PERCENT || op_type == TOKEN_CAROT) {
-		
+
+		// If this is a plus operator and either side is a string, allow
+		// string concatenation by treating the expression as a string type.
+		if (op_type == TOKEN_PLUS && (left_type == TYPE_STRING || right_type == TYPE_STRING)) {
+			annotate_node_type(binary_node, TYPE_STRING);
+			return TYPE_STRING;
+		}
+
 		// 
-		//  STRICT: String in arithmetic
+		//  STRICT: String (non-plus) in arithmetic
 		// 
 		if (left_type == TYPE_STRING || right_type == TYPE_STRING) {
 			semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_STRING_NUMERIC_OPERATION]);

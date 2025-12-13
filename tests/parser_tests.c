@@ -295,7 +295,28 @@ void run_parser_test(const char* input, ExpectedNode* expected_ast) {
 	} else if (!ast) {
 		printf("PARSE FAIL: '%s'\n  Error: %s\n", input, ParserErrorMessages[PARSER_NULL_TEST]);
 	} else if (!compare_ast(ast, expected_ast)) {
-		printf("PARSE FAIL: '%s'\n  Error: %s\n", input, ParserErrorMessages[PARSER_AST_MISMATCH]);
+		// Allow a special 'NULL' expected AST for custom ad-hoc tests
+		if (expected_ast == NULL) {
+			// test special parse of print("${test()}") -> AST_FUNCTION_CALL
+			if (ast->type != AST_FUNCTION_CALL) {
+				printf("PARSE FAIL (custom): '%s'\n  Error: not a function call\n", input);
+			} else {
+				ASTNode* ident = ast->children[0];
+				ASTNode* args = ast->children[1];
+				if (!ident || ident->type != AST_IDENTIFIER || strcmp(ident->token.text, "print") != 0) {
+					printf("PARSE FAIL (custom): '%s'\n  Error: first child not print identifier\n", input);
+				} else if (!args || args->type != AST_PARAMS || args->child_count != 1) {
+					printf("PARSE FAIL (custom): '%s'\n  Error: wrong args\n", input);
+				} else {
+					ASTNode* param = args->children[0];
+					if (param->type != AST_FUNCTION_CALL || strcmp(param->children[0]->token.text, "test") != 0) {
+						printf("PARSE FAIL (custom): '%s'\n  Error: expected param to be test() call\n", input);
+					}
+				}
+			}
+		} else {
+			printf("PARSE FAIL: '%s'\n  Error: %s\n", input, ParserErrorMessages[PARSER_AST_MISMATCH]);
+		}
 	}
 
 	if (ast) free_ast(ast);
@@ -310,6 +331,7 @@ void create_parser_tests() {
 		{ "while (x < 10) {}", create_expected_while() },
 		{ "for (i::int = 0; i < 10; i++) {}", create_expected_for() },
 		{ "program::void test() { x::int = 5; }", create_expected_program() },
+		{ "print(\"${test()}\");", NULL },
 	};
 
 	int num_tests = sizeof(tests) / sizeof(tests[0]);

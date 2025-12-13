@@ -143,6 +143,15 @@ void create_lexer_tests() {
 			},
 			6
 		},
+		{ "\"Hello ${test()}\";",
+			{
+				TOKEN_STRING, TOKEN_SEMICOLON
+			},
+			{
+				"Hello ${test()}", ";"
+			},
+			2
+		},
 		{ "\"hello\\nworld\";",
 			{
 				TOKEN_STRING, TOKEN_SEMICOLON
@@ -202,6 +211,16 @@ void create_lexer_tests() {
 			},
 			6
 		}
+		,
+		{ "print(\"${test()}\");",
+			{
+				TOKEN_IDENTIFIER, TOKEN_LPAREN, TOKEN_STRING, TOKEN_RPAREN, TOKEN_SEMICOLON
+			},
+			{
+				"print", "(", "${test()}", ")", ";"
+			},
+			5
+		},
 	};
 
 	int num_tests = sizeof(tests) / sizeof(tests[0]);

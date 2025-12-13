@@ -1256,7 +1256,114 @@ ASTNode* parse_primary(Parser* parser) {
 			Token tok = parser->current_token;
 			if (tok.text) tok.text = strdup(tok.text);
 			match(parser, TOKEN_STRING);
-			return create_ast_node(AST_LITERAL, tok);
+
+			// If the string contains interpolation markers `${...}` then
+			// split into pieces and construct a concatenation AST node.
+			char* s = tok.text ? tok.text : "";
+			int len = strlen(s);
+			int has_interp = 0;
+			for (int i = 0; i < len - 1; i++) {
+				if (s[i] == '$' && s[i+1] == '{') { has_interp = 1; break; }
+			}
+
+			if (!has_interp) {
+				return create_ast_node(AST_LITERAL, tok);
+			}
+
+			// Build parts: alternating string literals and expression AST nodes
+			ASTNode** parts = NULL;
+			int parts_count = 0;
+
+			int i = 0;
+			while (i < len) {
+				if (s[i] == '$' && i + 1 < len && s[i+1] == '{') {
+					// Find matching '}'
+					int j = i + 2;
+					while (j < len && s[j] != '}') j++;
+					if (j >= len) {
+						// Unterminated interpolation; treat literally
+						// Append remaining as a literal
+						int rem_len = len - i;
+						char* lit = malloc(rem_len + 1);
+						strncpy(lit, s + i, rem_len);
+						lit[rem_len] = '\0';
+						Token literal_token = { .type = TOKEN_STRING, .text = lit, .line = tok.line, .column = tok.column };
+						ASTNode* lit_node = create_ast_node(AST_LITERAL, literal_token);
+						parts = realloc(parts, sizeof(ASTNode*) * (parts_count + 1));
+						parts[parts_count++] = lit_node;
+						break;
+					}
+
+					int expr_len = j - (i + 2);
+					char* expr_txt = malloc(expr_len + 1);
+					strncpy(expr_txt, s + i + 2, expr_len);
+					expr_txt[expr_len] = '\0';
+
+					// Parse the expression into an AST using a temporary lexer & parser
+					Lexer* sublexer = create_lexer(expr_txt);
+					Parser subparser;
+					init_parser(&subparser, sublexer);
+					ASTNode* expr_node = parse_expression(&subparser);
+					free_parser(&subparser);
+					free(sublexer);
+					free(expr_txt);
+
+					if (!expr_node) {
+						// If expression parse failed, treat literal
+						int part_len = j - i + 1;
+						char* lit = malloc(part_len + 1);
+						strncpy(lit, s + i, part_len);
+						lit[part_len] = '\0';
+						Token literal_token = { .type = TOKEN_STRING, .text = lit, .line = tok.line, .column = tok.column };
+						ASTNode* lit_node = create_ast_node(AST_LITERAL, literal_token);
+						parts = realloc(parts, sizeof(ASTNode*) * (parts_count + 1));
+						parts[parts_count++] = lit_node;
+					} else {
+						parts = realloc(parts, sizeof(ASTNode*) * (parts_count + 1));
+						parts[parts_count++] = expr_node;
+					}
+
+					i = j + 1;
+					continue;
+				}
+
+				// accumulate literal until next '${'
+				int start = i;
+				while (i < len) {
+					if (s[i] == '$' && i + 1 < len && s[i+1] == '{') break;
+					i++;
+				}
+				int seg_len = i - start;
+				if (seg_len > 0) {
+					char* lit = malloc(seg_len + 1);
+					strncpy(lit, s + start, seg_len);
+					lit[seg_len] = '\0';
+					Token literal_token = { .type = TOKEN_STRING, .text = lit, .line = tok.line, .column = tok.column };
+					ASTNode* lit_node = create_ast_node(AST_LITERAL, literal_token);
+					parts = realloc(parts, sizeof(ASTNode*) * (parts_count + 1));
+					parts[parts_count++] = lit_node;
+				}
+			}
+
+			free(tok.text);
+
+			if (parts_count == 0) return NULL;
+			if (parts_count == 1) return parts[0];
+
+			// Build left-to-right concatenation binary plus nodes: left + right + ...
+			ASTNode* left = parts[0];
+			for (int p = 1; p < parts_count; p++) {
+				Token plus_tok = { .type = TOKEN_PLUS, .text = strdup("+"), .line = tok.line, .column = tok.column };
+				ASTNode* plus_node = create_ast_node(AST_BINARY_OP, plus_tok);
+				plus_node->child_count = 2;
+				plus_node->children = malloc(sizeof(ASTNode*) * 2);
+				plus_node->children[0] = left;
+				plus_node->children[1] = parts[p];
+				left = plus_node;
+			}
+
+			free(parts);
+			return left;
 		}
 
 		case TOKEN_LPAREN: {

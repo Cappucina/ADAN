@@ -1,4 +1,5 @@
 #include "string.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -191,3 +192,18 @@ char* replace_all(char* str, char* old, char* new) {
     result[j] = '\0';
     return result;
 }
+
+// Provide runtime cast only when not compiling the compiler itself. This
+// avoids duplicate symbol conflicts during the compiler build where the
+// compiler's own `stringUtils.c` also defines `cast`.
+#ifndef BUILDING_COMPILER_MAIN
+const char* cast(const void* input) {
+    static char buf[64];
+    intptr_t ip = (intptr_t)input;
+    if (ip > -4096 && ip < 4096) {
+        snprintf(buf, sizeof(buf), "%ld", (long)ip);
+        return buf;
+    }
+    return (const char*)input;
+}
+#endif
