@@ -122,22 +122,73 @@ Token* next_token(Lexer* lexer) {
 
 	if (c == '"') {
 		advance(lexer);
-		int start = lexer->position;
 
-		while (lexer->src[lexer->position] != '"' && lexer->src[lexer->position] != '\0') advance(lexer);
+		// Build the string while handling escape sequences like \n, \t, \", \\ etc.
+		int buf_cap = 64;
+		int buf_len = 0;
+		char* buf = malloc(buf_cap);
+		if (!buf) return NULL;
 
-		int length = lexer->position - start;
-		char* text = malloc(length + 1);
-		strncpy(text, lexer->src + start, length);
-		text[length] = '\0';
+		while (lexer->src[lexer->position] != '\0') {
+			char ch = lexer->src[lexer->position];
+			if (ch == '"') break;
+
+			if (ch == '\\') {
+				// Escape sequence
+				char next = lexer->src[lexer->position + 1];
+				if (next == '\0') break;
+
+				char outc = next;
+				switch (next) {
+					case 'n': outc = '\n'; break;
+					case 't': outc = '\t'; break;
+					case 'r': outc = '\r'; break;
+					case '\\': outc = '\\'; break;
+					case '"': outc = '"'; break;
+					case '\'': outc = '\''; break;
+					case '0': outc = '\0'; break;
+					default: outc = next; break;
+				}
+
+				// append outc
+				if (buf_len + 1 >= buf_cap) {
+					buf_cap *= 2;
+					char* tmp = realloc(buf, buf_cap);
+					if (!tmp) { free(buf); return NULL; }
+					buf = tmp;
+				}
+				buf[buf_len++] = outc;
+
+				// advance past the backslash and the escaped character
+				lexer->position += 2;
+				continue;
+			} else {
+				if (buf_len + 1 >= buf_cap) {
+					buf_cap *= 2;
+					char* tmp = realloc(buf, buf_cap);
+					if (!tmp) { free(buf); return NULL; }
+					buf = tmp;
+				}
+				buf[buf_len++] = ch;
+				advance(lexer);
+			}
+		}
+
+		// Null-terminate the built string
+		if (buf_len + 1 >= buf_cap) {
+			char* tmp = realloc(buf, buf_len + 1);
+			if (!tmp) { free(buf); return NULL; }
+			buf = tmp;
+		}
+		buf[buf_len] = '\0';
 
 		if (lexer->src[lexer->position] == '"') advance(lexer);
 
 		Token* token = malloc(sizeof(Token));
 		token->type = TOKEN_STRING;
-		token->text = text;
+		token->text = buf;
 		token->line = lexer->line;
-		token->column = start - 1;
+		token->column = lexer->position - buf_len - 1;
 
 		return token;
 	}

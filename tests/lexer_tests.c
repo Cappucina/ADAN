@@ -143,6 +143,24 @@ void create_lexer_tests() {
 			},
 			6
 		},
+		{ "\"hello\\nworld\";",
+			{
+				TOKEN_STRING, TOKEN_SEMICOLON
+			},
+			{
+				"hello\nworld", ";"
+			},
+			2
+		},
+		{ "\"a\\\"b\\\\c\";",
+			{
+				TOKEN_STRING, TOKEN_SEMICOLON
+			},
+			{
+				"a\"b\\c", ";"
+			},
+			2
+		},
 		{ "if (a > 0) a::int = 1;",
 			{
 				TOKEN_IF, TOKEN_LPAREN, TOKEN_IDENTIFIER, TOKEN_GREATER,

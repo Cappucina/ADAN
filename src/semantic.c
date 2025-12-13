@@ -635,7 +635,8 @@ void analyze_variable_usage(SymbolTable* table) {
 	for (int i = 0; i < table->bucket_count; i++) {
 		Symbol* symbol = table->buckets[i];
 		while (symbol) {
-			if (symbol->usage_count == 0 && symbol->node) {
+			// Only warn about unused variables (not functions/programs).
+			if (symbol->usage_count == 0 && symbol->node && symbol->node->type != AST_PROGRAM) {
 				semantic_warning(symbol->node, SemanticWarningMessages[SEMANTIC_UNUSED_VARIABLE], symbol->name);
 			}
 			symbol = symbol->next;

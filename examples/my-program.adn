@@ -7,5 +7,11 @@ program::int test()
 
 program::void main()
 {
-    print(test());
+    print(cast(test()));
+    print("\n");
+    print(read_file_source("tmp/test1.txt"));
+    print("\n");
+    write_file_source("test/test/test/test2", "ahh");
+    print(read_file_source("test/test/test/test2"));
+    print("\n");
 }
