@@ -4,6 +4,8 @@
 #include <string.h>
 #include "stringUtils.h"
 
+extern int VERBOSE;
+
 Lexer* create_lexer(const char *src) {
 	Lexer* new_lex = (Lexer*) malloc(sizeof(Lexer));
 	new_lex->src = src;
@@ -58,6 +60,16 @@ char* capture_word(Lexer* lexer) {
 }
 
 Token* next_token(Lexer* lexer) {
+	if (!lexer || !lexer->src) {
+		Token* token = malloc(sizeof(Token));
+		if (!token) return NULL;
+		token->type = TOKEN_ERROR;
+		token->text = strdup("NULL source");
+		token->line = 0;
+		token->column = 0;
+		return token;
+	}
+	
 	while (is_whitespace(lexer->src[lexer->position])) advance(lexer);
 	
 	char c = lexer->src[lexer->position];
@@ -329,8 +341,19 @@ Token* next_token(Lexer* lexer) {
 		}
 	}
 
+	// Unknown character - return TOKEN_ERROR instead of NULL
 	advance(lexer);
-	return NULL;
+	Token* token = malloc(sizeof(Token));
+	if (!token) return NULL;
+	
+	char error_msg[64];
+	snprintf(error_msg, sizeof(error_msg), "Unexpected character: '%c' (0x%02x)", c, (unsigned char)c);
+	token->type = TOKEN_ERROR;
+	token->text = strdup(error_msg);
+	token->line = lexer->line;
+	token->column = lexer->position - 1;
+	
+	return token;
 }
 
 void free_token(Token* token) {

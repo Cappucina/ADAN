@@ -181,7 +181,8 @@ int main(int argc, char** argv) {
 
 	char* file_source = compiler_read_file_source(argv[1]);
 	if (!file_source) {
-		fprintf(stderr, "Failed to read source file\n");
+		fprintf(stderr, "Failed to read source file: %s\n", argv[1]);
+		fprintf(stderr, "Please check that the file exists and is readable\n");
 		return 1;
 	}
 

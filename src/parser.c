@@ -31,6 +31,28 @@ void init_parser(Parser* parser, Lexer* lexer) {
 		return;
 	}
 
+	// Check for TOKEN_ERROR in initial tokens
+	if (current->type == TOKEN_ERROR) {
+		char error_msg[256];
+		snprintf(error_msg, sizeof(error_msg), "Lexer error at initialization: %s (line %d, column %d)", 
+			current->text ? current->text : "unknown error", current->line, current->column);
+		free_token(current);
+		if (peek) free_token(peek);
+		parser->error_message = strdup(error_msg);
+		parser->error = true;
+		return;
+	}
+	if (peek->type == TOKEN_ERROR) {
+		char error_msg[256];
+		snprintf(error_msg, sizeof(error_msg), "Lexer error at initialization: %s (line %d, column %d)", 
+			peek->text ? peek->text : "unknown error", peek->line, peek->column);
+		free_token(current);
+		free_token(peek);
+		parser->error_message = strdup(error_msg);
+		parser->error = true;
+		return;
+	}
+
 	parser->current_token = *current;
 	if (current->text) {
 	   parser->current_token.text = strdup(current->text);

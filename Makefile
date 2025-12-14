@@ -27,9 +27,9 @@ compile: docker
 	docker exec -i adan-dev-container sh -c "sudo gcc -DBUILDING_COMPILER_MAIN src/*.c tests/*.c lib/adan/*.c -I include -o compiled/main"
 
 execute:
-# 	docker exec -i adan-dev-container sh -c "sudo compiled/main examples/stack-overflow-test.adn"
-# 	docker exec -i adan-dev-container sh -c "sudo compiled/main examples/simple.adn"
-	docker exec -i adan-dev-container sh -c "sudo compiled/main examples/my-program.adn"
+# 	docker exec -i adan-dev-container sh -c "cd /workspace && sudo compiled/main examples/stack-overflow-test.adn"
+# 	docker exec -i adan-dev-container sh -c "cd /workspace && sudo compiled/main examples/simple.adn"
+	docker exec -i adan-dev-container sh -c "cd /workspace && sudo compiled/main examples/my-program.adn"
 	@ARCH=$$(uname -m 2>/dev/null || echo "x86_64"); \
 	if [ "$$ARCH" = "arm64" ] || [ "$$ARCH" = "aarch64" ]; then \
 		# On Apple Silicon, use x86_64 arch to assemble x86-64 assembly (via Rosetta) \
