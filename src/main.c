@@ -370,12 +370,7 @@ int main(int argc, char** argv) {
 		#ifdef __APPLE__
 			fprintf(asm_file, ".globl _main\n");
 		#else
-			// On macOS, C symbols are prefixed with underscore
-		#ifdef __APPLE__
-			fprintf(asm_file, ".globl _main\n");
-		#else
 			fprintf(asm_file, ".globl main\n");
-		#endif
 		#endif
 		int stack_bytes = frame_size;
 		if (stack_bytes < 0) stack_bytes = 0;
