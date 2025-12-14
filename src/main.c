@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include "lexer_tests.h"
 #include "parser_tests.h"
 #include "codegen_tests.h"
@@ -137,18 +138,27 @@ static char* compiler_read_file_source(const char* file_path) {
 }
 
 int main(int argc, char** argv) {
+	// By default, produce a runnable binary so invoking the compiler directly
+	// with a source file (e.g. `./compiled/main foo.adn`) produces
+	// `compiled/program` without extra flags.
+	int EMIT_BINARY = 1;
 	global_library_registry = init_library_registry("lib");
 	if (!global_library_registry) {
 		fprintf(stderr, "Failed to initialize library registry\n");
 		return 1;
 	}
 
-	// Parse an optional verbosity flag. Keep this minimal: if either
-	// `--verbose` or `-v` is present anywhere, enable verbose mode.
+	// Parse optional flags. `--emit-assembly` can be used to generate
+	// assembly only (no binary), `-v/--verbose` enables verbose logging.
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
 			VERBOSE = 1;
-			break;
+		}
+		if (strcmp(argv[i], "--emit-assembly") == 0 || strcmp(argv[i], "--no-emit-binary") == 0) {
+			EMIT_BINARY = 0;
+		}
+		if (strcmp(argv[i], "--emit-binary") == 0 || strcmp(argv[i], "-b") == 0) {
+			EMIT_BINARY = 1;
 		}
 	}
 
@@ -174,14 +184,19 @@ int main(int argc, char** argv) {
 	}
 	alarm(10);
 
-	if (argc < 2) {
+	// Find the first non-option argument as the source file
+	int src_index = -1;
+	for (int i = 1; i < argc; i++) {
+		if (argv[i][0] != '-') { src_index = i; break; }
+	}
+	if (src_index < 0) {
 		fprintf(stderr, "No input file provided\n");
 		return 1;
 	}
 
-	char* file_source = compiler_read_file_source(argv[1]);
+	char* file_source = compiler_read_file_source(argv[src_index]);
 	if (!file_source) {
-		fprintf(stderr, "Failed to read source file: %s\n", argv[1]);
+		fprintf(stderr, "Failed to read source file: %s\n", argv[src_index]);
 		fprintf(stderr, "Please check that the file exists and is readable\n");
 		return 1;
 	}
@@ -388,7 +403,62 @@ int main(int argc, char** argv) {
 	free(file_source);
 	free_library_registry(global_library_registry);
 
+	// Optionally assemble and link the generated assembly into an executable
+	if (EMIT_BINARY) {
+		int status = 1;
+		// Determine host architecture at runtime
+		char arch[64] = "";
+		{
+			#include <sys/utsname.h>
+			struct utsname u;
+			if (uname(&u) == 0) strncpy(arch, u.machine, sizeof(arch)-1);
+		}
+
+		// Try Apple Silicon / cross-assembly path first when appropriate
+		if (strstr(arch, "arm64") || strstr(arch, "aarch64")) {
+			status = system("clang -I include -arch x86_64 compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1") ;
+			if (status != 0) {
+				status = system("gcc -I include -m64 -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1");
+			}
+		} else {
+			// Default path for x86_64 hosts
+			status = system("gcc -I include -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1");
+			if (status != 0) {
+				status = system("clang -I include compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1");
+			}
+		}
+
+		if (status != 0) {
+			fprintf(stderr, "error: failed to assemble/link compiled/assembled.s into compiled/program\n");
+			return 1;
+		}
+
+		// On Apple Silicon hosts we currently emit x86_64 assembly. If
+		// we're on arm64, produce a small POSIX wrapper `compiled/program`
+		// that launches the x86_64 binary under Rosetta if available so
+		// users can run `./compiled/program` directly without needing
+		// to remember `arch -x86_64`.
+		if (strstr(arch, "arm") || strstr(arch, "aarch64")) {
+			// Move the real binary to `program.bin` and write a wrapper.
+			remove("compiled/program.bin");
+			if (rename("compiled/program", "compiled/program.bin") != 0) {
+				// If rename fails, continue but warn (not fatal).
+				perror("warning: failed to rename compiled/program");
+			} else {
+				FILE* w = fopen("compiled/program", "w");
+				if (w) {
+					fprintf(w, "#!/bin/sh\nif command -v arch >/dev/null 2>&1; then\n  exec arch -x86_64 \"$(dirname \"$0\")/program.bin\" \"$@\"\nelse\n  echo \"error: this program is x86_64; on Apple Silicon run with Rosetta: arch -x86_64 ./compiled/program.bin\" >&2\n  exit 1\nfi\n");
+					fclose(w);
+					chmod("compiled/program", 0755);
+				}
+			}
+		}
+
+		if (VERBOSE) fprintf(stderr, "Wrote compiled/program\n");
+	}
+
 	// print_ir();
 
+	return 0;
 }
 
