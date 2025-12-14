@@ -107,6 +107,8 @@ Token* next_token(Lexer* lexer) {
 		TokenType type = TOKEN_IDENTIFIER;
 		for (int i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
 			if (strcmp(word, keywords[i].text) == 0) {
+				printf("Keyword matched: %s\n", word);
+				printf("Keyword type: %d\n", keywords[i].type);
 				type = keywords[i].type;
 				break;
 			}
