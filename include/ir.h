@@ -12,6 +12,7 @@ typedef enum {
 	IR_MUL,       // *
 	IR_DIV,       // /
 	IR_ASSIGN,    // =
+	IR_MOD,       // %
 	IR_LABEL,     // L1:
 	IR_JMP,       // GOTO L1
 	IR_JEQ,       // IF a == b GOTO L1

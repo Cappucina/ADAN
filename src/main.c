@@ -68,20 +68,22 @@ static void runtime_signal_handler(int signum, siginfo_t* info, void* ctx) {
 	(void)ctx;
 	void* addr = info ? info->si_addr : NULL;
 
+	// Use fprintf directly to stderr to avoid potential issues with log_error
+	// that might itself cause crashes
 	switch (signum) {
 		case SIGSEGV:
 			// Commonly triggered by stack overflow (infinite recursion) or
 			// illegal memory access. Provide a suggestion to the user.
-			log_error(NULL, 0, 0, "Segmentation fault at address %p. This is often caused by a stack overflow (infinite recursion) or an invalid memory access. Try limiting recursion or inspecting stack allocations.", addr);
+			fprintf(stderr, "error: Segmentation fault at address %p. This is often caused by a stack overflow (infinite recursion) or an invalid memory access. Try limiting recursion or inspecting stack allocations.\n", addr);
 			break;
 		case SIGBUS:
-			log_error(NULL, 0, 0, "Bus error (SIGBUS) at address %p: possible unaligned or invalid memory access.", addr);
+			fprintf(stderr, "error: Bus error (SIGBUS) at address %p: possible unaligned or invalid memory access.\n", addr);
 			break;
 		case SIGFPE:
-			log_error(NULL, 0, 0, "Floating point exception (SIGFPE): arithmetic error (e.g., division by zero or overflow).");
+			fprintf(stderr, "error: Floating point exception (SIGFPE): arithmetic error (e.g., division by zero or overflow).\n");
 			break;
 		default:
-			log_error(NULL, 0, 0, "Unhandled signal %d received.", signum);
+			fprintf(stderr, "error: Unhandled signal %d received.\n", signum);
 	}
 
 	// Exit with a status that encodes the signal to help in any shell
@@ -136,6 +138,10 @@ static char* compiler_read_file_source(const char* file_path) {
 
 int main(int argc, char** argv) {
 	global_library_registry = init_library_registry("lib");
+	if (!global_library_registry) {
+		fprintf(stderr, "Failed to initialize library registry\n");
+		return 1;
+	}
 
 	// Parse an optional verbosity flag. Keep this minimal: if either
 	// `--verbose` or `-v` is present anywhere, enable verbose mode.
@@ -169,19 +175,20 @@ int main(int argc, char** argv) {
 	alarm(10);
 
 	if (argc < 2) {
-		printf("No input file provided\n");
+		fprintf(stderr, "No input file provided\n");
 		return 1;
 	}
 
 	char* file_source = compiler_read_file_source(argv[1]);
 	if (!file_source) {
-		printf("Failed to read source file\n");
+		fprintf(stderr, "Failed to read source file\n");
 		return 1;
 	}
 
 	Lexer* lexer = create_lexer(file_source);
 	if (!lexer) {
 		free(file_source);
+		fprintf(stderr, "Failed to create lexer\n");
 		return 1;
 	}
 
@@ -189,7 +196,7 @@ int main(int argc, char** argv) {
 	init_parser(&parser, lexer);
 
 	if (parser.error) {
-		if (parser.error_message) printf("%s\n", parser.error_message);
+		if (parser.error_message) fprintf(stderr, "%s\n", parser.error_message);
 		free_parser(&parser);
 		free(lexer);
 		free(file_source);
@@ -198,7 +205,7 @@ int main(int argc, char** argv) {
 
 	ASTNode* ast = parse_file(&parser);
 	if (!ast || parser.error) {
-		if (parser.error_message) printf("%s\n", parser.error_message);
+		if (parser.error_message) fprintf(stderr, "%s\n", parser.error_message);
 		free_parser(&parser);
 		free(lexer);
 		free(file_source);
@@ -211,6 +218,7 @@ int main(int argc, char** argv) {
 		free_parser(&parser);
 		free(lexer);
 		free(file_source);
+		fprintf(stderr, "Failed to create symbol table\n");
 		return 1;
 	}
 
@@ -229,7 +237,20 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	char* register_names[] = {"rbx", "r10", "r11", "r12"};
+	// Detect architecture
+	#ifdef __aarch64__
+		#define ARCH_ARM64 1
+	#elif defined(__x86_64__) || defined(_M_X64)
+		#define ARCH_X86_64 1
+	#else
+		#define ARCH_X86_64 1  // Default to x86_64
+	#endif
+	
+	#ifdef ARCH_ARM64
+		char* register_names[] = {"x19", "x20", "x21", "x22"};
+	#else
+		char* register_names[] = {"rbx", "r10", "r11", "r12"};
+	#endif
 	int caller_saved[] = {0, 1};
 	TargetConfig config;
 	init_target_config(&config, 4, register_names, 2, caller_saved, 8);
@@ -275,22 +296,40 @@ int main(int argc, char** argv) {
 	
 	StringLiteral* strings = get_string_literals();
 	if (strings) {
-		fprintf(asm_file, ".section .rodata\n");
+		// Use Mach-O format for macOS compatibility
+		#ifdef __APPLE__
+			fprintf(asm_file, ".section __TEXT,__cstring,cstring_literals\n");
+		#else
+			fprintf(asm_file, ".section .rodata\n");
+		#endif
 		StringLiteral* current = strings;
 		while (current) {
-			char* esc = escape_for_asm(current->value);
-			fprintf(asm_file, "%s:\n", current->label);
-			fprintf(asm_file, "  .string \"%s\"\n", esc);
-			free(esc);
+			if (current->value && current->label) {
+				char* esc = escape_for_asm(current->value);
+				if (esc) {
+					fprintf(asm_file, "%s:\n", current->label);
+					fprintf(asm_file, "  .string \"%s\"\n", esc);
+					free(esc);
+				}
+			}
 			current = current->next;
 		}
 		fprintf(asm_file, "\n");
 	}
 	
+	// TODO: Full ARM64 code generation requires rewriting all instruction generation
+	// For now, always generate x86-64 assembly
+	fprintf(asm_file, ".text\n");
+	
 	// Emit global variable declarations as data (if any) before .text
 	GlobalVariable* gvars = get_global_variables();
 	if (gvars) {
-		fprintf(asm_file, ".section .data\n");
+		// Use Mach-O format for macOS compatibility
+		#ifdef __APPLE__
+			fprintf(asm_file, ".data\n");
+		#else
+			fprintf(asm_file, ".section .data\n");
+		#endif
 		GlobalVariable* cur = gvars;
 		while (cur) {
 			if (cur->is_string && cur->initial) {
@@ -306,8 +345,6 @@ int main(int argc, char** argv) {
 		fprintf(asm_file, "\n");
 	}
 
-	fprintf(asm_file, ".text\n");
-	
 	IRInstruction* all_ir = get_ir_head();
 	if (all_ir) {
 		// Number instructions (always) - this is useful for liveness.
@@ -329,7 +366,17 @@ int main(int argc, char** argv) {
 		}
 
 		int frame_size = compute_spill_frame_size(intervals, &config);
-		fprintf(asm_file, ".globl main\n");
+		// On macOS, C symbols are prefixed with underscore
+		#ifdef __APPLE__
+			fprintf(asm_file, ".globl _main\n");
+		#else
+			// On macOS, C symbols are prefixed with underscore
+		#ifdef __APPLE__
+			fprintf(asm_file, ".globl _main\n");
+		#else
+			fprintf(asm_file, ".globl main\n");
+		#endif
+		#endif
 		int stack_bytes = frame_size;
 		if (stack_bytes < 0) stack_bytes = 0;
 		// Align to 16 bytes to keep stack ABI compliant when calling

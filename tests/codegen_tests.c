@@ -131,6 +131,8 @@ void test_emit_prologue_epilogue() {
 		strcat(output, buffer);
 	}
 	
+	// TODO: Full ARM64 code generation requires rewriting all instruction generation
+	// For now, always check for x86-64 assembly
 	assert(strstr(output, "pushq %rbp") != NULL);
 	assert(strstr(output, "movq %rsp, %rbp") != NULL);
 	assert(strstr(output, "subq $32, %rsp") != NULL);
@@ -147,6 +149,8 @@ void test_emit_prologue_epilogue() {
 		strcat(output, buffer);
 	}
 	
+	// TODO: Full ARM64 code generation requires rewriting all instruction generation
+	// For now, always check for x86-64 assembly
 	assert(strstr(output, "addq $32, %rsp") != NULL);
 	assert(strstr(output, "popq %rbp") != NULL);
 	assert(strstr(output, "ret") != NULL);
@@ -158,7 +162,10 @@ void test_emit_prologue_epilogue() {
 
 void test_get_location() {
 	TargetConfig cfg;
+	// For now, use x86-64 format even on ARM64 (full ARM64 codegen not yet implemented)
 	char* reg_names[] = {"rbx", "r10", "r11", "r12"};
+	const char* expected_reg = "%rbx";
+	const char* expected_stack = "-8(%rbp)";
 	cfg.available_registers = 4;
 	cfg.register_names = reg_names;
 	
@@ -183,10 +190,10 @@ void test_get_location() {
 	char result[64];
 	
 	get_location(result, "_t0", &interval1, &cfg);
-	assert(strcmp(result, "%rbx") == 0);
+	assert(strcmp(result, expected_reg) == 0);
 	
 	get_location(result, "_t1", &interval1, &cfg);
-	assert(strcmp(result, "-8(%rbp)") == 0);
+	assert(strcmp(result, expected_stack) == 0);
 	
 	get_location(result, "5", &interval1, &cfg);
 	assert(strcmp(result, "$5") == 0);

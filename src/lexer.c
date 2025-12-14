@@ -258,6 +258,13 @@ Token* next_token(Lexer* lexer) {
 	if (c == '-' && next == '-') return make_token(lexer, TOKEN_DECREMENT, (const char*[]){"-", "-"}, 2);
 	if (c == '/' && next == '/') return make_token(lexer, TOKEN_SINGLE_COMMENT, (const char*[]){"/", "/"}, 2);
 
+	// Compound assignment operators (immediates): +=, -=, *=, /=, %=
+	if (c == '+' && next == '=') return make_token(lexer, TOKEN_ADD_IMMEDIATE, (const char*[]){"+", "="}, 2);
+	if (c == '-' && next == '=') return make_token(lexer, TOKEN_SUB_IMMEDIATE, (const char*[]){"-", "="}, 2);
+	if (c == '*' && next == '=') return make_token(lexer, TOKEN_MUL_IMMEDIATE, (const char*[]){"*", "="}, 2);
+	if (c == '/' && next == '=') return make_token(lexer, TOKEN_DIV_IMMEDIATE, (const char*[]){"/", "="}, 2);
+	if (c == '%' && next == '=') return make_token(lexer, TOKEN_MOD_IMMEDIATE, (const char*[]){"%", "="}, 2);
+
 	switch(c) {
 		case '+': return make_token(lexer, TOKEN_PLUS, (const char*[]){"+"}, 1);
 		case '-': return make_token(lexer, TOKEN_MINUS, (const char*[]){"-"}, 1);

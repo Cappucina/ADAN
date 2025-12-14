@@ -2,7 +2,9 @@ include adan.io;
 
 program::int test()
 {
-    return 2 + 2;
+    i::int = 3548;
+    
+    return i % 2;
 }
 
 program::void main()

@@ -73,7 +73,7 @@ void print_ir() {
 			case IR_ADD:
 				printf("%s = %s + %s\n", current->result, current->arg1, current->arg2);
 				break;
-			
+
 			case IR_SUB:
 				printf("%s = %s - %s\n", current->result, current->arg1, current->arg2);
 				break;
@@ -84,6 +84,10 @@ void print_ir() {
 			
 			case IR_DIV:
 				printf("%s = %s / %s\n", current->result, current->arg1, current->arg2);
+				break;
+			
+			case IR_MOD:
+				printf("%s = %s %% %s\n", current->result, current->arg1, current->arg2);
 				break;
 			
 			case IR_ASSIGN:
@@ -243,6 +247,10 @@ char* generate_ir(ASTNode* node) {
 
 				case TOKEN_SLASH:
 					opcode = IR_DIV;
+					break;
+				
+				case TOKEN_PERCENT:
+					opcode = IR_MOD;
 					break;
 
 				default:

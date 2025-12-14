@@ -489,6 +489,11 @@ void analyze_include(ASTNode* include_node, SymbolTable* table) {
 	
 	extern LibraryRegistry* global_library_registry;
 	
+	if (!global_library_registry) {
+		log_semantic_error(include_node, "Library registry not initialized");
+		return;
+	}
+	
 	Library* lib = load_library(global_library_registry, 
 								publisher_node->token.text, 
 								package_node->token.text);
@@ -1046,8 +1051,14 @@ Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 				inferred = TYPE_CHAR;
 				break;
 			
-				case TOKEN_NULL:
+			case TOKEN_NULL:
 				inferred = TYPE_NULL;
+				break;
+			
+			default:
+				// Other token types (TOKEN_IDENTIFIER, TOKEN_INT, TOKEN_FLOAT, etc.)
+				// are not literals and should not reach this switch
+				inferred = TYPE_UNKNOWN;
 				break;
 		}
 

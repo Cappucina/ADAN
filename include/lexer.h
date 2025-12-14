@@ -26,7 +26,6 @@ typedef enum {
 	TOKEN_MUL_IMMEDIATE,  // Used to multiply a variable by a value directly. (e.g., x *= 5)
 	TOKEN_DIV_IMMEDIATE,  // Used to divide a variable by a value directly. (e.g., x /= 5)
 	TOKEN_MOD_IMMEDIATE,  // Used to get the modulus of a variable by a value directly. (e.g., x %= 5)
-	TOKEN_INCREMENT,		  // Used to increment a variable by one. (e.g., x++)
 	TOKEN_PLUS,
 	TOKEN_MINUS,
 	TOKEN_ASTERISK,
@@ -37,8 +36,9 @@ typedef enum {
 	//
 	//  Increment, Decrement
 	// 
+	TOKEN_INCREMENT,
 	TOKEN_DECREMENT,
-
+	
 	//
 	//  Symbols
 	//

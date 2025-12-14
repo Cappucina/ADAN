@@ -216,11 +216,16 @@ ASTNode* parse_statement(Parser* parser) {
 	switch(parser->current_token.type)
 	{
 		case TOKEN_IDENTIFIER:
-			switch(parser->peek_token.type) {
+				switch(parser->peek_token.type) {
 				case TOKEN_TYPE_DECL:
 					return parse_declaration(parser);
 					break;
-				case TOKEN_ASSIGN:
+					case TOKEN_ASSIGN:
+					case TOKEN_ADD_IMMEDIATE:
+					case TOKEN_SUB_IMMEDIATE:
+					case TOKEN_MUL_IMMEDIATE:
+					case TOKEN_DIV_IMMEDIATE:
+					case TOKEN_MOD_IMMEDIATE:
 					return parse_assignment(parser);
 					break;
 				case TOKEN_LPAREN:
@@ -655,8 +660,13 @@ ASTNode* parse_declaration(Parser* parser) {
 
 ASTNode* parse_assignment(Parser* parser) {
 	Token identifier_token = parser->current_token;
+	// Copy the token text to avoid it being overwritten when parser advances
+	if (identifier_token.text) {
+		identifier_token.text = strdup(identifier_token.text);
+	}
 
 	if (!expect(parser, TOKEN_IDENTIFIER, PARSER_EXPECTED, "identifier", parser->current_token.text)) {
+		if (identifier_token.text) free(identifier_token.text);
 		return NULL;
 	}
 
@@ -668,44 +678,96 @@ ASTNode* parse_assignment(Parser* parser) {
 		return NULL;
 	}
 
-	if (!expect(parser, TOKEN_ASSIGN, PARSER_EXPECTED, "'='", parser->current_token.text)) {
-		free_ast(identifier);
-		free_ast(assignment_node);
-	
-		return NULL;
+	// Accept either a plain assignment '=' or compound immediate assignments
+	// like '+=', '-=', '*=', '/=', '%=' which are emitted by the lexer as
+	// TOKEN_*_IMMEDIATE tokens.
+	TokenType next = parser->current_token.type;
+
+	// Plain assignment
+	if (next == TOKEN_ASSIGN) {
+		match(parser, TOKEN_ASSIGN);
+
+		ASTNode* expression = parse_expression(parser);
+		if (!expression) {
+			set_error(parser, PARSER_EXPECTED, "expression", parser->current_token.text);
+			free_ast(identifier);
+			free_ast(assignment_node);
+			return NULL;
+		}
+
+		if (!expect(parser, TOKEN_SEMICOLON, PARSER_EXPECTED, "';'", parser->current_token.text)) {
+			free_ast(identifier);
+			free_ast(expression);
+			free_ast(assignment_node);
+			return NULL;
+		}
+
+		assignment_node->child_count = 2;
+		assignment_node->children = malloc(sizeof(ASTNode*) * 2);
+		if (!assignment_node->children) {
+			free_ast(identifier);
+			free_ast(expression);
+			free_ast(assignment_node);
+			return NULL;
+		}
+
+		assignment_node->children[0] = identifier;
+		assignment_node->children[1] = expression;
+
+		return assignment_node;
 	}
 
-	ASTNode* expression = parse_expression(parser);
-	if (!expression) {
-		set_error(parser, PARSER_EXPECTED, "expression", parser->current_token.text);
-		free_ast(identifier);
-		free_ast(assignment_node);
-		return NULL;
+	// Compound immediate assignment (e.g., i %= 2) - translate to an assignment
+	// where the RHS is a binary operation combining the identifier and the
+	// provided expression (i.e., i = i % expr).
+	if (next == TOKEN_ADD_IMMEDIATE || next == TOKEN_SUB_IMMEDIATE || next == TOKEN_MUL_IMMEDIATE || next == TOKEN_DIV_IMMEDIATE || next == TOKEN_MOD_IMMEDIATE) {
+		Token op_token = parser->current_token;
+		match(parser, next);
+
+		ASTNode* rhs = parse_expression(parser);
+		if (!rhs) {
+			set_error(parser, PARSER_EXPECTED, "expression after compound assignment", parser->current_token.text);
+			free_ast(identifier);
+			free_ast(assignment_node);
+			return NULL;
+		}
+
+		if (!expect(parser, TOKEN_SEMICOLON, PARSER_EXPECTED, "';'", parser->current_token.text)) {
+			free_ast(identifier);
+			free_ast(rhs);
+			free_ast(assignment_node);
+			return NULL;
+		}
+
+		// Map compound immediate token to binary operator token
+		Token bin_token = {0};
+		switch (op_token.type) {
+			case TOKEN_ADD_IMMEDIATE: bin_token.type = TOKEN_PLUS; bin_token.text = "+"; break;
+			case TOKEN_SUB_IMMEDIATE: bin_token.type = TOKEN_MINUS; bin_token.text = "-"; break;
+			case TOKEN_MUL_IMMEDIATE: bin_token.type = TOKEN_ASTERISK; bin_token.text = "*"; break;
+			case TOKEN_DIV_IMMEDIATE: bin_token.type = TOKEN_SLASH; bin_token.text = "/"; break;
+			case TOKEN_MOD_IMMEDIATE: bin_token.type = TOKEN_PERCENT; bin_token.text = "%"; break;
+			default: free_ast(identifier); free_ast(rhs); free_ast(assignment_node); return NULL;
+		}
+
+		ASTNode* bin = create_ast_node(AST_BINARY_OP, bin_token);
+		bin->child_count = 2;
+		bin->children = malloc(sizeof(ASTNode*) * 2);
+		bin->children[0] = identifier; // left operand is the LHS identifier
+		bin->children[1] = rhs;
+
+		assignment_node->child_count = 2;
+		assignment_node->children = malloc(sizeof(ASTNode*) * 2);
+		assignment_node->children[0] = create_ast_node(AST_IDENTIFIER, identifier->token);
+		assignment_node->children[1] = bin;
+
+		return assignment_node;
 	}
 
-	if (!expect(parser, TOKEN_SEMICOLON, PARSER_EXPECTED, "';'", parser->current_token.text)) {
-		free_ast(identifier);
-		free_ast(expression);
-		free_ast(assignment_node);
-	
-		return NULL;
-	}
-
-	assignment_node->child_count = 2;
-	assignment_node->children = malloc(sizeof(ASTNode*) * 2);
-	
-	if (!assignment_node->children) {
-		free_ast(identifier);
-		free_ast(expression);
-		free_ast(assignment_node);
-
-		return NULL;
-	}
-
-	assignment_node->children[0] = identifier;
-	assignment_node->children[1] = expression;
-
-	return assignment_node;
+	set_error(parser, PARSER_EXPECTED, "'=' or compound assignment", parser->current_token.text);
+	free_ast(identifier);
+	free_ast(assignment_node);
+	return NULL;
 }
 
 ASTNode* parse_expression(Parser* parser) {
@@ -1257,6 +1319,58 @@ ASTNode* parse_identifier(Parser* parser) {
 					increment_node->children[0] = identifier_node;
 					increment_node->children[1] = inc_op_node;
 					return increment_node;
+				}
+
+				// Support assignment expressions used inside other expressions, e.g.
+				// 'return i %= 2;' or 'x += 5'. If the next token is '=' or one of
+				// the compound immediate tokens, consume it and build an
+				// AST_ASSIGNMENT node (for '=' ) or transform the compound into a
+				// binary operation and then an assignment.
+				if (parser->current_token.type == TOKEN_ASSIGN ||
+					parser->current_token.type == TOKEN_ADD_IMMEDIATE ||
+					parser->current_token.type == TOKEN_SUB_IMMEDIATE ||
+					parser->current_token.type == TOKEN_MUL_IMMEDIATE ||
+					parser->current_token.type == TOKEN_DIV_IMMEDIATE ||
+					parser->current_token.type == TOKEN_MOD_IMMEDIATE) {
+					Token op = parser->current_token;
+					match(parser, op.type);
+
+					if (op.type == TOKEN_ASSIGN) {
+						ASTNode* expr = parse_expression(parser);
+						if (!expr) { free_ast(identifier_node); return NULL; }
+						ASTNode* assign = create_ast_node(AST_ASSIGNMENT, (Token){0});
+						assign->child_count = 2;
+						assign->children = malloc(sizeof(ASTNode*) * 2);
+						assign->children[0] = identifier_node;
+						assign->children[1] = expr;
+						return assign;
+					} else {
+						ASTNode* rhs = parse_expression(parser);
+						if (!rhs) { free_ast(identifier_node); return NULL; }
+
+						Token bin_token = {0};
+						switch (op.type) {
+							case TOKEN_ADD_IMMEDIATE: bin_token.type = TOKEN_PLUS; bin_token.text = "+"; break;
+							case TOKEN_SUB_IMMEDIATE: bin_token.type = TOKEN_MINUS; bin_token.text = "-"; break;
+							case TOKEN_MUL_IMMEDIATE: bin_token.type = TOKEN_ASTERISK; bin_token.text = "*"; break;
+							case TOKEN_DIV_IMMEDIATE: bin_token.type = TOKEN_SLASH; bin_token.text = "/"; break;
+							case TOKEN_MOD_IMMEDIATE: bin_token.type = TOKEN_PERCENT; bin_token.text = "%"; break;
+							default: free_ast(identifier_node); free_ast(rhs); return NULL;
+						}
+
+						ASTNode* bin = create_ast_node(AST_BINARY_OP, bin_token);
+						bin->child_count = 2;
+						bin->children = malloc(sizeof(ASTNode*) * 2);
+						bin->children[0] = identifier_node;
+						bin->children[1] = rhs;
+
+						ASTNode* assign = create_ast_node(AST_ASSIGNMENT, (Token){0});
+						assign->child_count = 2;
+						assign->children = malloc(sizeof(ASTNode*) * 2);
+						assign->children[0] = create_ast_node(AST_IDENTIFIER, identifier_node->token);
+						assign->children[1] = bin;
+						return assign;
+					}
 				}
 				return identifier_node;
 }
