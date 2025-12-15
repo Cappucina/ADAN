@@ -1,15 +1,11 @@
 include adan.io;
-include adan.strlib;
 
-program::string my_amazing_greeting()
-{
-    my_welcoming_message::string = "Hello beautiful user, I love you!\n";
-    ran_with::string = "Ran using the ADAN programming language.";
+program::string my_amazing_function() {
+    my_message::string = "Hello world from the best programming language ever!";
 
-    return concat(my_welcoming_message, ran_with);
+    return my_message;
 }
 
-program::void main()
-{
-    print(my_amazing_greeting());
+program::void main() {
+    print(my_amazing_function());
 }

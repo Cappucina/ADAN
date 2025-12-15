@@ -171,13 +171,14 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
+	fprintf(stderr, "[1/6] Reading source file: %s\n", argv[src_index]);
 	char* file_source = compiler_read_file_source(argv[src_index]);
 	if (!file_source) {
 		fprintf(stderr, "Failed to read source file: %s\n", argv[src_index]);
 		fprintf(stderr, "Please check that the file exists and is readable\n");
 		return 1;
 	}
-
+	fprintf(stderr, "[2/6] Running lexical analysis...\n");
 	Lexer* lexer = create_lexer(file_source);
 	if (!lexer) {
 		free(file_source);
@@ -196,6 +197,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
+	fprintf(stderr, "[3/6] Parsing syntax tree...\n");
 	ASTNode* ast = parse_file(&parser);
 	if (!ast || parser.error) {
 		if (parser.error_message) fprintf(stderr, "%s\n", parser.error_message);
@@ -205,7 +207,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-
+	fprintf(stderr, "[4/6] Semantic analysis and type checking...\n");
 	SymbolTable* symbols = init_symbol_table();
 	if (!symbols) {
 		free_ast(ast);
@@ -222,6 +224,7 @@ int main(int argc, char** argv) {
 	analyze_variable_usage(symbols);
 
 	if (semantic_get_error_count() > 0) {
+		fprintf(stderr, "Compilation failed: %d semantic errors found\n", semantic_get_error_count());
 		free_symbol_table(symbols);
 		free_ast(ast);
 		free_parser(&parser);
@@ -258,6 +261,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 	
+	fprintf(stderr, "[5/6] Generating intermediate representation...\n");
 	init_ir_full();
 	
 	for (int i = 0; i < ast->child_count; i++) {
@@ -308,7 +312,7 @@ int main(int argc, char** argv) {
 		fprintf(asm_file, "\n");
 	}
 	
-	// TODO: Full ARM64 code generation requires rewriting all instruction generation
+	fprintf(stderr, "[6/6] Generating assembly code...\n");
 	fprintf(asm_file, ".text\n");
 	
 	GlobalVariable* gvars = get_global_variables();
@@ -363,6 +367,7 @@ int main(int argc, char** argv) {
 	}
 	
 	fclose(asm_file);
+	fprintf(stderr, "Assembly written to compiled/assembled.s\n");
 	free_symbol_table(symbols);
 	free_ast(ast);
 	free_parser(&parser);
@@ -371,6 +376,7 @@ int main(int argc, char** argv) {
 	free_library_registry(global_library_registry);
 
 	if (EMIT_BINARY) {
+		fprintf(stderr, "Assembling and linking...\n");
 		int status = 1;
 		char arch[64] = "";
 		{
@@ -410,11 +416,12 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		if (VERBOSE) fprintf(stderr, "Wrote compiled/program\n");
+		fprintf(stderr, "Compilation successful: compiled/program\n");
+	} else {
+		fprintf(stderr, "Assembly-only mode: compiled/assembled.s (not linking to binary)\n");
 	}
 
-	// print_ir();
-
+	system("clear");
 	return 0;
 }
 
