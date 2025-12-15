@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include "library.h"
 
-// Track diagnostics so we can report multiple messages before halting.
 static int semantic_error_count = 0;
 static int semantic_warning_count = 0;
 static int semantic_tip_count = 0;
@@ -540,20 +539,17 @@ void analyze_function_call(ASTNode* call_node, SymbolTable* table) {
 		}
 	}
 
-	// Auto-resolve print/println to type-specific variants
 	const char* resolved_name = func_name_node->token.text;
 	char resolved_buffer[256];
 	if ((strcmp(resolved_name, "print") == 0 || strcmp(resolved_name, "println") == 0) && arg_count == 1) {
 		if (first_arg_type == TYPE_INT) {
 			snprintf(resolved_buffer, sizeof(resolved_buffer), "%s_int", resolved_name);
 			resolved_name = resolved_buffer;
-			// Update the function name in the AST
 			free((char*)func_name_node->token.text);
 			func_name_node->token.text = strdup(resolved_name);
 		} else if (first_arg_type == TYPE_FLOAT) {
 			snprintf(resolved_buffer, sizeof(resolved_buffer), "%s_float", resolved_name);
 			resolved_name = resolved_buffer;
-			// Update the function name in the AST
 			free((char*)func_name_node->token.text);
 			func_name_node->token.text = strdup(resolved_name);
 		}
@@ -643,7 +639,6 @@ void analyze_variable_usage(SymbolTable* table) {
 	for (int i = 0; i < table->bucket_count; i++) {
 		Symbol* symbol = table->buckets[i];
 		while (symbol) {
-			// Only warn about unused variables (not functions/programs).
 			if (symbol->usage_count == 0 && symbol->node && symbol->node->type != AST_PROGRAM) {
 				semantic_warning(symbol->node, SemanticWarningMessages[SEMANTIC_UNUSED_VARIABLE], symbol->name);
 			}
@@ -745,8 +740,6 @@ void check_type_cast_validity(Type from, Type to, ASTNode* node) {
 	}
 }
 
-// ...existing code...
-
 Type analyze_array_access(ASTNode* node, SymbolTable* table) {
 	if (!node || node->child_count < 2) {
 		return TYPE_UNKNOWN;
@@ -796,7 +789,6 @@ Type analyze_cast_expr(ASTNode* node, SymbolTable* table) {
 	Type to = get_expression_type(type_node, table);
 	Type from = get_expression_type(expr_node, table);
 
-	// Validate the cast according to the existing rules.
 	check_type_cast_validity(from, to, node);
 
 	annotate_node_type(node, to);
@@ -871,8 +863,6 @@ Type analyze_binary_op(ASTNode* binary_node, SymbolTable* table) {
 	if (op_type == TOKEN_PLUS || op_type == TOKEN_MINUS || op_type == TOKEN_ASTERISK ||
 		op_type == TOKEN_SLASH || op_type == TOKEN_PERCENT || op_type == TOKEN_CAROT) {
 
-		// If this is a plus operator and either side is a string, allow
-		// string concatenation by treating the expression as a string type.
 		if (op_type == TOKEN_PLUS && (left_type == TYPE_STRING || right_type == TYPE_STRING)) {
 			annotate_node_type(binary_node, TYPE_STRING);
 			return TYPE_STRING;
@@ -1078,8 +1068,6 @@ Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 				break;
 			
 			default:
-				// Other token types (TOKEN_IDENTIFIER, TOKEN_INT, TOKEN_FLOAT, etc.)
-				// are not literals and should not reach this switch
 				inferred = TYPE_UNKNOWN;
 				break;
 		}
