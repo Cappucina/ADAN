@@ -1,0 +1,10 @@
+include adan.io;
+include adan.net;
+
+program::int main() {
+    req::string = "GET / something";
+    if (find(req, "GET / ") != "") {
+        print("yes\n");
+    }
+    return 0;
+}

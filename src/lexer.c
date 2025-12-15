@@ -268,7 +268,25 @@ Token* next_token(Lexer* lexer) {
 	if (c == ':' && next == ':') return make_token(lexer, TOKEN_TYPE_DECL, (const char*[]){":", ":"}, 2);
 	if (c == '+' && next == '+') return make_token(lexer, TOKEN_INCREMENT, (const char*[]){"+", "+"}, 2);
 	if (c == '-' && next == '-') return make_token(lexer, TOKEN_DECREMENT, (const char*[]){"-", "-"}, 2);
-	if (c == '/' && next == '/') return make_token(lexer, TOKEN_SINGLE_COMMENT, (const char*[]){"/", "/"}, 2);
+	if (c == '/' && next == '/') {
+		// Single-line comment: capture until end of line
+		advance(lexer); // '/'
+		advance(lexer); // '/'
+		int start = lexer->position;
+		while (lexer->src[lexer->position] != '\0' && lexer->src[lexer->position] != '\n') advance(lexer);
+		int len = lexer->position - start;
+		char* txt = malloc(len + 1);
+		if (!txt) return NULL;
+		strncpy(txt, lexer->src + start, len);
+		txt[len] = '\0';
+
+		Token* token = malloc(sizeof(Token));
+		token->type = TOKEN_SINGLE_COMMENT;
+		token->text = txt;
+		token->line = lexer->line;
+		token->column = start;
+		return token;
+	}
 
 	// Compound assignment operators (immediates): +=, -=, *=, /=, %=
 	if (c == '+' && next == '=') return make_token(lexer, TOKEN_ADD_IMMEDIATE, (const char*[]){"+", "="}, 2);

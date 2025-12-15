@@ -155,6 +155,7 @@ void analyze_block(ASTNode* block, SymbolTable* table) {
 
 void analyze_statement(ASTNode* statement, SymbolTable* table) {
 	if (statement == NULL || table == NULL) return;
+
 	switch (statement->type) {
 		case AST_ASSIGNMENT:
 			analyze_assignment(statement, table);

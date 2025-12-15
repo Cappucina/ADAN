@@ -912,7 +912,7 @@ ASTNode* parse_if_statement(Parser* parser) {
 	if (!expect(parser, TOKEN_IF, PARSER_EXPECTED, "'if'", parser->current_token.text)) return NULL;
 	if (!expect(parser, TOKEN_LPAREN, PARSER_EXPECTED, "'('", parser->current_token.text)) return NULL;
 
-	ASTNode* left = parse_statement(parser);
+	ASTNode* left = parse_expression(parser);
 	if (!left) {
 		set_error(parser, PARSER_EXPECTED, "expression in if condition", parser->current_token.text);
 		return NULL;
@@ -981,7 +981,7 @@ ASTNode* parse_while_statement(Parser* parser) {
 	if (!expect(parser, TOKEN_WHILE, PARSER_EXPECTED, "'while'", parser->current_token.text)) return NULL;
 	if (!expect(parser, TOKEN_LPAREN, PARSER_EXPECTED, "'('", parser->current_token.text)) return NULL;
 
-	ASTNode* left = parse_statement(parser);
+	ASTNode* left = parse_expression(parser);
 	if (!left) {
 		set_error(parser, PARSER_EXPECTED, "expression in while condition", parser->current_token.text);
 		return NULL;

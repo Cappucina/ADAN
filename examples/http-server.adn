@@ -1,0 +1,38 @@
+include adan.io;
+include adan.net;
+
+program::int main() {
+    server_fd::int = tcp_listen(9999);
+
+    if (server_fd < 0) {
+        print("Failed to start server\n");
+        return 1;
+    }
+
+    print("Server listening on port 9999\n");
+
+    while (true) {
+        client_fd::int = tcp_accept(server_fd);
+
+        if (client_fd < 0) {
+            print("Failed to accept connection\n");
+            continue;
+        }
+
+        req::string = tcp_read_request_str(client_fd);
+        if (req == NULL) {
+            tcp_close(client_fd);
+            continue;
+        }
+
+        if (find(req, "GET / ") != "") {
+            resp::string = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nHai~!\n";
+            tcp_write_string(client_fd, resp);
+        } else {
+            notfound::string = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+            tcp_write_string(client_fd, notfound);
+        }
+    }
+
+    return 0;
+}

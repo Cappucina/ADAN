@@ -228,6 +228,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
+
 	SymbolTable* symbols = init_symbol_table();
 	if (!symbols) {
 		free_ast(ast);
