@@ -15,7 +15,7 @@ program::int main() {
         client_fd::int = tcp_accept(server_fd);
 
         if (client_fd < 0) {
-            print("Failed to accept connection\n");
+            // print("Failed to accept connection\n");
             continue;
         }
 
@@ -25,7 +25,11 @@ program::int main() {
             continue;
         }
 
-        if (find(req, "GET / ") != "") {
+        // Debug: print the raw request
+        print(req);
+
+        // Only match a request for the root path: exactly "GET / " at start
+        if (starts_with(req, "GET / ") == true) {
             resp::string = "HTTP/1.1 200 OK\r\nContent-Length: 6\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nHai~!\n";
             tcp_write_string(client_fd, resp);
         } else {

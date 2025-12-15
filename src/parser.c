@@ -303,10 +303,11 @@ ASTNode* parse_statement(Parser* parser) {
 
 static ASTNode* parse_single_comment(Parser* parser) {
 	ASTNode* node = create_ast_node(AST_SINGLE_COMMENT, parser->current_token);
-	if (!match(parser, TOKEN_SINGLE_COMMENT)) {
+	if (!(parser->current_token.type == TOKEN_SINGLE_COMMENT || parser->current_token.type == TOKEN_BLOCK_COMMENT)) {
 		set_error(parser, PARSER_UNEXPECTED_TOKEN, parser->current_token.text);
 		return NULL;
 	}
+	match(parser, parser->current_token.type);
 	return node;
 }
 

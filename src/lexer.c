@@ -269,23 +269,28 @@ Token* next_token(Lexer* lexer) {
 	if (c == '+' && next == '+') return make_token(lexer, TOKEN_INCREMENT, (const char*[]){"+", "+"}, 2);
 	if (c == '-' && next == '-') return make_token(lexer, TOKEN_DECREMENT, (const char*[]){"-", "-"}, 2);
 	if (c == '/' && next == '/') {
-		// Single-line comment: capture until end of line
+		// Single-line comment: skip until end of line and continue scanning
 		advance(lexer); // '/'
 		advance(lexer); // '/'
-		int start = lexer->position;
 		while (lexer->src[lexer->position] != '\0' && lexer->src[lexer->position] != '\n') advance(lexer);
-		int len = lexer->position - start;
-		char* txt = malloc(len + 1);
-		if (!txt) return NULL;
-		strncpy(txt, lexer->src + start, len);
-		txt[len] = '\0';
+		// Do not produce a comment token; continue with the next token
+		return next_token(lexer);
+	}
 
-		Token* token = malloc(sizeof(Token));
-		token->type = TOKEN_SINGLE_COMMENT;
-		token->text = txt;
-		token->line = lexer->line;
-		token->column = start;
-		return token;
+	if (c == '/' && next == '*') {
+		// Block comment: skip until closing '*/' (may span multiple lines)
+		advance(lexer); // '/'
+		advance(lexer); // '*'
+		while (lexer->src[lexer->position] != '\0') {
+			if (lexer->src[lexer->position] == '*' && lexer->src[lexer->position + 1] == '/') {
+				advance(lexer); // '*'
+				advance(lexer); // '/'
+				break;
+			}
+			advance(lexer);
+		}
+		// Continue scanning without returning a comment token
+		return next_token(lexer);
 	}
 
 	// Compound assignment operators (immediates): +=, -=, *=, /=, %=

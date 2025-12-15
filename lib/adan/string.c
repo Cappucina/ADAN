@@ -151,26 +151,23 @@ char* join(char* str, char delimiter) {
 }
 
 char* find(char* str, char* substring) {
-    size_t len = strlen(str);
+    if (!str || !substring) return NULL;
+    char* pos = strstr(str, substring);
+    if (!pos) return NULL;
     size_t sub_len = strlen(substring);
-    char* result = malloc(len + 1);
+    char* result = malloc(sub_len + 1);
     if (!result) return NULL;
-    size_t i = 0, j = 0;
-    while (i < len) {
-        if (str[i] == substring[j]) {
-            j++;
-        } else {
-            j = 0;
-        }
-        i++;
-    }
-    if (j == sub_len) {
-        strncpy(result, str + i - j, j);
-        result[j] = '\0';
-    } else {
-        result[0] = '\0';
-    }
+    memcpy(result, pos, sub_len);
+    result[sub_len] = '\0';
     return result;
+}
+
+// Return 1 if `s` starts with `prefix`, 0 otherwise
+int starts_with(char* s, char* prefix) {
+    if (!s || !prefix) return 0;
+    size_t p = strlen(prefix);
+    if (strlen(s) < p) return 0;
+    return strncmp(s, prefix, p) == 0;
 }
 
 char* replace_all(char* str, char* old, char* new) {
