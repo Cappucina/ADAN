@@ -4,7 +4,27 @@
 #include "ir.h"
 #include "string.h"
 
+// Architecture detection
+#ifdef __aarch64__
+	#define ARCH_ARM64 1
+#elif defined(__x86_64__) || defined(_M_X64)
+	#define ARCH_X86_64 1
+#else
+	#define ARCH_X86_64 1  // Default to x86_64
+#endif
+
 static int last_frame_adjust = 0;
+
+// Helper to add underscore prefix for macOS C symbol naming
+static const char* mangle_symbol(const char* name) {
+	#ifdef __APPLE__
+		static char mangled[256];
+		snprintf(mangled, sizeof(mangled), "_%s", name);
+		return mangled;
+	#else
+		return name;
+	#endif
+}
 
 bool init_target_config(TargetConfig* cfg, int available_registers, char** register_names, int caller_saved_count, int* caller_saved_indices, int spill_slot_size) {
 	cfg->available_registers = available_registers;
@@ -12,6 +32,7 @@ bool init_target_config(TargetConfig* cfg, int available_registers, char** regis
 	cfg->caller_saved_indices = caller_saved_indices;
 	cfg->caller_saved_count = caller_saved_count;
 	cfg->spill_slot_size = spill_slot_size;
+	return true;
 }
 
 void free_target_config(TargetConfig* cfg) {
@@ -37,12 +58,27 @@ const char* get_register_name(const TargetConfig* cfg, int index) {
 }
 
 void get_location(char* result_buffer, char* variable_name, LiveInterval* intervals, const TargetConfig* cfg) {
-	if (is_digit(variable_name[0])) {
+	// Support numeric immediates including an optional leading sign
+	if (variable_name[0] == '+' || variable_name[0] == '-') {
+		if (is_digit(variable_name[1])) {
+			sprintf(result_buffer, "$%s", variable_name);
+			return;
+		}
+	} else if (is_digit(variable_name[0])) {
 		sprintf(result_buffer, "$%s", variable_name);
 		return;
 	}
 
 	if (variable_name[0] == '.' && variable_name[1] == 'S' && variable_name[2] == 'T' && variable_name[3] == 'R') {
+		// Always use RIP-relative addressing for x86-64 (required on macOS)
+		// TODO: Full ARM64 code generation requires rewriting all instruction generation
+		sprintf(result_buffer, "%s(%%rip)", variable_name);
+		return;
+	}
+
+	// Global variable label (e.g., 'G_name') should be treated as a global symbol
+	if (variable_name[0] == 'G' && variable_name[1] == '_') {
+		// Always use RIP-relative addressing for x86-64 (required on macOS)
 		sprintf(result_buffer, "%s(%%rip)", variable_name);
 		return;
 	}
@@ -55,6 +91,8 @@ void get_location(char* result_buffer, char* variable_name, LiveInterval* interv
 				sprintf(result_buffer, "%%%s", register_name);
 				return;
 			} else {
+				// For now, generate x86-64 format even on ARM64
+				// Full ARM64 code generation requires rewriting all instruction generation
 				sprintf(result_buffer, "%d(%%rbp)", current->stack_offset);
 				return;
 			}
@@ -72,8 +110,11 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 	char arg_locs[8][64];
 	int arg_is_lea[8];
 	int arg_count = 0;
+	
+	// TODO: Full ARM64 code generation requires rewriting all instruction generation
+	// For now, always use x86-64 calling convention
 	const char* arg_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
-
+	
 	char loc1[64];
 	char loc2[64];
 	char result_loc[64];
@@ -129,8 +170,28 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 			case IR_DIV:
 				fprintf(out, "movq %s, %%rax\n", loc1);
 				fprintf(out, "cqto\n");
-				fprintf(out, "idivq %s\n", loc2);
+				// idivq doesn't accept immediate values, must use register
+				if (loc2[0] == '$') {
+					fprintf(out, "movq %s, %%r11\n", loc2);
+					fprintf(out, "idivq %%r11\n");
+				} else {
+					fprintf(out, "idivq %s\n", loc2);
+				}
 				fprintf(out, "movq %%rax, %s\n", result_loc);
+				break;
+
+			case IR_MOD:
+				// Remainder after idivq is stored in RDX
+				fprintf(out, "movq %s, %%rax\n", loc1);
+				fprintf(out, "cqto\n");
+				// idivq doesn't accept immediate values, must use register
+				if (loc2[0] == '$') {
+					fprintf(out, "movq %s, %%r11\n", loc2);
+					fprintf(out, "idivq %%r11\n");
+				} else {
+					fprintf(out, "idivq %s\n", loc2);
+				}
+				fprintf(out, "movq %%rdx, %s\n", result_loc);
 				break;
 
 			case IR_ASSIGN:
@@ -153,7 +214,12 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				int is_block_label = (current->arg1 && current->arg1[0] == '_');
 				if (!is_block_label) {
 					if (in_function) emit_epilogue(out, cfg);
-					fprintf(out, "%s:\n", current->arg1);
+					// On macOS, C symbols are prefixed with underscore
+					#ifdef __APPLE__
+						fprintf(out, "_%s:\n", current->arg1);
+					#else
+						fprintf(out, "%s:\n", current->arg1);
+					#endif
 					emit_prologue(out, cfg, stack_bytes);
 					in_function = true;
 				} else {
@@ -291,7 +357,12 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				}
 				arg_count = 0;
 				const char* target = current->arg1 ? current->arg1 : loc1;
-				fprintf(out, "call %s\n", target);
+				// On macOS, C symbols are prefixed with underscore
+				#ifdef __APPLE__
+					fprintf(out, "call _%s\n", target);
+				#else
+					fprintf(out, "call %s\n", target);
+				#endif
 				fprintf(out, "movq %%rax, %s\n", result_loc);
 				break;
 			}
@@ -314,6 +385,8 @@ void emit_prologue(FILE* out, const TargetConfig* cfg, int stack_bytes) {
 
 	last_frame_adjust = stack_bytes;
 
+	// TODO: Full ARM64 code generation requires rewriting all instruction generation
+	// For now, always generate x86-64 assembly
 	fprintf(out, "\tpushq %%rbp\n");
 	fprintf(out, "\tmovq %%rsp, %%rbp\n");
 	if (stack_bytes > 0) {
@@ -323,10 +396,11 @@ void emit_prologue(FILE* out, const TargetConfig* cfg, int stack_bytes) {
 
 void emit_epilogue(FILE* out, const TargetConfig* cfg) {
 	if (out == NULL) return;
+	// TODO: Full ARM64 code generation requires rewriting all instruction generation
+	// For now, always generate x86-64 assembly
 	if (last_frame_adjust > 0) {
 		fprintf(out, "addq $%d, %%rsp\n", last_frame_adjust);
 	}
-
 	fprintf(out, "popq %%rbp\n");
 	fprintf(out, "ret\n");
 }

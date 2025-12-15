@@ -73,6 +73,7 @@ void print_liveness(LiveInterval* interval_head) {
 
 	while (current != NULL) {
 		printf("%-10s | %-5d | %-5d\n", current->variable_name, current->start_point, current->end_point);
+		current = current->next; // Advance to avoid infinite loop when printing intervals
 	}
 }
 

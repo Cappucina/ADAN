@@ -1,0 +1,10 @@
+include adan.io;
+
+program::int main() {
+    // single-line comment
+    server_fd::int = 1; /* block
+    comment spanning
+    multiple lines */
+    print("ok\n");
+    return 0;
+}

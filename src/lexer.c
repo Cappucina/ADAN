@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include "lexer.h"
 #include <string.h>
+#include "stringUtils.h"
+
+extern int VERBOSE;
 
 Lexer* create_lexer(const char *src) {
 	Lexer* new_lex = (Lexer*) malloc(sizeof(Lexer));
@@ -57,6 +60,16 @@ char* capture_word(Lexer* lexer) {
 }
 
 Token* next_token(Lexer* lexer) {
+	if (!lexer || !lexer->src) {
+		Token* token = malloc(sizeof(Token));
+		if (!token) return NULL;
+		token->type = TOKEN_ERROR;
+		token->text = strdup("NULL source");
+		token->line = 0;
+		token->column = 0;
+		return token;
+	}
+	
 	while (is_whitespace(lexer->src[lexer->position])) advance(lexer);
 	
 	char c = lexer->src[lexer->position];
@@ -122,22 +135,127 @@ Token* next_token(Lexer* lexer) {
 
 	if (c == '"') {
 		advance(lexer);
-		int start = lexer->position;
 
-		while (lexer->src[lexer->position] != '"' && lexer->src[lexer->position] != '\0') advance(lexer);
+		// Build the string while handling escape sequences like \n, \t, \", \\ etc.
+		int buf_cap = 64;
+		int buf_len = 0;
+		char* buf = malloc(buf_cap);
+		if (!buf) return NULL;
 
-		int length = lexer->position - start;
-		char* text = malloc(length + 1);
-		strncpy(text, lexer->src + start, length);
-		text[length] = '\0';
+		while (lexer->src[lexer->position] != '\0') {
+			char ch = lexer->src[lexer->position];
+			if (ch == '"') break;
+
+			if (ch == '\\') {
+				// Escape sequence
+				char next = lexer->src[lexer->position + 1];
+				if (next == '\0') break;
+
+				char outc = next;
+				switch (next) {
+					case 'n': outc = '\n'; break;
+					case 't': outc = '\t'; break;
+					case 'r': outc = '\r'; break;
+					case '\\': outc = '\\'; break;
+					case '"': outc = '"'; break;
+					case '\'': outc = '\''; break;
+					case '0': outc = '\0'; break;
+					case '$': outc = '$'; break;
+					default: outc = next; break;
+				}
+
+				// append outc
+				if (buf_len + 1 >= buf_cap) {
+					buf_cap *= 2;
+					char* tmp = realloc(buf, buf_cap);
+					if (!tmp) { free(buf); return NULL; }
+					buf = tmp;
+				}
+				buf[buf_len++] = outc;
+
+				// advance past the backslash and the escaped character
+				lexer->position += 2;
+				continue;
+			} else if (ch == '$') {
+				char next = lexer->src[lexer->position + 1];
+				if (next == '{') {
+					// Keep the interpolation marker `${...}` verbatim so the parser can
+					// identify and parse embedded expressions rather than evaluating
+					// them at lexing time.
+					// append '$' and '{' and then all inner characters until '}' and the '}' itself.
+					if (buf_len + 2 >= buf_cap) {
+						buf_cap *= 2;
+						char* tmp = realloc(buf, buf_cap);
+						if (!tmp) { free(buf); return NULL; }
+						buf = tmp;
+					}
+					buf[buf_len++] = '$';
+					buf[buf_len++] = '{';
+
+					// advance past '$' and '{'
+					lexer->position += 2;
+					while (lexer->src[lexer->position] != '\0' && lexer->src[lexer->position] != '}') {
+						char ch2 = lexer->src[lexer->position];
+						if (buf_len + 1 >= buf_cap) {
+							buf_cap *= 2;
+							char* tmp = realloc(buf, buf_cap);
+							if (!tmp) { free(buf); return NULL; }
+							buf = tmp;
+						}
+						buf[buf_len++] = ch2;
+						advance(lexer);
+					}
+
+					// append trailing '}' if present
+					if (lexer->src[lexer->position] == '}') {
+						if (buf_len + 1 >= buf_cap) {
+							buf_cap *= 2;
+							char* tmp = realloc(buf, buf_cap);
+							if (!tmp) { free(buf); return NULL; }
+							buf = tmp;
+						}
+						buf[buf_len++] = '}';
+						advance(lexer);
+					}
+					continue;
+				} else {
+					// Just a normal dollar sign
+					if (buf_len + 1 >= buf_cap) {
+						buf_cap *= 2;
+						char* tmp = realloc(buf, buf_cap);
+						if (!tmp) { free(buf); return NULL; }
+						buf = tmp;
+					}
+					buf[buf_len++] = ch;
+					advance(lexer);
+				}
+			} else {
+				if (buf_len + 1 >= buf_cap) {
+					buf_cap *= 2;
+					char* tmp = realloc(buf, buf_cap);
+					if (!tmp) { free(buf); return NULL; }
+					buf = tmp;
+				}
+				buf[buf_len++] = ch;
+				advance(lexer);
+			}
+		}
+
+		// Null-terminate the built string
+		if (buf_len + 1 >= buf_cap) {
+			char* tmp = realloc(buf, buf_len + 1);
+			if (!tmp) { free(buf); return NULL; }
+			buf = tmp;
+		}
+		buf[buf_len] = '\0';
 
 		if (lexer->src[lexer->position] == '"') advance(lexer);
 
 		Token* token = malloc(sizeof(Token));
 		token->type = TOKEN_STRING;
-		token->text = text;
+		token->text = buf;
 		token->line = lexer->line;
-		token->column = start - 1;
+		token->column = lexer->position - buf_len - 1;
 
 		return token;
 	}
@@ -150,14 +268,44 @@ Token* next_token(Lexer* lexer) {
 	if (c == ':' && next == ':') return make_token(lexer, TOKEN_TYPE_DECL, (const char*[]){":", ":"}, 2);
 	if (c == '+' && next == '+') return make_token(lexer, TOKEN_INCREMENT, (const char*[]){"+", "+"}, 2);
 	if (c == '-' && next == '-') return make_token(lexer, TOKEN_DECREMENT, (const char*[]){"-", "-"}, 2);
-	if (c == '/' && next == '/') return make_token(lexer, TOKEN_SINGLE_COMMENT, (const char*[]){"/", "/"}, 2);
+	if (c == '/' && next == '/') {
+		// Single-line comment: skip until end of line and continue scanning
+		advance(lexer); // '/'
+		advance(lexer); // '/'
+		while (lexer->src[lexer->position] != '\0' && lexer->src[lexer->position] != '\n') advance(lexer);
+		// Do not produce a comment token; continue with the next token
+		return next_token(lexer);
+	}
+
+	if (c == '/' && next == '*') {
+		// Block comment: skip until closing '*/' (may span multiple lines)
+		advance(lexer); // '/'
+		advance(lexer); // '*'
+		while (lexer->src[lexer->position] != '\0') {
+			if (lexer->src[lexer->position] == '*' && lexer->src[lexer->position + 1] == '/') {
+				advance(lexer); // '*'
+				advance(lexer); // '/'
+				break;
+			}
+			advance(lexer);
+		}
+		// Continue scanning without returning a comment token
+		return next_token(lexer);
+	}
+
+	// Compound assignment operators (immediates): +=, -=, *=, /=, %=
+	if (c == '+' && next == '=') return make_token(lexer, TOKEN_ADD_IMMEDIATE, (const char*[]){"+", "="}, 2);
+	if (c == '-' && next == '=') return make_token(lexer, TOKEN_SUB_IMMEDIATE, (const char*[]){"-", "="}, 2);
+	if (c == '*' && next == '=') return make_token(lexer, TOKEN_MUL_IMMEDIATE, (const char*[]){"*", "="}, 2);
+	if (c == '/' && next == '=') return make_token(lexer, TOKEN_DIV_IMMEDIATE, (const char*[]){"/", "="}, 2);
+	if (c == '%' && next == '=') return make_token(lexer, TOKEN_MOD_IMMEDIATE, (const char*[]){"%", "="}, 2);
 
 	switch(c) {
 		case '+': return make_token(lexer, TOKEN_PLUS, (const char*[]){"+"}, 1);
 		case '-': return make_token(lexer, TOKEN_MINUS, (const char*[]){"-"}, 1);
 		case '*': return make_token(lexer, TOKEN_ASTERISK, (const char*[]){"*"}, 1);
 		case '/': return make_token(lexer, TOKEN_SLASH, (const char*[]){"/"}, 1);
-		case '%': return make_token(lexer, TOKEN_PERCENT, (const char*[]){"%"}, 1);
+		case '%': return make_token(lexer, TOKEN_PERCENT, (const char*[]){"%%"}, 1);
 		case '^': return make_token(lexer, TOKEN_CAROT, (const char*[]){"^"}, 1);
 		case '(': return make_token(lexer, TOKEN_LPAREN, (const char*[]){"("}, 1);
 		case ')': return make_token(lexer, TOKEN_RPAREN, (const char*[]){")"}, 1);
@@ -214,8 +362,19 @@ Token* next_token(Lexer* lexer) {
 		}
 	}
 
+	// Unknown character - return TOKEN_ERROR instead of NULL
 	advance(lexer);
-	return NULL;
+	Token* token = malloc(sizeof(Token));
+	if (!token) return NULL;
+	
+	char error_msg[64];
+	snprintf(error_msg, sizeof(error_msg), "Unexpected character: '%c' (0x%02x)", c, (unsigned char)c);
+	token->type = TOKEN_ERROR;
+	token->text = strdup(error_msg);
+	token->line = lexer->line;
+	token->column = lexer->position - 1;
+	
+	return token;
 }
 
 void free_token(Token* token) {

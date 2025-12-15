@@ -54,6 +54,10 @@ static LibraryFunction* parse_c_prototype(char* line) {
 	LibraryFunction* func = malloc(sizeof(LibraryFunction));
 	if (!func) return NULL;
 	func->name = strdup(name);
+	if (!func->name) {
+		free(func);
+		return NULL;
+	}
 	func->return_type = ret_type;
 	func->param_count = 0;
 	func->param_types = NULL;
@@ -66,6 +70,13 @@ static LibraryFunction* parse_c_prototype(char* line) {
 		count++;
 		func->param_types = malloc(sizeof(Type) * count);
 		func->param_names = malloc(sizeof(char*) * count);
+		if (!func->param_types || !func->param_names) {
+			free(func->param_types);
+			free(func->param_names);
+			free(func->name);
+			free(func);
+			return NULL;
+		}
 		func->param_count = 0;
 		char* saveptr = NULL;
 		for (char* tok = strtok_r(params_str, ",", &saveptr); tok; tok = strtok_r(NULL, ",", &saveptr)) {
@@ -77,6 +88,17 @@ static LibraryFunction* parse_c_prototype(char* line) {
 			if (last) *last = ' ';
 			func->param_types[func->param_count] = pt;
 			func->param_names[func->param_count] = strdup(pname);
+			if (!func->param_names[func->param_count]) {
+				// Clean up on failure
+				for (int i = 0; i < func->param_count; i++) {
+					free(func->param_names[i]);
+				}
+				free(func->param_types);
+				free(func->param_names);
+				free(func->name);
+				free(func);
+				return NULL;
+			}
 			func->param_count++;
 		}
 	}
@@ -89,6 +111,10 @@ LibraryRegistry* init_library_registry(const char* search_path) {
 
 	registry->libraries = NULL;
 	registry->search_path = strdup(search_path ? search_path : "../lib");
+	if (!registry->search_path) {
+		free(registry);
+		return NULL;
+	}
 
 	return registry;
 }
@@ -139,6 +165,7 @@ void free_library_registry(LibraryRegistry* registry) {
 
 char* resolve_library_path(LibraryRegistry* registry, const char* publisher, const char* package) {
 	if (!registry || !publisher || !package) return NULL;
+	if (!registry->search_path) return NULL;
 
 	size_t path_length = strlen(registry->search_path) + strlen(publisher) + strlen(package) + 20;
 	char* adn_path = malloc(path_length);
@@ -163,7 +190,8 @@ Library* load_library(LibraryRegistry* registry, const char* publisher, const ch
 
 	Library* existing = registry->libraries;
 	while (existing) {
-		if (strcmp(existing->publisher, publisher) == 0 &&
+		if (existing->publisher && existing->package &&
+			strcmp(existing->publisher, publisher) == 0 &&
 			strcmp(existing->package, package) == 0) {
 				return existing;
 		}
@@ -188,6 +216,13 @@ Library* load_library(LibraryRegistry* registry, const char* publisher, const ch
 
 	lib->publisher = strdup(publisher);
 	lib->package = strdup(package);
+	if (!lib->publisher || !lib->package) {
+		free(lib->publisher);
+		free(lib->package);
+		free(lib_path);
+		free(lib);
+		return NULL;
+	}
 	lib->functions = NULL;
 	lib->ast = NULL;
 	lib->next = registry->libraries;
@@ -245,11 +280,17 @@ Library* load_library(LibraryRegistry* registry, const char* publisher, const ch
 	ASTNode** programs = NULL;
 	int program_count = 0;
 
-	while (parser.current_token.type != TOKEN_EOF) {
+		while (parser.current_token.type != TOKEN_EOF) {
 		if (parser.current_token.type == TOKEN_PROGRAM) {
 			ASTNode* func_ast = parse_program(&parser);
 			if (!func_ast) {
 				fprintf(stderr, "error: Failed to parse function in library '%s.%s'\n", publisher, package);
+				continue;
+			}
+
+			if (func_ast->child_count < 3 || !func_ast->children[0] || !func_ast->children[1] || !func_ast->children[2]) {
+				fprintf(stderr, "error: Invalid function AST structure in library '%s.%s'\n", publisher, package);
+				free_ast(func_ast);
 				continue;
 			}
 
@@ -267,7 +308,18 @@ Library* load_library(LibraryRegistry* registry, const char* publisher, const ch
 				continue;
 			}
 
+			if (!func_ast->children[1]->token.text) {
+				free(func);
+				free_ast(func_ast);
+				continue;
+			}
+
 			func->name = strdup(func_ast->children[1]->token.text);
+			if (!func->name) {
+				free(func);
+				free_ast(func_ast);
+				continue;
+			}
             
 			Token type_token = func_ast->children[0]->token;
 			switch (type_token.type) {
@@ -281,13 +333,35 @@ Library* load_library(LibraryRegistry* registry, const char* publisher, const ch
 			}
 
 			ASTNode* params = func_ast->children[2];
-			func->param_count = params->child_count;
+			func->param_count = params ? params->child_count : 0;
 			func->param_types = malloc(sizeof(Type) * func->param_count);
 			func->param_names = malloc(sizeof(char*) * func->param_count);
+			if (!func->param_types || !func->param_names) {
+				free(func->param_types);
+				free(func->param_names);
+				free(func->name);
+				free(func);
+				free_ast(func_ast);
+				continue;
+			}
 
 			for (int j = 0; j < func->param_count; j++) {
 				ASTNode* param = params->children[j];
+				if (!param || param->child_count < 2 || !param->children[0] || !param->children[1]) {
+					func->param_names[j] = NULL;
+					func->param_types[j] = TYPE_UNKNOWN;
+					continue;
+				}
+				if (!param->children[0]->token.text) {
+					func->param_names[j] = NULL;
+					func->param_types[j] = TYPE_UNKNOWN;
+					continue;
+				}
 				func->param_names[j] = strdup(param->children[0]->token.text);
+				if (!func->param_names[j]) {
+					func->param_types[j] = TYPE_UNKNOWN;
+					continue;
+				}
                 
 				Token param_type_token = param->children[1]->token;
 				switch (param_type_token.type) {
@@ -332,9 +406,13 @@ bool import_library_symbols(Library* lib, SymbolTable* table) {
 
 	LibraryFunction* func = lib->functions;
 	while (func) {
+		if (!func->name) {
+			func = func->next;
+			continue;
+		}
 		if (!add_symbol(table, func->name, func->return_type, NULL)) {
 			fprintf(stderr, "error: Failed to import symbol '%s' from library '%s.%s'\n",
-				func->name, lib->publisher, lib->package);
+				func->name, lib->publisher ? lib->publisher : "unknown", lib->package ? lib->package : "unknown");
 			return false;
 		}
 		func = func->next;

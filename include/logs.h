@@ -209,3 +209,7 @@ static inline void log_semantic_tip(ASTNode* node, const char* fmt, ...) {
 }
 
 #endif
+
+// Global verbosity flag; set by the compiler runtime when invoked with
+// --verbose. It allows enabling/disabling debug traces across modules.
+extern int VERBOSE;

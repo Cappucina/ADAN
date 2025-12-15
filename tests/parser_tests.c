@@ -127,6 +127,75 @@ ExpectedNode* create_expected_while() {
 	return while_node;
 }
 
+ExpectedNode* create_expected_increment() {
+	ExpectedNode* inc_var = malloc(sizeof(ExpectedNode));
+	inc_var->type = AST_IDENTIFIER;
+	inc_var->token_text = "i";
+	inc_var->child_count = 0;
+	inc_var->children = NULL;
+
+	ExpectedNode* inc_op = malloc(sizeof(ExpectedNode));
+	inc_op->type = AST_OPERATORS;
+	inc_op->token_text = "++";
+	inc_op->token_type = TOKEN_INCREMENT;
+	inc_op->child_count = 0;
+	inc_op->children = NULL;
+
+	ExpectedNode* inc_node = malloc(sizeof(ExpectedNode));
+	inc_node->type = AST_INCREMENT_EXPR;
+	inc_node->token_text = NULL;
+	inc_node->child_count = 2;
+	inc_node->children = malloc(sizeof(ExpectedNode*) * 2);
+	inc_node->children[0] = inc_var;
+	inc_node->children[1] = inc_op;
+	return inc_node;
+}
+
+ExpectedNode* create_expected_increment_literal() {
+	ExpectedNode* lit = malloc(sizeof(ExpectedNode));
+	lit->type = AST_LITERAL;
+	lit->token_text = "2";
+	lit->child_count = 0;
+	lit->children = NULL;
+
+	ExpectedNode* inc_op = malloc(sizeof(ExpectedNode));
+	inc_op->type = AST_OPERATORS;
+	inc_op->token_text = "++";
+	inc_op->token_type = TOKEN_INCREMENT;
+	inc_op->child_count = 0;
+	inc_op->children = NULL;
+
+	ExpectedNode* inc_node = malloc(sizeof(ExpectedNode));
+	inc_node->type = AST_INCREMENT_EXPR;
+	inc_node->token_text = NULL;
+	inc_node->child_count = 2;
+	inc_node->children = malloc(sizeof(ExpectedNode*) * 2);
+	inc_node->children[0] = lit;
+	inc_node->children[1] = inc_op;
+
+	ExpectedNode* param = malloc(sizeof(ExpectedNode));
+	param->type = AST_PARAMS;
+	param->token_text = NULL;
+	param->child_count = 1;
+	param->children = malloc(sizeof(ExpectedNode*) * 1);
+	param->children[0] = inc_node;
+
+	ExpectedNode* ident = malloc(sizeof(ExpectedNode));
+	ident->type = AST_IDENTIFIER;
+	ident->token_text = "print";
+	ident->child_count = 0;
+	ident->children = NULL;
+
+	ExpectedNode* call = malloc(sizeof(ExpectedNode));
+	call->type = AST_FUNCTION_CALL;
+	call->token_text = NULL;
+	call->child_count = 2;
+	call->children = malloc(sizeof(ExpectedNode*) * 2);
+	call->children[0] = ident;
+	call->children[1] = param;
+	return call;
+}
+
 ExpectedNode* create_expected_for() {
 	ExpectedNode* index = malloc(sizeof(ExpectedNode));
 
@@ -227,6 +296,85 @@ ExpectedNode* create_expected_for() {
 	return for_node;
 }
 
+ExpectedNode* create_expected_mod_assign() {
+	ExpectedNode* id = malloc(sizeof(ExpectedNode));
+	if (!id) return NULL;
+	id->type = AST_IDENTIFIER;
+	id->token_text = "i";
+	id->child_count = 0;
+	id->children = NULL;
+
+	ExpectedNode* lit = malloc(sizeof(ExpectedNode));
+	if (!lit) {
+		free(id);
+		return NULL;
+	}
+	lit->type = AST_LITERAL;
+	lit->token_text = "2";
+	lit->child_count = 0;
+	lit->children = NULL;
+
+	ExpectedNode* bin = malloc(sizeof(ExpectedNode));
+	if (!bin) {
+		free(id);
+		free(lit);
+		return NULL;
+	}
+	bin->type = AST_BINARY_OP;
+	bin->token_text = NULL;
+	bin->token_type = TOKEN_PERCENT;
+	bin->child_count = 2;
+	bin->children = malloc(sizeof(ExpectedNode*) * 2);
+	if (!bin->children) {
+		free(id);
+		free(lit);
+		free(bin);
+		return NULL;
+	}
+	bin->children[0] = id;
+	bin->children[1] = lit;
+
+	ExpectedNode* assign_id = malloc(sizeof(ExpectedNode));
+	if (!assign_id) {
+		free(bin->children);
+		free(bin);
+		free(id);
+		free(lit);
+		return NULL;
+	}
+	assign_id->type = AST_IDENTIFIER;
+	assign_id->token_text = "i";
+	assign_id->child_count = 0;
+	assign_id->children = NULL;
+
+	ExpectedNode* assign = malloc(sizeof(ExpectedNode));
+	if (!assign) {
+		free(bin->children);
+		free(bin);
+		free(id);
+		free(lit);
+		free(assign_id);
+		return NULL;
+	}
+	assign->type = AST_ASSIGNMENT;
+	assign->token_text = NULL;
+	assign->child_count = 2;
+	assign->children = malloc(sizeof(ExpectedNode*) * 2);
+	if (!assign->children) {
+		free(bin->children);
+		free(bin);
+		free(id);
+		free(lit);
+		free(assign_id);
+		free(assign);
+		return NULL;
+	}
+	assign->children[0] = assign_id;
+	assign->children[1] = bin;
+
+	return assign;
+}
+
 ExpectedNode* create_expected_program() {
 	ExpectedNode* decl = create_expected_assignment();
 	ExpectedNode* type = malloc(sizeof(ExpectedNode));
@@ -274,11 +422,12 @@ ExpectedNode* create_expected_program() {
 
 void free_expected_ast(ExpectedNode* node) {
 	if (!node) return;
-	for (int i = 0; i < node->child_count; i++) {
-		free_expected_ast(node->children[i]);
+	if (node->children) {
+		for (int i = 0; i < node->child_count; i++) {
+			free_expected_ast(node->children[i]);
+		}
+		free(node->children);
 	}
-
-	free(node->children);
 	free(node);
 }
 
@@ -295,7 +444,35 @@ void run_parser_test(const char* input, ExpectedNode* expected_ast) {
 	} else if (!ast) {
 		printf("PARSE FAIL: '%s'\n  Error: %s\n", input, ParserErrorMessages[PARSER_NULL_TEST]);
 	} else if (!compare_ast(ast, expected_ast)) {
-		printf("PARSE FAIL: '%s'\n  Error: %s\n", input, ParserErrorMessages[PARSER_AST_MISMATCH]);
+		// Allow a special 'NULL' expected AST for custom ad-hoc tests
+		if (expected_ast == NULL) {
+			// test special parse of print("${test()}") -> AST_FUNCTION_CALL
+			if (ast->type != AST_FUNCTION_CALL) {
+				printf("PARSE FAIL (custom): '%s'\n  Error: not a function call\n", input);
+			} else {
+				ASTNode* ident = ast->children[0];
+				ASTNode* args = ast->children[1];
+				if (!ident || ident->type != AST_IDENTIFIER || strcmp(ident->token.text, "print") != 0) {
+					printf("PARSE FAIL (custom): '%s'\n  Error: first child not print identifier\n", input);
+				} else if (!args || args->type != AST_PARAMS || args->child_count != 1) {
+					printf("PARSE FAIL (custom): '%s'\n  Error: wrong args\n", input);
+				} else {
+					ASTNode* param = args->children[0];
+					if (param->type != AST_FUNCTION_CALL || strcmp(param->children[0]->token.text, "test") != 0) {
+						printf("PARSE FAIL (custom): '%s'\n  Error: expected param to be test() call\n", input);
+					}
+				}
+			}
+		} else {
+			printf("PARSE FAIL: '%s'\n  Error: %s\n", input, ParserErrorMessages[PARSER_AST_MISMATCH]);
+			printf("Actual AST:\n");
+			print_ast(ast, NODE_ACTUAL, 0);
+			printf("Expected AST:\n");
+			print_ast(expected_ast, NODE_EXPECTED, 0);
+			// Avoid freeing the ASTs here in order to make debugging easier and
+			// to prevent double-free in case of malformed expected structures.
+			return;
+		}
 	}
 
 	if (ast) free_ast(ast);
@@ -308,13 +485,37 @@ void create_parser_tests() {
 		{ "x::int = 5;", create_expected_assignment() },
 		{ "if (x) {}", create_expected_if() },
 		{ "while (x < 10) {}", create_expected_while() },
+		{ "i %= 2;", create_expected_mod_assign() },
 		{ "for (i::int = 0; i < 10; i++) {}", create_expected_for() },
 		{ "program::void test() { x::int = 5; }", create_expected_program() },
+		{ "print(\"${test()}\");", NULL },
+		{ "print(\"${2++}\");", create_expected_increment_literal() },
+		{ "i++;", create_expected_increment() },
 	};
 
 	int num_tests = sizeof(tests) / sizeof(tests[0]);
 	for (int i = 0; i < num_tests; i++) {
 		run_parser_test(tests[i].input, tests[i].expected_ast);
-		free_expected_ast(tests[i].expected_ast);
+		if (tests[i].expected_ast) {
+			free_expected_ast(tests[i].expected_ast);
+		}
+	}
+
+	// Add a file-level parse test: top-level declaration + program
+	{
+		const char* file_input = "i::int = 0; program::void main() { }";
+		Lexer* lexer = create_lexer(file_input);
+		Parser parser;
+		init_parser(&parser, lexer);
+		ASTNode* file_node = parse_file(&parser);
+		if (parser.error) {
+			printf("PARSE FILE FAIL: '%s'\n  Error: %s\n", file_input, parser.error_message ? parser.error_message : "Unknown error");
+		} else if (!file_node || file_node->type != AST_FILE) {
+			printf("PARSE FILE FAIL: '%s'\n  Error: expected AST_FILE\n", file_input);
+		}
+
+		if (file_node) free_ast(file_node);
+		free_parser(&parser);
+		free(lexer);
 	}
 }

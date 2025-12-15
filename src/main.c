@@ -1,10 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include "lexer_tests.h"
 #include "parser_tests.h"
 #include "codegen_tests.h"
 #include "lexer.h"
+#include "logs.h"
+
+// Global verbosity; default is false (0). Can be toggled via command-line
+// flag `--verbose` or `-v`.
+int VERBOSE = 0;
 #include "parser.h"
 #include "semantic.h"
 #include "ir.h"
@@ -14,6 +20,39 @@
 #include <signal.h>
 #include <unistd.h>
 
+static char* escape_for_asm(const char* s) {
+	if (!s) return strdup("");
+	int cap = 64, len = 0;
+	char* out = malloc(cap);
+	if (!out) return NULL;
+	for (int i = 0; s[i] != '\0'; i++) {
+		char c = s[i];
+		const char* esc = NULL;
+		char tmp[3] = {0};
+		switch (c) {
+			case '\n': esc = "\\n"; break;
+			case '\t': esc = "\\t"; break;
+			case '\r': esc = "\\r"; break;
+			case '"': esc = "\\\""; break;
+			case '\\': esc = "\\\\"; break;
+			default:
+				tmp[0] = c;
+				esc = tmp;
+				break;
+		}
+		int add = strlen(esc);
+		if (len + add + 1 >= cap) {
+			cap *= 2;
+			char* tmp2 = realloc(out, cap);
+			if (!tmp2) { free(out); return NULL; }
+			out = tmp2;
+		}
+		for (int j = 0; j < add; j++) out[len++] = esc[j];
+	}
+	out[len] = '\0';
+	return out;
+}
+
 LibraryRegistry* global_library_registry = NULL;
 
 static void handle_timeout(int signum) {
@@ -22,7 +61,38 @@ static void handle_timeout(int signum) {
 	exit(1);
 }
 
-char* read_file_source(const char* file_path) {
+// Signal handler for runtime signals like SIGSEGV, SIGBUS, SIGFPE.
+// Uses the project's logging utilities for consistent message formatting
+// and provides a helpful hint when stack overflow (infinite recursion)
+// is the likely cause.
+static void runtime_signal_handler(int signum, siginfo_t* info, void* ctx) {
+	(void)ctx;
+	void* addr = info ? info->si_addr : NULL;
+
+	// Use fprintf directly to stderr to avoid potential issues with log_error
+	// that might itself cause crashes
+	switch (signum) {
+		case SIGSEGV:
+			// Commonly triggered by stack overflow (infinite recursion) or
+			// illegal memory access. Provide a suggestion to the user.
+			fprintf(stderr, "error: Segmentation fault at address %p. This is often caused by a stack overflow (infinite recursion) or an invalid memory access. Try limiting recursion or inspecting stack allocations.\n", addr);
+			break;
+		case SIGBUS:
+			fprintf(stderr, "error: Bus error (SIGBUS) at address %p: possible unaligned or invalid memory access.\n", addr);
+			break;
+		case SIGFPE:
+			fprintf(stderr, "error: Floating point exception (SIGFPE): arithmetic error (e.g., division by zero or overflow).\n");
+			break;
+		default:
+			fprintf(stderr, "error: Unhandled signal %d received.\n", signum);
+	}
+
+	// Exit with a status that encodes the signal to help in any shell
+	// scenarios where exit codes are examined (128 + signal).
+	_exit(128 + signum);
+}
+
+static char* compiler_read_file_source(const char* file_path) {
 	FILE* fp = fopen(file_path, "rb");
 	if (!fp) return NULL;
 
@@ -68,29 +138,73 @@ char* read_file_source(const char* file_path) {
 }
 
 int main(int argc, char** argv) {
+	// By default, produce a runnable binary so invoking the compiler directly
+	// with a source file (e.g. `./compiled/main foo.adn`) produces
+	// `compiled/program` without extra flags.
+	int EMIT_BINARY = 1;
 	global_library_registry = init_library_registry("lib");
+	if (!global_library_registry) {
+		fprintf(stderr, "Failed to initialize library registry\n");
+		return 1;
+	}
 
+	// Parse optional flags. `--emit-assembly` can be used to generate
+	// assembly only (no binary), `-v/--verbose` enables verbose logging.
+	for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
+			VERBOSE = 1;
+		}
+		if (strcmp(argv[i], "--emit-assembly") == 0 || strcmp(argv[i], "--no-emit-binary") == 0) {
+			EMIT_BINARY = 0;
+		}
+		if (strcmp(argv[i], "--emit-binary") == 0 || strcmp(argv[i], "-b") == 0) {
+			EMIT_BINARY = 1;
+		}
+	}
+
+	// Run test build helpers but only output additional debug traces if
+	// verbose mode is enabled. The test functions themselves will still
+	// perform asserts and checks; debug prints are gated by VERBOSE.
 	create_lexer_tests();
 	create_parser_tests();
 	create_codegen_tests();
 
 	signal(SIGALRM, handle_timeout);
+	// Install runtime handlers for signals that indicate hard errors at
+	// runtime (segfault, bus error, FPE). Use sigaction so we can retrieve
+	// additional information via `siginfo_t` (like faulting address).
+	{
+		struct sigaction sa;
+		memset(&sa, 0, sizeof(sa));
+		sa.sa_sigaction = runtime_signal_handler;
+		sa.sa_flags = SA_SIGINFO;
+		sigaction(SIGSEGV, &sa, NULL);
+		sigaction(SIGBUS, &sa, NULL);
+		sigaction(SIGFPE, &sa, NULL);
+	}
 	alarm(10);
 
-	if (argc < 2) {
-		printf("No input file provided\n");
+	// Find the first non-option argument as the source file
+	int src_index = -1;
+	for (int i = 1; i < argc; i++) {
+		if (argv[i][0] != '-') { src_index = i; break; }
+	}
+	if (src_index < 0) {
+		fprintf(stderr, "No input file provided\n");
 		return 1;
 	}
 
-	char* file_source = read_file_source(argv[1]);
+	char* file_source = compiler_read_file_source(argv[src_index]);
 	if (!file_source) {
-		printf("Failed to read source file\n");
+		fprintf(stderr, "Failed to read source file: %s\n", argv[src_index]);
+		fprintf(stderr, "Please check that the file exists and is readable\n");
 		return 1;
 	}
 
 	Lexer* lexer = create_lexer(file_source);
 	if (!lexer) {
 		free(file_source);
+		fprintf(stderr, "Failed to create lexer\n");
 		return 1;
 	}
 
@@ -98,7 +212,7 @@ int main(int argc, char** argv) {
 	init_parser(&parser, lexer);
 
 	if (parser.error) {
-		if (parser.error_message) printf("%s\n", parser.error_message);
+		if (parser.error_message) fprintf(stderr, "%s\n", parser.error_message);
 		free_parser(&parser);
 		free(lexer);
 		free(file_source);
@@ -107,12 +221,13 @@ int main(int argc, char** argv) {
 
 	ASTNode* ast = parse_file(&parser);
 	if (!ast || parser.error) {
-		if (parser.error_message) printf("%s\n", parser.error_message);
+		if (parser.error_message) fprintf(stderr, "%s\n", parser.error_message);
 		free_parser(&parser);
 		free(lexer);
 		free(file_source);
 		return 1;
 	}
+
 
 	SymbolTable* symbols = init_symbol_table();
 	if (!symbols) {
@@ -120,6 +235,7 @@ int main(int argc, char** argv) {
 		free_parser(&parser);
 		free(lexer);
 		free(file_source);
+		fprintf(stderr, "Failed to create symbol table\n");
 		return 1;
 	}
 
@@ -138,7 +254,20 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	char* register_names[] = {"rbx", "r10", "r11", "r12"};
+	// Detect architecture
+	#ifdef __aarch64__
+		#define ARCH_ARM64 1
+	#elif defined(__x86_64__) || defined(_M_X64)
+		#define ARCH_X86_64 1
+	#else
+		#define ARCH_X86_64 1  // Default to x86_64
+	#endif
+	
+	#ifdef ARCH_ARM64
+		char* register_names[] = {"x19", "x20", "x21", "x22"};
+	#else
+		char* register_names[] = {"rbx", "r10", "r11", "r12"};
+	#endif
 	int caller_saved[] = {0, 1};
 	TargetConfig config;
 	init_target_config(&config, 4, register_names, 2, caller_saved, 8);
@@ -157,8 +286,13 @@ int main(int argc, char** argv) {
 	
 	for (int i = 0; i < ast->child_count; i++) {
 		ASTNode* child = ast->children[i];
-		if (child && child->type == AST_PROGRAM && child->child_count > 3) {
-			generate_ir(child);
+		if (child) {
+			if (child->type == AST_DECLARATION) {
+				// Register global variables
+				generate_ir(child);
+			} else if (child->type == AST_PROGRAM && child->child_count > 3) {
+				generate_ir(child);
+			}
 		}
 	}
 	
@@ -179,26 +313,82 @@ int main(int argc, char** argv) {
 	
 	StringLiteral* strings = get_string_literals();
 	if (strings) {
-		fprintf(asm_file, ".section .rodata\n");
+		// Use Mach-O format for macOS compatibility
+		#ifdef __APPLE__
+			fprintf(asm_file, ".section __TEXT,__cstring,cstring_literals\n");
+		#else
+			fprintf(asm_file, ".section .rodata\n");
+		#endif
 		StringLiteral* current = strings;
 		while (current) {
-			fprintf(asm_file, "%s:\n", current->label);
-			fprintf(asm_file, "  .string \"%s\"\n", current->value);
+			if (current->value && current->label) {
+				char* esc = escape_for_asm(current->value);
+				if (esc) {
+					fprintf(asm_file, "%s:\n", current->label);
+					fprintf(asm_file, "  .string \"%s\"\n", esc);
+					free(esc);
+				}
+			}
 			current = current->next;
 		}
 		fprintf(asm_file, "\n");
 	}
 	
+	// TODO: Full ARM64 code generation requires rewriting all instruction generation
+	// For now, always generate x86-64 assembly
 	fprintf(asm_file, ".text\n");
 	
+	// Emit global variable declarations as data (if any) before .text
+	GlobalVariable* gvars = get_global_variables();
+	if (gvars) {
+		// Use Mach-O format for macOS compatibility
+		#ifdef __APPLE__
+			fprintf(asm_file, ".data\n");
+		#else
+			fprintf(asm_file, ".section .data\n");
+		#endif
+		GlobalVariable* cur = gvars;
+		while (cur) {
+			if (cur->is_string && cur->initial) {
+				fprintf(asm_file, "%s: \n", cur->label);
+				fprintf(asm_file, "    .quad %s\n", cur->initial);
+			} else {
+				const char* val = cur->initial ? cur->initial : "0";
+				fprintf(asm_file, "%s: \n", cur->label);
+				fprintf(asm_file, "    .quad %s\n", val);
+			}
+			cur = cur->next;
+		}
+		fprintf(asm_file, "\n");
+	}
+
 	IRInstruction* all_ir = get_ir_head();
 	if (all_ir) {
+		// Number instructions (always) - this is useful for liveness.
 		number_instructions(all_ir);
+		// Compute liveness and assign stack offsets in either mode.
 		LiveInterval* intervals = compute_liveness(all_ir);
 		assign_stack_offsets(intervals, &config);
+
+		if (VERBOSE) {
+			// Print details only in verbose mode.
+			print_ir();
+			print_liveness(intervals);
+			LiveInterval* it = intervals;
+			fprintf(stderr, "Stack layout:\n");
+			while (it) {
+				fprintf(stderr, "  %s -> reg=%d spilled=%d offset=%d\n", it->variable_name, it->registry, it->spilled, it->stack_offset);
+				it = it->next;
+			}
+		}
+
 		int frame_size = compute_spill_frame_size(intervals, &config);
-		
-		fprintf(asm_file, ".globl main\n");
+		// On macOS, C symbols are prefixed with underscore
+		#ifdef __APPLE__
+			fprintf(asm_file, ".globl _main\n");
+		#else
+			fprintf(asm_file, ".globl main\n");
+		#endif
 		int stack_bytes = frame_size;
 		if (stack_bytes < 0) stack_bytes = 0;
 		// Align to 16 bytes to keep stack ABI compliant when calling
@@ -214,7 +404,62 @@ int main(int argc, char** argv) {
 	free(file_source);
 	free_library_registry(global_library_registry);
 
+	// Optionally assemble and link the generated assembly into an executable
+	if (EMIT_BINARY) {
+		int status = 1;
+		// Determine host architecture at runtime
+		char arch[64] = "";
+		{
+			#include <sys/utsname.h>
+			struct utsname u;
+			if (uname(&u) == 0) strncpy(arch, u.machine, sizeof(arch)-1);
+		}
+
+		// Try Apple Silicon / cross-assembly path first when appropriate
+		if (strstr(arch, "arm64") || strstr(arch, "aarch64")) {
+			status = system("clang -I include -arch x86_64 compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1") ;
+			if (status != 0) {
+				status = system("gcc -I include -m64 -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1");
+			}
+		} else {
+			// Default path for x86_64 hosts
+			status = system("gcc -I include -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1");
+			if (status != 0) {
+				status = system("clang -I include compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1");
+			}
+		}
+
+		if (status != 0) {
+			fprintf(stderr, "error: failed to assemble/link compiled/assembled.s into compiled/program\n");
+			return 1;
+		}
+
+		// On Apple Silicon hosts we currently emit x86_64 assembly. If
+		// we're on arm64, produce a small POSIX wrapper `compiled/program`
+		// that launches the x86_64 binary under Rosetta if available so
+		// users can run `./compiled/program` directly without needing
+		// to remember `arch -x86_64`.
+		if (strstr(arch, "arm") || strstr(arch, "aarch64")) {
+			// Move the real binary to `program.bin` and write a wrapper.
+			remove("compiled/program.bin");
+			if (rename("compiled/program", "compiled/program.bin") != 0) {
+				// If rename fails, continue but warn (not fatal).
+				perror("warning: failed to rename compiled/program");
+			} else {
+				FILE* w = fopen("compiled/program", "w");
+				if (w) {
+					fprintf(w, "#!/bin/sh\nif command -v arch >/dev/null 2>&1; then\n  exec arch -x86_64 \"$(dirname \"$0\")/program.bin\" \"$@\"\nelse\n  echo \"error: this program is x86_64; on Apple Silicon run with Rosetta: arch -x86_64 ./compiled/program.bin\" >&2\n  exit 1\nfi\n");
+					fclose(w);
+					chmod("compiled/program", 0755);
+				}
+			}
+		}
+
+		if (VERBOSE) fprintf(stderr, "Wrote compiled/program\n");
+	}
+
 	// print_ir();
 
 	return 0;
 }
+

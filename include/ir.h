@@ -12,6 +12,7 @@ typedef enum {
 	IR_MUL,       // *
 	IR_DIV,       // /
 	IR_ASSIGN,    // =
+	IR_MOD,       // %
 	IR_LABEL,     // L1:
 	IR_JMP,       // GOTO L1
 	IR_JEQ,       // IF a == b GOTO L1
@@ -43,6 +44,14 @@ typedef struct StringLiteral {
 	struct StringLiteral* next;
 } StringLiteral;
 
+typedef struct GlobalVariable {
+	char* label;       // Assembly label (e.g. G_name)
+	char* name;        // original variable name
+	char* initial;     // initial value (immediate or .STR label)
+	int is_string;     // 1 if the initial value is a string pointer
+	struct GlobalVariable* next;
+} GlobalVariable;
+
 void init_ir();
 
 void init_ir_full();
@@ -60,6 +69,8 @@ char* generate_ir(ASTNode* node);
 IRInstruction* get_ir_head();
 
 StringLiteral* get_string_literals();
+GlobalVariable* get_global_variables();
+char* add_global_variable(const char* name, const char* initial_value, int is_string);
 
 void free_ir();
 

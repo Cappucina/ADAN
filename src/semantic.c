@@ -155,6 +155,7 @@ void analyze_block(ASTNode* block, SymbolTable* table) {
 
 void analyze_statement(ASTNode* statement, SymbolTable* table) {
 	if (statement == NULL || table == NULL) return;
+
 	switch (statement->type) {
 		case AST_ASSIGNMENT:
 			analyze_assignment(statement, table);
@@ -232,6 +233,8 @@ void analyze_file(ASTNode* file_node, SymbolTable* table) {
 		ASTNode* child = file_node->children[i];
 		if (child->type == AST_INCLUDE) {
 			analyze_include(child, table);
+		} else if (child->type == AST_DECLARATION) {
+			analyze_declaration(child, table);
 		} else if (child->type == AST_PROGRAM) {
 			analyze_program(child, table);
 		}
@@ -487,6 +490,11 @@ void analyze_include(ASTNode* include_node, SymbolTable* table) {
 	
 	extern LibraryRegistry* global_library_registry;
 	
+	if (!global_library_registry) {
+		log_semantic_error(include_node, "Library registry not initialized");
+		return;
+	}
+	
 	Library* lib = load_library(global_library_registry, 
 								publisher_node->token.text, 
 								package_node->token.text);
@@ -635,7 +643,8 @@ void analyze_variable_usage(SymbolTable* table) {
 	for (int i = 0; i < table->bucket_count; i++) {
 		Symbol* symbol = table->buckets[i];
 		while (symbol) {
-			if (symbol->usage_count == 0 && symbol->node) {
+			// Only warn about unused variables (not functions/programs).
+			if (symbol->usage_count == 0 && symbol->node && symbol->node->type != AST_PROGRAM) {
 				semantic_warning(symbol->node, SemanticWarningMessages[SEMANTIC_UNUSED_VARIABLE], symbol->name);
 			}
 			symbol = symbol->next;
@@ -840,9 +849,16 @@ Type analyze_binary_op(ASTNode* binary_node, SymbolTable* table) {
 	// 
 	if (op_type == TOKEN_PLUS || op_type == TOKEN_MINUS || op_type == TOKEN_ASTERISK ||
 		op_type == TOKEN_SLASH || op_type == TOKEN_PERCENT || op_type == TOKEN_CAROT) {
-		
+
+		// If this is a plus operator and either side is a string, allow
+		// string concatenation by treating the expression as a string type.
+		if (op_type == TOKEN_PLUS && (left_type == TYPE_STRING || right_type == TYPE_STRING)) {
+			annotate_node_type(binary_node, TYPE_STRING);
+			return TYPE_STRING;
+		}
+
 		// 
-		//  STRICT: String in arithmetic
+		//  STRICT: String (non-plus) in arithmetic
 		// 
 		if (left_type == TYPE_STRING || right_type == TYPE_STRING) {
 			semantic_error(binary_node, SemanticErrorMessages[SEMANTIC_STRING_NUMERIC_OPERATION]);
@@ -1036,8 +1052,14 @@ Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 				inferred = TYPE_CHAR;
 				break;
 			
-				case TOKEN_NULL:
+			case TOKEN_NULL:
 				inferred = TYPE_NULL;
+				break;
+			
+			default:
+				// Other token types (TOKEN_IDENTIFIER, TOKEN_INT, TOKEN_FLOAT, etc.)
+				// are not literals and should not reach this switch
+				inferred = TYPE_UNKNOWN;
 				break;
 		}
 

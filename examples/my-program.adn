@@ -2,10 +2,17 @@ include adan.io;
 
 program::int test()
 {
-    return 2 + 2;
+    i::int = 3548;
+    
+    return i % 2;
 }
 
 program::void main()
 {
-    print(test());
+    print("${test()}\n");
+    print(read_file_source("tmp/test1.txt"));
+    print("\n" + "string" + "\n");
+    write_file_source("test/test/test/test2", "ahh");
+    print(read_file_source("test/test/test/test2"));
+    print("\n");
 }
