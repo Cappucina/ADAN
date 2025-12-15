@@ -271,7 +271,7 @@ char* generate_ir(ASTNode* node) {
 				if (left_type != TYPE_STRING) {
 					char* tmp_cast = new_temporary();
 					IRInstruction* param = create_instruction(IR_PARAM, left, NULL, NULL);
-					IRInstruction* call = create_instruction(IR_CALL, "cast", NULL, tmp_cast);
+					IRInstruction* call = create_instruction(IR_CALL, "to_string", NULL, tmp_cast);
 					emit(param);
 					emit(call);
 					free(left);
@@ -281,7 +281,7 @@ char* generate_ir(ASTNode* node) {
 				if (right_type != TYPE_STRING) {
 					char* tmp_cast = new_temporary();
 					IRInstruction* param = create_instruction(IR_PARAM, right, NULL, NULL);
-					IRInstruction* call = create_instruction(IR_CALL, "cast", NULL, tmp_cast);
+					IRInstruction* call = create_instruction(IR_CALL, "to_string", NULL, tmp_cast);
 					emit(param);
 					emit(call);
 					free(right);

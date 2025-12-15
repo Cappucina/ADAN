@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
+#include "../../include/ast.h"
 
 char* concat(char* str1, char* str2) {
 	size_t len1 = strlen(str1);
@@ -194,7 +196,9 @@ char* replace_all(char* str, char* old, char* new) {
 // avoids duplicate symbol conflicts during the compiler build where the
 // compiler's own `stringUtils.c` also defines `cast`.
 #ifndef BUILDING_COMPILER_MAIN
-const char* cast(const void* input) {
+
+// Small helper: stringify whatever the runtime value is.
+static const char* cast_internal(const void* input) {
     static char buf[64];
     intptr_t ip = (intptr_t)input;
     if (ip > -4096 && ip < 4096) {
@@ -203,4 +207,74 @@ const char* cast(const void* input) {
     }
     return (const char*)input;
 }
+
+// Named runtime casting helpers (public API similar to other string
+// helpers in this directory). These allow generated code to call
+// `to_string`, `to_int`, `to_bool`, `to_char`, and `to_float` directly
+// without needing compiler-internal headers.
+
+const char* to_string(const void* input) {
+    return cast_internal(input);
+}
+
+intptr_t to_int(const void* input) {
+    intptr_t ip = (intptr_t)input;
+    if (ip > -4096 && ip < 4096) return ip;
+    if (!input) return 0;
+    return (intptr_t)strtol((const char*)input, NULL, 10);
+}
+
+int to_bool(const void* input) {
+    intptr_t ip = (intptr_t)input;
+    if (ip > -4096 && ip < 4096) return ip != 0;
+    if (!input) return 0;
+    if (strcmp((const char*)input, "true") == 0) return 1;
+    return atoi((const char*)input) != 0;
+}
+
+int to_char(const void* input) {
+    intptr_t ip = (intptr_t)input;
+    if (ip > -4096 && ip < 4096) return (int)((char)ip);
+    if (!input) return 0;
+    return (int)(*(const char*)input);
+}
+
+double to_float(const void* input) {
+    intptr_t ip = (intptr_t)input;
+    if (ip > -4096 && ip < 4096) return (double)ip;
+    if (!input) return 0.0;
+    return atof((const char*)input);
+}
+
+// Generic cast (keeps previous behavior for compatibility). Returns
+// a `const void*` encoded value where small integer immediates are
+// represented as pointer-sized integers.
+const void* cast_to(int to_type, const void* input) {
+    intptr_t ip = (intptr_t)input;
+    int is_small_int = (ip > -4096 && ip < 4096);
+
+    switch (to_type) {
+        case TYPE_STRING:
+            return (const void*)to_string(input);
+
+        case TYPE_INT:
+            return (const void*)(intptr_t)to_int(input);
+
+        case TYPE_BOOLEAN:
+            return (const void*)(intptr_t)to_bool(input);
+
+        case TYPE_CHAR:
+            return (const void*)(intptr_t)to_char(input);
+
+        case TYPE_FLOAT:
+            // Truncate float to integer-encoded representation for legacy
+            // compatibility; callers that need an actual double should call
+            // `to_float`.
+            return (const void*)(intptr_t)((int)to_float(input));
+
+        default:
+            return input;
+    }
+}
+
 #endif
