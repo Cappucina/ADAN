@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -32,8 +33,6 @@ static void runtime_signal_handler(int signum, siginfo_t* info, void* ctx) {
     _exit(128 + signum);
 }
 
-// Run before main() to install runtime crash handlers so the compiled program
-// can show friendlier diagnostics rather than raw exit codes like 139.
 static void __attribute__((constructor)) init_signal_handlers(void) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
@@ -46,4 +45,4 @@ static void __attribute__((constructor)) init_signal_handlers(void) {
     sigaction(SIGILL, &sa, NULL);
 }
 
-#endif // BUILDING_COMPILER_MAIN
+#endif

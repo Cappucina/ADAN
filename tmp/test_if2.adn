@@ -1,9 +1,0 @@
-include adan.io;
-
-program::int main() {
-    server_fd::int = 3;
-    if (server_fd < 0) {
-        print("neg\n");
-    }
-    return 0;
-}

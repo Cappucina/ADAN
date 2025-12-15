@@ -7,9 +7,6 @@
 #include "lexer_tests.h"
 #include "logs.h"
 
-// The global `VERBOSE` symbol is defined in `src/main.c`; tests can
-// reference it via `logs.h` which declares `extern int VERBOSE`.
-
 void run_lexer_test(LexerTest test) {
 	Lexer *lexer = create_lexer(test.input);
 
@@ -230,9 +227,7 @@ void create_lexer_tests() {
 	for (int i = 0; i < num_tests; i++) {
 		run_lexer_test(tests[i]);
 	}
-
-	// Debug: print tokens of examples/stack-overflow-test.adn to inspect lexer output
-	// Only print when running in verbose mode.
+	
 	if (VERBOSE) {
 		FILE* fp = fopen("examples/stack-overflow-test.adn", "r");
 		if (fp) {

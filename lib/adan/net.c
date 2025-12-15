@@ -5,11 +5,8 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
-#include "net.h"
+#include "include/net.h"
 
-// Read until CRLF CRLF ("\r\n\r\n") or until max_len reached.
-// Returns number of bytes placed in buffer (excluding terminating '\0'),
-// 0 on orderly EOF, or -1 on error.
 int tcp_read_request(int fd, void* buffer, size_t max_len) {
 	if (!buffer || max_len == 0) return -1;
 	char* buf = (char*)buffer;
@@ -22,7 +19,6 @@ int tcp_read_request(int fd, void* buffer, size_t max_len) {
 			return -1;
 		}
 		if (n == 0) {
-			// EOF
 			buf[pos] = '\0';
 			return pos;
 		}
@@ -33,7 +29,6 @@ int tcp_read_request(int fd, void* buffer, size_t max_len) {
 		}
 	}
 
-	// buffer full; ensure null-terminated
 	buf[max_len-1] = '\0';
 	return (int)pos;
 }
@@ -112,7 +107,6 @@ int tcp_write(int fd, const void* buffer, size_t len) {
 	return write(fd, buffer, len);
 }
 
-// Helper: allocate a buffer and read until CRLF CRLF; returns malloc'd string or NULL
 char* tcp_read_request_str(int fd) {
 	size_t cap = 8192;
 	char* buf = malloc(cap);
@@ -125,7 +119,6 @@ char* tcp_read_request_str(int fd) {
 	return buf;
 }
 
-// Helper: write a NUL-terminated string using tcp_write_all
 int tcp_write_string(int fd, const char* s) {
 	if (!s) return -1;
 	size_t len = strlen(s);

@@ -162,7 +162,6 @@ char* find(char* str, char* substring) {
     return result;
 }
 
-// Return 1 if `s` starts with `prefix`, 0 otherwise
 int starts_with(char* s, char* prefix) {
     if (!s || !prefix) return 0;
     size_t p = strlen(prefix);
@@ -190,9 +189,6 @@ char* replace_all(char* str, char* old, char* new) {
     return result;
 }
 
-// Provide runtime cast only when not compiling the compiler itself. This
-// avoids duplicate symbol conflicts during the compiler build where the
-// compiler's own `stringUtils.c` also defines `cast`.
 #ifndef BUILDING_COMPILER_MAIN
 const char* cast(const void* input) {
     static char buf[64];

@@ -1,18 +1,15 @@
 include adan.io;
+include adan.strlib;
 
-program::int test()
+program::string my_amazing_greeting()
 {
-    i::int = 3548;
-    
-    return i % 2;
+    my_welcoming_message::string = "Hello beautiful user, I love you!\n";
+    ran_with::string = "Ran using the ADAN programming language.";
+
+    return concat(my_welcoming_message, ran_with);
 }
 
 program::void main()
 {
-    print("${test()}\n");
-    print(read_file_source("tmp/test1.txt"));
-    print("\n" + "string" + "\n");
-    write_file_source("test/test/test/test2", "ahh");
-    print(read_file_source("test/test/test/test2"));
-    print("\n");
+    print(my_amazing_greeting());
 }

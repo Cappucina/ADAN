@@ -21,21 +21,14 @@ format:
 compile: docker
 	docker exec -i adan-dev-container sh -c "rm -rf compiled"
 	docker exec -i adan-dev-container sh -c "mkdir -p compiled"
-	# Define BUILDING_COMPILER_MAIN so runtime-only symbols in lib/adan
-	# (e.g. read_file_source) are excluded when building the compiler and
-	# therefore don't conflict with identical symbols in src/main.c.
-	docker exec -i adan-dev-container sh -c "gcc -DBUILDING_COMPILER_MAIN src/*.c tests/*.c lib/adan/*.c -I include -o compiled/main"
-	# Ensure files created by Docker are owned by the local user so local
-	# builds can overwrite them without permission errors.
+	docker exec -i adan-dev-container sh -c "gcc -DBUILDING_COMPILER_MAIN src/*.c tests/*.c lib/adan/*.c -I include -I lib/adan/include -o compiled/main"
+	
 	sudo chown -R $$(id -u):$$(id -g) compiled || true
 
 execute:
-# 	docker exec -i adan-dev-container sh -c "cd /workspace && sudo compiled/main examples/stack-overflow-test.adn"
-# 	docker exec -i adan-dev-container sh -c "cd /workspace && sudo compiled/main examples/simple.adn"
 	docker exec -i adan-dev-container sh -c "cd /workspace && compiled/main examples/my-program.adn"
-	# Build `compiled/program` inside the Linux container so host/OS differences
-	# (Mach-O vs ELF, assembler syntax) don't cause assembly errors.
-	docker exec -i adan-dev-container sh -c "gcc -I include -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1 || clang -I include compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1"
+
+	docker exec -i adan-dev-container sh -c "gcc -I include -I lib/adan/include -I lib/adan/include -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1 || clang -I include -I lib/adan/include -I lib/adan/include compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1"
 	docker exec -i adan-dev-container sh -c "./compiled/program"
 	
 	make format -silent

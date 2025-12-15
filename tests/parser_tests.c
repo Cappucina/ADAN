@@ -444,9 +444,7 @@ void run_parser_test(const char* input, ExpectedNode* expected_ast) {
 	} else if (!ast) {
 		printf("PARSE FAIL: '%s'\n  Error: %s\n", input, ParserErrorMessages[PARSER_NULL_TEST]);
 	} else if (!compare_ast(ast, expected_ast)) {
-		// Allow a special 'NULL' expected AST for custom ad-hoc tests
 		if (expected_ast == NULL) {
-			// test special parse of print("${test()}") -> AST_FUNCTION_CALL
 			if (ast->type != AST_FUNCTION_CALL) {
 				printf("PARSE FAIL (custom): '%s'\n  Error: not a function call\n", input);
 			} else {
@@ -469,8 +467,6 @@ void run_parser_test(const char* input, ExpectedNode* expected_ast) {
 			print_ast(ast, NODE_ACTUAL, 0);
 			printf("Expected AST:\n");
 			print_ast(expected_ast, NODE_EXPECTED, 0);
-			// Avoid freeing the ASTs here in order to make debugging easier and
-			// to prevent double-free in case of malformed expected structures.
 			return;
 		}
 	}
@@ -501,7 +497,6 @@ void create_parser_tests() {
 		}
 	}
 
-	// Add a file-level parse test: top-level declaration + program
 	{
 		const char* file_input = "i::int = 0; program::void main() { }";
 		Lexer* lexer = create_lexer(file_input);

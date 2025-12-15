@@ -4,7 +4,6 @@
 #include "ir.h"
 #include "string.h"
 
-// Architecture detection
 #ifdef __aarch64__
 	#define ARCH_ARM64 1
 #elif defined(__x86_64__) || defined(_M_X64)
@@ -15,7 +14,6 @@
 
 static int last_frame_adjust = 0;
 
-// Helper to add underscore prefix for macOS C symbol naming
 static const char* mangle_symbol(const char* name) {
 	#ifdef __APPLE__
 		static char mangled[256];
@@ -32,6 +30,7 @@ bool init_target_config(TargetConfig* cfg, int available_registers, char** regis
 	cfg->caller_saved_indices = caller_saved_indices;
 	cfg->caller_saved_count = caller_saved_count;
 	cfg->spill_slot_size = spill_slot_size;
+
 	return true;
 }
 
@@ -58,7 +57,6 @@ const char* get_register_name(const TargetConfig* cfg, int index) {
 }
 
 void get_location(char* result_buffer, char* variable_name, LiveInterval* intervals, const TargetConfig* cfg) {
-	// Support numeric immediates including an optional leading sign
 	if (variable_name[0] == '+' || variable_name[0] == '-') {
 		if (is_digit(variable_name[1])) {
 			sprintf(result_buffer, "$%s", variable_name);
@@ -70,15 +68,12 @@ void get_location(char* result_buffer, char* variable_name, LiveInterval* interv
 	}
 
 	if (variable_name[0] == '.' && variable_name[1] == 'S' && variable_name[2] == 'T' && variable_name[3] == 'R') {
-		// Always use RIP-relative addressing for x86-64 (required on macOS)
 		// TODO: Full ARM64 code generation requires rewriting all instruction generation
 		sprintf(result_buffer, "%s(%%rip)", variable_name);
 		return;
 	}
 
-	// Global variable label (e.g., 'G_name') should be treated as a global symbol
 	if (variable_name[0] == 'G' && variable_name[1] == '_') {
-		// Always use RIP-relative addressing for x86-64 (required on macOS)
 		sprintf(result_buffer, "%s(%%rip)", variable_name);
 		return;
 	}
@@ -91,8 +86,6 @@ void get_location(char* result_buffer, char* variable_name, LiveInterval* interv
 				sprintf(result_buffer, "%%%s", register_name);
 				return;
 			} else {
-				// For now, generate x86-64 format even on ARM64
-				// Full ARM64 code generation requires rewriting all instruction generation
 				sprintf(result_buffer, "%d(%%rbp)", current->stack_offset);
 				return;
 			}
@@ -112,14 +105,13 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 	int arg_count = 0;
 	
 	// TODO: Full ARM64 code generation requires rewriting all instruction generation
-	// For now, always use x86-64 calling convention
 	const char* arg_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 	
 	char loc1[64];
 	char loc2[64];
 	char result_loc[64];
 
-	bool in_function = false;  // Start outside; first label begins a function
+	bool in_function = false;
 
 	while (current != NULL) {
 		loc1[0] = '\0'; 
@@ -170,7 +162,6 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 			case IR_DIV:
 				fprintf(out, "movq %s, %%rax\n", loc1);
 				fprintf(out, "cqto\n");
-				// idivq doesn't accept immediate values, must use register
 				if (loc2[0] == '$') {
 					fprintf(out, "movq %s, %%r11\n", loc2);
 					fprintf(out, "idivq %%r11\n");
@@ -181,10 +172,8 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				break;
 
 			case IR_MOD:
-				// Remainder after idivq is stored in RDX
 				fprintf(out, "movq %s, %%rax\n", loc1);
 				fprintf(out, "cqto\n");
-				// idivq doesn't accept immediate values, must use register
 				if (loc2[0] == '$') {
 					fprintf(out, "movq %s, %%r11\n", loc2);
 					fprintf(out, "idivq %%r11\n");
@@ -214,7 +203,6 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				int is_block_label = (current->arg1 && current->arg1[0] == '_');
 				if (!is_block_label) {
 					if (in_function) emit_epilogue(out, cfg);
-					// On macOS, C symbols are prefixed with underscore
 					#ifdef __APPLE__
 						fprintf(out, "_%s:\n", current->arg1);
 					#else
@@ -239,20 +227,15 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 			case IR_JEQ: {
 				int loc2_is_zero = (strcmp(loc2, "$0") == 0);
 				if (loc2_is_zero && loc1[0] != '$') {
-					// Zero comparison: emit cmpq $0, loc1
 					fprintf(out, "cmpq %s, %s\n", loc2, loc1);
 				} else if (loc1[0] == '$' && loc2[0] == '$') {
-					// Both immediate: move loc1 to scratch, then compare
 					fprintf(out, "movq %s, %%r11\n", loc1);
 					fprintf(out, "cmpq %s, %%r11\n", loc2);
 				} else if (loc1[0] == '$') {
-					// loc1 is immediate, loc2 is not; swap for cmpq
 					fprintf(out, "cmpq %s, %s\n", loc1, loc2);
 				} else if (loc2[0] == '$' || loc2[0] == '%') {
-					// loc2 is immediate or register; compare normally
 					fprintf(out, "cmpq %s, %s\n", loc2, loc1);
 				} else {
-					// Both memory; move loc2 to scratch
 					fprintf(out, "movq %s, %%r11\n", loc2);
 					fprintf(out, "cmpq %%r11, %s\n", loc1);
 				}
@@ -347,7 +330,7 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 			case IR_CALL: {
 				reset_args = 0;
 				int pass = arg_count;
-				if (pass > 6) pass = 6; // clamp to available registers
+				if (pass > 6) pass = 6;
 				for (int i = 0; i < pass; i++) {
 					if (arg_is_lea[i]) {
 						fprintf(out, "leaq %s, %%%s\n", arg_locs[i], arg_regs[i]);
@@ -357,7 +340,6 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				}
 				arg_count = 0;
 				const char* target = current->arg1 ? current->arg1 : loc1;
-				// On macOS, C symbols are prefixed with underscore
 				#ifdef __APPLE__
 					fprintf(out, "call _%s\n", target);
 				#else
@@ -386,7 +368,6 @@ void emit_prologue(FILE* out, const TargetConfig* cfg, int stack_bytes) {
 	last_frame_adjust = stack_bytes;
 
 	// TODO: Full ARM64 code generation requires rewriting all instruction generation
-	// For now, always generate x86-64 assembly
 	fprintf(out, "\tpushq %%rbp\n");
 	fprintf(out, "\tmovq %%rsp, %%rbp\n");
 	if (stack_bytes > 0) {
@@ -397,7 +378,6 @@ void emit_prologue(FILE* out, const TargetConfig* cfg, int stack_bytes) {
 void emit_epilogue(FILE* out, const TargetConfig* cfg) {
 	if (out == NULL) return;
 	// TODO: Full ARM64 code generation requires rewriting all instruction generation
-	// For now, always generate x86-64 assembly
 	if (last_frame_adjust > 0) {
 		fprintf(out, "addq $%d, %%rsp\n", last_frame_adjust);
 	}

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "lexer.h"
 #include <string.h>
-#include "stringUtils.h"
+#include "string_utils.h"
 
 extern int VERBOSE;
 
@@ -136,7 +136,6 @@ Token* next_token(Lexer* lexer) {
 	if (c == '"') {
 		advance(lexer);
 
-		// Build the string while handling escape sequences like \n, \t, \", \\ etc.
 		int buf_cap = 64;
 		int buf_len = 0;
 		char* buf = malloc(buf_cap);
@@ -147,7 +146,6 @@ Token* next_token(Lexer* lexer) {
 			if (ch == '"') break;
 
 			if (ch == '\\') {
-				// Escape sequence
 				char next = lexer->src[lexer->position + 1];
 				if (next == '\0') break;
 
@@ -164,7 +162,6 @@ Token* next_token(Lexer* lexer) {
 					default: outc = next; break;
 				}
 
-				// append outc
 				if (buf_len + 1 >= buf_cap) {
 					buf_cap *= 2;
 					char* tmp = realloc(buf, buf_cap);
@@ -173,16 +170,11 @@ Token* next_token(Lexer* lexer) {
 				}
 				buf[buf_len++] = outc;
 
-				// advance past the backslash and the escaped character
 				lexer->position += 2;
 				continue;
 			} else if (ch == '$') {
 				char next = lexer->src[lexer->position + 1];
 				if (next == '{') {
-					// Keep the interpolation marker `${...}` verbatim so the parser can
-					// identify and parse embedded expressions rather than evaluating
-					// them at lexing time.
-					// append '$' and '{' and then all inner characters until '}' and the '}' itself.
 					if (buf_len + 2 >= buf_cap) {
 						buf_cap *= 2;
 						char* tmp = realloc(buf, buf_cap);
@@ -192,7 +184,6 @@ Token* next_token(Lexer* lexer) {
 					buf[buf_len++] = '$';
 					buf[buf_len++] = '{';
 
-					// advance past '$' and '{'
 					lexer->position += 2;
 					while (lexer->src[lexer->position] != '\0' && lexer->src[lexer->position] != '}') {
 						char ch2 = lexer->src[lexer->position];
@@ -206,7 +197,6 @@ Token* next_token(Lexer* lexer) {
 						advance(lexer);
 					}
 
-					// append trailing '}' if present
 					if (lexer->src[lexer->position] == '}') {
 						if (buf_len + 1 >= buf_cap) {
 							buf_cap *= 2;
@@ -219,7 +209,6 @@ Token* next_token(Lexer* lexer) {
 					}
 					continue;
 				} else {
-					// Just a normal dollar sign
 					if (buf_len + 1 >= buf_cap) {
 						buf_cap *= 2;
 						char* tmp = realloc(buf, buf_cap);
@@ -241,7 +230,6 @@ Token* next_token(Lexer* lexer) {
 			}
 		}
 
-		// Null-terminate the built string
 		if (buf_len + 1 >= buf_cap) {
 			char* tmp = realloc(buf, buf_len + 1);
 			if (!tmp) { free(buf); return NULL; }
@@ -269,16 +257,13 @@ Token* next_token(Lexer* lexer) {
 	if (c == '+' && next == '+') return make_token(lexer, TOKEN_INCREMENT, (const char*[]){"+", "+"}, 2);
 	if (c == '-' && next == '-') return make_token(lexer, TOKEN_DECREMENT, (const char*[]){"-", "-"}, 2);
 	if (c == '/' && next == '/') {
-		// Single-line comment: skip until end of line and continue scanning
 		advance(lexer); // '/'
 		advance(lexer); // '/'
 		while (lexer->src[lexer->position] != '\0' && lexer->src[lexer->position] != '\n') advance(lexer);
-		// Do not produce a comment token; continue with the next token
 		return next_token(lexer);
 	}
 
 	if (c == '/' && next == '*') {
-		// Block comment: skip until closing '*/' (may span multiple lines)
 		advance(lexer); // '/'
 		advance(lexer); // '*'
 		while (lexer->src[lexer->position] != '\0') {
@@ -289,11 +274,9 @@ Token* next_token(Lexer* lexer) {
 			}
 			advance(lexer);
 		}
-		// Continue scanning without returning a comment token
 		return next_token(lexer);
 	}
 
-	// Compound assignment operators (immediates): +=, -=, *=, /=, %=
 	if (c == '+' && next == '=') return make_token(lexer, TOKEN_ADD_IMMEDIATE, (const char*[]){"+", "="}, 2);
 	if (c == '-' && next == '=') return make_token(lexer, TOKEN_SUB_IMMEDIATE, (const char*[]){"-", "="}, 2);
 	if (c == '*' && next == '=') return make_token(lexer, TOKEN_MUL_IMMEDIATE, (const char*[]){"*", "="}, 2);
