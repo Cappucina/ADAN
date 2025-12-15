@@ -2,18 +2,18 @@
 
 docker:
 	clear 2>/dev/null || true
-	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
+# 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
 
 	python3 scripts/container.py || python scripts/container.py || python scripts/container.py
 
 	-docker rm -f adan-dev-container >/dev/null 2>&1
 	if [ -z "$$(docker ps -a -q -f name=^/adan-dev-container$$)" ]; then \
-			docker run -dit --name adan-dev-container -u $$(id -u):$$(id -g) -v $$(pwd):/workspace adan-dev-container /bin/sh >/dev/null 2>&1; \
+		docker run -dit --name adan-dev-container -u $$(id -u):$$(id -g) -v $$(pwd):/workspace adan-dev-container /bin/sh >/dev/null 2>&1; \
 	elif [ -z "$$(docker ps -q -f name=^/adan-dev-container$$)" ]; then \
 		docker start adan-dev-container >/dev/null 2>&1; \
 	fi
 
-	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
+# 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
 
 format:
 	docker exec -i adan-dev-container sh -c "python3 ./scripts/beautifier.py --file ./compiled/assembled.s > assembled.tmp && mv assembled.tmp ./compiled/assembled.s"
