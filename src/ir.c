@@ -264,7 +264,7 @@ char* generate_ir(ASTNode* node) {
 				if (left_type != TYPE_STRING) {
 					char* tmp_cast = new_temporary();
 					IRInstruction* param = create_instruction(IR_PARAM, left, NULL, NULL);
-					IRInstruction* call = create_instruction(IR_CALL, "cast", NULL, tmp_cast);
+					IRInstruction* call = create_instruction(IR_CALL, "to_string", NULL, tmp_cast);
 					emit(param);
 					emit(call);
 					free(left);
@@ -274,7 +274,7 @@ char* generate_ir(ASTNode* node) {
 				if (right_type != TYPE_STRING) {
 					char* tmp_cast = new_temporary();
 					IRInstruction* param = create_instruction(IR_PARAM, right, NULL, NULL);
-					IRInstruction* call = create_instruction(IR_CALL, "cast", NULL, tmp_cast);
+					IRInstruction* call = create_instruction(IR_CALL, "to_string", NULL, tmp_cast);
 					emit(param);
 					emit(call);
 					free(right);
@@ -303,6 +303,48 @@ char* generate_ir(ASTNode* node) {
 			free(right);
 
 			return temp;
+		}
+
+		case AST_CAST_EXPR: {
+			if (node->child_count < 2) return NULL;
+
+			ASTNode* type_node = node->children[0];
+			ASTNode* expr = node->children[1];
+
+			char* val = generate_ir(expr);
+			if (!val) return NULL;
+
+			const char* func = NULL;
+			switch (type_node->token.type) {
+				case TOKEN_INT: func = "to_int"; break;
+				case TOKEN_FLOAT: func = "to_float"; break;
+				case TOKEN_STRING: func = "to_string"; break;
+				case TOKEN_BOOLEAN: func = "to_bool"; break;
+				case TOKEN_CHAR: func = "to_char"; break;
+				default: func = "cast_to"; break;
+			}
+
+			char* tmp = new_temporary();
+
+			if (strcmp(func, "cast_to") == 0) {
+				// pass the type id as the first param, then the value
+				char type_id_buf[16];
+				snprintf(type_id_buf, sizeof(type_id_buf), "%d", type_node->token.type == TOKEN_INT ? TYPE_INT : (type_node->token.type == TOKEN_FLOAT ? TYPE_FLOAT : TYPE_UNKNOWN));
+				IRInstruction* p1 = create_instruction(IR_PARAM, strdup(type_id_buf), NULL, NULL);
+				IRInstruction* p2 = create_instruction(IR_PARAM, val, NULL, NULL);
+				IRInstruction* call = create_instruction(IR_CALL, "cast_to", NULL, tmp);
+				emit(p1);
+				emit(p2);
+				emit(call);
+			} else {
+				IRInstruction* p = create_instruction(IR_PARAM, val, NULL, NULL);
+				IRInstruction* call = create_instruction(IR_CALL, (char*)func, NULL, tmp);
+				emit(p);
+				emit(call);
+			}
+
+			free(val);
+			return tmp;
 		}
 
 		case AST_ASSIGNMENT: {

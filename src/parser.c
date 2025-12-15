@@ -1579,7 +1579,36 @@ ASTNode* parse_primary(Parser* parser) {
 		}
 
 		case TOKEN_LPAREN: {
+			// Support cast syntax: (type)expr -> AST_CAST_EXPR
 			match(parser, TOKEN_LPAREN);
+			if (parser->current_token.type == TOKEN_INT || parser->current_token.type == TOKEN_FLOAT ||
+				parser->current_token.type == TOKEN_STRING || parser->current_token.type == TOKEN_BOOLEAN ||
+				parser->current_token.type == TOKEN_CHAR) {
+				// It's a cast. Capture the type token and consume it.
+				Token type_token = parser->current_token;
+				if (type_token.text) type_token.text = strdup(type_token.text);
+				match(parser, parser->current_token.type);
+				if (!expect(parser, TOKEN_RPAREN, PARSER_EXPECTED, "')' after cast type", parser->current_token.text)) return NULL;
+				match(parser, TOKEN_RPAREN);
+
+				// After a cast type, parse the primary expression being cast.
+				ASTNode* expr = parse_primary(parser);
+				if (!expr) {
+					set_error(parser, PARSER_EXPECTED, "expression after cast", parser->current_token.text);
+					return NULL;
+				}
+
+				ASTNode* type_node = create_ast_node(AST_TYPE, type_token);
+				ASTNode* cast_node = create_ast_node(AST_CAST_EXPR, (Token){0});
+				cast_node->child_count = 2;
+				cast_node->children = malloc(sizeof(ASTNode*) * 2);
+				cast_node->children[0] = type_node;
+				cast_node->children[1] = expr;
+				primary_node = cast_node;
+				break;
+			}
+
+			// Otherwise, normal parenthesized expression
 			ASTNode* expr = parse_binary(parser);
 			if (!expr) {
 				set_error(parser, PARSER_EXPECTED, "expression inside parentheses", parser->current_token.text);
