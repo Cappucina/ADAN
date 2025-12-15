@@ -6,4 +6,4 @@
 
 const char* cast(const void* input);
 
-#endif // STRING_UTILS_H
+#endif

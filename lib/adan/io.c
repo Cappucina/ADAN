@@ -6,7 +6,7 @@
 
 void print(const char* str) {
 	if (!str) return;
-	printf("%s", str);
+	printf("%s\n", str);
 	fflush(stdout);
 }
 
@@ -17,10 +17,6 @@ void print_int(long long x) {
 }
 #endif
 
-// Runtime helper: read a file into a heap-allocated buffer and return it.
-// This function is provided to programs built by the compiler and is
-// intentionally omitted when building the compiler itself (to avoid
-// symbol conflicts during the compiler build).
 #ifndef BUILDING_COMPILER_MAIN
 const char* read_file_source(const char* file_path) {
 	FILE* fp = fopen(file_path, "rb");
@@ -66,7 +62,6 @@ const char* read_file_source(const char* file_path) {
 bool write_file_source(const char* file_path, const char* content) {
 	FILE* fp = fopen(file_path, "wb");
 	if (!fp) {
-		// Create parent directories if needed
 		char cmd[1024];
 		snprintf(cmd, sizeof(cmd), "mkdir -p $(dirname \"%s\")", file_path);
 		system(cmd);
@@ -86,7 +81,6 @@ bool write_file_source(const char* file_path, const char* content) {
 bool append_file_source(const char* file_path, const char* content) {
 	FILE* fp = fopen(file_path, "ab");
 	if (!fp) {
-		// Create parent directories if needed
 		char cmd[1024];
 		snprintf(cmd, sizeof(cmd), "mkdir -p $(dirname \"%s\")", file_path);
 		system(cmd);

@@ -1,7 +1,0 @@
-include adan.net;
-
-program::int main() {
-    client_fd::int = 1;
-    req::string = tcp_read_request_str(client_fd);
-    return 0;
-}

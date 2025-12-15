@@ -1,9 +1,0 @@
-include adan.io;
-
-i::int = 0;
-
-program::void main() {
-    i++;
-    print("${i}\n");
-    main();
-}

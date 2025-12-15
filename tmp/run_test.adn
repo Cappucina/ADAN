@@ -1,3 +1,0 @@
-include adan.io;
-program::int test() { return 4; }
-program::int main() { print("${test()}"); return 0; }

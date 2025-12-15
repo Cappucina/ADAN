@@ -168,7 +168,6 @@ char* add_global_variable(const char* name, const char* initial_value, int is_st
 	char label[128];
 	snprintf(label, sizeof(label), "G_%s", name);
 
-	// Check for existing
 	GlobalVariable* cur = global_vars;
 	while (cur) {
 		if (strcmp(cur->name, name) == 0) return strdup(cur->label);
@@ -204,11 +203,9 @@ char* generate_ir(ASTNode* node) {
 
 		case AST_IDENTIFIER: {
 			if (!node->token.text) return NULL;
-			// If it's a global var, return its label
 			char* gv = find_global_var_label(node->token.text);
 			if (gv) return gv;
 
-			// Scope variable to current function
 			char buffer[128];
 			if (current_function) {
 				snprintf(buffer, sizeof(buffer), "%s.%s", current_function, node->token.text);
@@ -260,14 +257,10 @@ char* generate_ir(ASTNode* node) {
 					return NULL;
 			}
 
-			// If either operand has been annotated as a string, generate
-			// a runtime call to `concat` (and cast numeric args) instead
-			// of a plain arithmetic add.
 			Type left_type = node->children[0] ? node->children[0]->annotated_type : TYPE_UNKNOWN;
 			Type right_type = node->children[1] ? node->children[1]->annotated_type : TYPE_UNKNOWN;
 
 			if ((left_type == TYPE_STRING) || (right_type == TYPE_STRING)) {
-				// Convert non-string operands with a cast() call.
 				if (left_type != TYPE_STRING) {
 					char* tmp_cast = new_temporary();
 					IRInstruction* param = create_instruction(IR_PARAM, left, NULL, NULL);
@@ -369,15 +362,11 @@ char* generate_ir(ASTNode* node) {
 				return NULL;
 			}
 
-			// Determine whether this assignment targets a global variable or a
-			// scoped (function-local) variable. If a global variable exists,
-			// use its label (G_<name>); otherwise, scope it to the current
-			// function via "<func>.<name>".
 			char* gv = find_global_var_label(name);
 			char dest_buffer[128];
 			char* dest = NULL;
 			if (gv) {
-				dest = gv; // returned value is already strdup'd; use it directly
+				dest = gv;
 			} else {
 				if (current_function) {
 					snprintf(dest_buffer, sizeof(dest_buffer), "%s.%s", current_function, name);
@@ -391,9 +380,6 @@ char* generate_ir(ASTNode* node) {
 			emit(new_instruction);
 
 			free(val);
-			// If dest was allocated here, free it; if it came from
-			// find_global_var_label() (gv), it is strdup'd as well and
-			// should be freed too after emission.
 			free(dest);
 
 			return strdup(dest_buffer);
@@ -403,8 +389,6 @@ char* generate_ir(ASTNode* node) {
 			if (node->child_count >= 3) {
 				ASTNode* id = node->children[0];
 				ASTNode* expr = node->children[2];
-				// If this is a top-level/global declaration (no current function), add
-				// a global variable and initialize it in the data section.
 				if (current_function == NULL) {
 					char* val = generate_ir(expr);
 					if (!val) return NULL;
@@ -419,7 +403,6 @@ char* generate_ir(ASTNode* node) {
 					return g_label;
 				}
 
-				// Otherwise, local variable inside a function - handle as assignment
 				char* val = generate_ir(expr);
 				if (!val) return NULL;
 
@@ -429,7 +412,6 @@ char* generate_ir(ASTNode* node) {
 					return NULL;
 				}
 
-				// Scope variable to current function
 				char dest_buffer[128];
 				if (current_function) {
 					snprintf(dest_buffer, sizeof(dest_buffer), "%s.%s", current_function, name);
@@ -452,8 +434,6 @@ char* generate_ir(ASTNode* node) {
 		}
 
 		case AST_PROGRAM: {
-			// Save function name for variable scoping
-			// AST_PROGRAM structure: [return_type, name, params, body]
 			const char* func_name = NULL;
 			if (node->child_count > 1 && node->children[1]) {
 				func_name = node->children[1]->token.text;
@@ -465,11 +445,9 @@ char* generate_ir(ASTNode* node) {
 			IRInstruction* label = create_instruction(IR_LABEL, (char*)func_name, NULL, NULL);
 			emit(label);
 
-			// Process function body (child[3])
 			if (node->child_count > 3 && node->children[3]) {
 				generate_ir(node->children[3]);
 			}
-			// Do not emit an implicit RETURN; rely on explicit AST_RETURN.
 
 			return NULL;
 		}
@@ -554,11 +532,6 @@ char* generate_ir(ASTNode* node) {
 			ASTNode* target_node = node->children[0];
 			TokenType op = node->children[1]->token.type;
 
-			// If the operand is an identifier (L-value), implement postfix semantics:
-			// old_val = load(target)
-			// new_val = old_val +/- 1
-			// store(new_val) -> target
-			// return old_val
 			if (target_node->type == AST_IDENTIFIER) {
 				char* var = generate_ir(target_node);
 				if (!var) return NULL;
@@ -582,7 +555,6 @@ char* generate_ir(ASTNode* node) {
 				free(new_temp);
 				return old_temp;
 			} else {
-				// If operand is not an identifier, evaluate it and return the incremented value
 				char* operand_val = generate_ir(target_node);
 				if (!operand_val) return NULL;
 				char* result_temp = new_temporary();

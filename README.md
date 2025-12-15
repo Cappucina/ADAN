@@ -3,7 +3,6 @@
 	<p>Writing safe and reliable reusable code to make things a whole lot easier.</p>
 </div>
 
-
 ADAN is a statically typed, memory safe programming language that strives to introduce a strict and safe type system that primarily focuses on preventing possible memory leaks and unstable code. ADAN has syntax similar to C, to keep familiarity and to avoid having a steep learning curve.
 
 ADAN was developed by [Lily](https://github.com/transicle), [Kauht](https://github.com/kauht), and [Leo](https://github.com/nvttles).

@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,10 +8,6 @@
 #include "codegen_tests.h"
 #include "lexer.h"
 #include "logs.h"
-
-// Global verbosity; default is false (0). Can be toggled via command-line
-// flag `--verbose` or `-v`.
-int VERBOSE = 0;
 #include "parser.h"
 #include "semantic.h"
 #include "ir.h"
@@ -19,6 +16,8 @@ int VERBOSE = 0;
 #include "library.h"
 #include <signal.h>
 #include <unistd.h>
+
+int VERBOSE = 0;
 
 static char* escape_for_asm(const char* s) {
 	if (!s) return strdup("");
@@ -61,20 +60,12 @@ static void handle_timeout(int signum) {
 	exit(1);
 }
 
-// Signal handler for runtime signals like SIGSEGV, SIGBUS, SIGFPE.
-// Uses the project's logging utilities for consistent message formatting
-// and provides a helpful hint when stack overflow (infinite recursion)
-// is the likely cause.
 static void runtime_signal_handler(int signum, siginfo_t* info, void* ctx) {
 	(void)ctx;
 	void* addr = info ? info->si_addr : NULL;
 
-	// Use fprintf directly to stderr to avoid potential issues with log_error
-	// that might itself cause crashes
 	switch (signum) {
 		case SIGSEGV:
-			// Commonly triggered by stack overflow (infinite recursion) or
-			// illegal memory access. Provide a suggestion to the user.
 			fprintf(stderr, "error: Segmentation fault at address %p. This is often caused by a stack overflow (infinite recursion) or an invalid memory access. Try limiting recursion or inspecting stack allocations.\n", addr);
 			break;
 		case SIGBUS:
@@ -87,8 +78,6 @@ static void runtime_signal_handler(int signum, siginfo_t* info, void* ctx) {
 			fprintf(stderr, "error: Unhandled signal %d received.\n", signum);
 	}
 
-	// Exit with a status that encodes the signal to help in any shell
-	// scenarios where exit codes are examined (128 + signal).
 	_exit(128 + signum);
 }
 
@@ -138,9 +127,6 @@ static char* compiler_read_file_source(const char* file_path) {
 }
 
 int main(int argc, char** argv) {
-	// By default, produce a runnable binary so invoking the compiler directly
-	// with a source file (e.g. `./compiled/main foo.adn`) produces
-	// `compiled/program` without extra flags.
 	int EMIT_BINARY = 1;
 	global_library_registry = init_library_registry("lib");
 	if (!global_library_registry) {
@@ -148,8 +134,6 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	// Parse optional flags. `--emit-assembly` can be used to generate
-	// assembly only (no binary), `-v/--verbose` enables verbose logging.
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
 			VERBOSE = 1;
@@ -162,17 +146,11 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	// Run test build helpers but only output additional debug traces if
-	// verbose mode is enabled. The test functions themselves will still
-	// perform asserts and checks; debug prints are gated by VERBOSE.
 	create_lexer_tests();
 	create_parser_tests();
 	create_codegen_tests();
 
 	signal(SIGALRM, handle_timeout);
-	// Install runtime handlers for signals that indicate hard errors at
-	// runtime (segfault, bus error, FPE). Use sigaction so we can retrieve
-	// additional information via `siginfo_t` (like faulting address).
 	{
 		struct sigaction sa;
 		memset(&sa, 0, sizeof(sa));
@@ -184,7 +162,6 @@ int main(int argc, char** argv) {
 	}
 	alarm(10);
 
-	// Find the first non-option argument as the source file
 	int src_index = -1;
 	for (int i = 1; i < argc; i++) {
 		if (argv[i][0] != '-') { src_index = i; break; }
@@ -254,7 +231,6 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	// Detect architecture
 	#ifdef __aarch64__
 		#define ARCH_ARM64 1
 	#elif defined(__x86_64__) || defined(_M_X64)
@@ -288,7 +264,6 @@ int main(int argc, char** argv) {
 		ASTNode* child = ast->children[i];
 		if (child) {
 			if (child->type == AST_DECLARATION) {
-				// Register global variables
 				generate_ir(child);
 			} else if (child->type == AST_PROGRAM && child->child_count > 3) {
 				generate_ir(child);
@@ -313,7 +288,6 @@ int main(int argc, char** argv) {
 	
 	StringLiteral* strings = get_string_literals();
 	if (strings) {
-		// Use Mach-O format for macOS compatibility
 		#ifdef __APPLE__
 			fprintf(asm_file, ".section __TEXT,__cstring,cstring_literals\n");
 		#else
@@ -335,13 +309,10 @@ int main(int argc, char** argv) {
 	}
 	
 	// TODO: Full ARM64 code generation requires rewriting all instruction generation
-	// For now, always generate x86-64 assembly
 	fprintf(asm_file, ".text\n");
 	
-	// Emit global variable declarations as data (if any) before .text
 	GlobalVariable* gvars = get_global_variables();
 	if (gvars) {
-		// Use Mach-O format for macOS compatibility
 		#ifdef __APPLE__
 			fprintf(asm_file, ".data\n");
 		#else
@@ -364,14 +335,11 @@ int main(int argc, char** argv) {
 
 	IRInstruction* all_ir = get_ir_head();
 	if (all_ir) {
-		// Number instructions (always) - this is useful for liveness.
 		number_instructions(all_ir);
-		// Compute liveness and assign stack offsets in either mode.
 		LiveInterval* intervals = compute_liveness(all_ir);
 		assign_stack_offsets(intervals, &config);
 
 		if (VERBOSE) {
-			// Print details only in verbose mode.
 			print_ir();
 			print_liveness(intervals);
 			LiveInterval* it = intervals;
@@ -383,7 +351,6 @@ int main(int argc, char** argv) {
 		}
 
 		int frame_size = compute_spill_frame_size(intervals, &config);
-		// On macOS, C symbols are prefixed with underscore
 		#ifdef __APPLE__
 			fprintf(asm_file, ".globl _main\n");
 		#else
@@ -391,7 +358,6 @@ int main(int argc, char** argv) {
 		#endif
 		int stack_bytes = frame_size;
 		if (stack_bytes < 0) stack_bytes = 0;
-		// Align to 16 bytes to keep stack ABI compliant when calling
 		stack_bytes = (stack_bytes + 15) & ~15;
 		generate_asm(all_ir, intervals, &config, asm_file, stack_bytes);
 	}
@@ -404,10 +370,8 @@ int main(int argc, char** argv) {
 	free(file_source);
 	free_library_registry(global_library_registry);
 
-	// Optionally assemble and link the generated assembly into an executable
 	if (EMIT_BINARY) {
 		int status = 1;
-		// Determine host architecture at runtime
 		char arch[64] = "";
 		{
 			#include <sys/utsname.h>
@@ -415,14 +379,12 @@ int main(int argc, char** argv) {
 			if (uname(&u) == 0) strncpy(arch, u.machine, sizeof(arch)-1);
 		}
 
-		// Try Apple Silicon / cross-assembly path first when appropriate
 		if (strstr(arch, "arm64") || strstr(arch, "aarch64")) {
 			status = system("clang -I include -arch x86_64 compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1") ;
 			if (status != 0) {
 				status = system("gcc -I include -m64 -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1");
 			}
 		} else {
-			// Default path for x86_64 hosts
 			status = system("gcc -I include -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1");
 			if (status != 0) {
 				status = system("clang -I include compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1");
@@ -434,16 +396,9 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 
-		// On Apple Silicon hosts we currently emit x86_64 assembly. If
-		// we're on arm64, produce a small POSIX wrapper `compiled/program`
-		// that launches the x86_64 binary under Rosetta if available so
-		// users can run `./compiled/program` directly without needing
-		// to remember `arch -x86_64`.
 		if (strstr(arch, "arm") || strstr(arch, "aarch64")) {
-			// Move the real binary to `program.bin` and write a wrapper.
 			remove("compiled/program.bin");
 			if (rename("compiled/program", "compiled/program.bin") != 0) {
-				// If rename fails, continue but warn (not fatal).
 				perror("warning: failed to rename compiled/program");
 			} else {
 				FILE* w = fopen("compiled/program", "w");
