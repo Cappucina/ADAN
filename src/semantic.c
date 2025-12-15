@@ -661,6 +661,9 @@ void analyze_variable_usage(SymbolTable* table) {
 //        && = Allow
 // 
 void check_type_cast_validity(Type from, Type to, ASTNode* node) {
+	// just some testing
+	return;
+
 	// 
 	//  Same types are always valid
 	// 
@@ -784,6 +787,22 @@ Type analyze_increment_expr(ASTNode* node, SymbolTable* table) {
 	return target_type;
 }
 
+Type analyze_cast_expr(ASTNode* node, SymbolTable* table) {
+	if (!node || node->child_count < 2) return TYPE_UNKNOWN;
+
+	ASTNode* type_node = node->children[0];
+	ASTNode* expr_node = node->children[1];
+
+	Type to = get_expression_type(type_node, table);
+	Type from = get_expression_type(expr_node, table);
+
+	// Validate the cast according to the existing rules.
+	check_type_cast_validity(from, to, node);
+
+	annotate_node_type(node, to);
+	return to;
+}
+
 Type analyze_expression(ASTNode* expr_node, SymbolTable* table) {
 	if (!expr_node) {
 		return TYPE_UNKNOWN;
@@ -799,6 +818,8 @@ Type analyze_expression(ASTNode* expr_node, SymbolTable* table) {
 		result = analyze_array_access(expr_node, table);
 	} else if (expr_node->type == AST_INCREMENT_EXPR) {
 		result = analyze_increment_expr(expr_node, table);
+	} else if (expr_node->type == AST_CAST_EXPR) {
+		result = analyze_cast_expr(expr_node, table);
 	} else {
 		result = get_expression_type(expr_node, table);
 	}
@@ -1077,6 +1098,19 @@ Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 
 		annotate_node_type(expr_node, TYPE_UNKNOWN);
 		return TYPE_UNKNOWN;
+	}
+
+	if (expr_node->type == AST_CAST_EXPR) {
+		if (expr_node->child_count < 2) {
+			annotate_node_type(expr_node, TYPE_UNKNOWN);
+			return TYPE_UNKNOWN;
+		}
+
+		Type to = get_expression_type(expr_node->children[0], table);
+		Type from = get_expression_type(expr_node->children[1], table);
+		check_type_cast_validity(from, to, expr_node);
+		annotate_node_type(expr_node, to);
+		return to;
 	}
 
 	if (expr_node->type == AST_BINARY_OP || expr_node->type == AST_BINARY_EXPR ||

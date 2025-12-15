@@ -1,0 +1,18 @@
+include adan.io;
+
+program::int main() {
+    print("Casting demo:\n");
+    // int -> string
+    print("int->string: " + (string)42 + "\n");
+
+    // string -> int then arithmetic
+    print("string->int + 1: " + (string)((int)"41" + 1) + "\n");
+
+    // string -> boolean
+    print("string 'true' -> bool: " + (string)(true) + "\n");
+
+    // string -> float -> int (truncated in cast to int)
+    print("string '3.14' -> int(trunc): " + (string)((int)"3.14") + "\n");
+
+    return 0;
+}
