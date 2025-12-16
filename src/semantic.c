@@ -713,7 +713,6 @@ void check_type_cast_validity(Type from, Type to, ASTNode* node) {
 	// 
 	if (from == TYPE_ARRAY || to == TYPE_ARRAY) {
 		semantic_error(node, "Cannot cast arrays to or from other types");
-		return;
 	}
 	
 	// 

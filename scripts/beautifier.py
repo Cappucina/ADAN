@@ -607,7 +607,7 @@ class Formatter():
         self.first_line = True
 
         pieces = line.split()
-        if "#" in line:
+        if "#" in line and not line.startswith("."):
             op = pieces[0]
             start = 1
             if len(pieces[0]) == 1:

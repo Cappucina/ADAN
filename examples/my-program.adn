@@ -17,4 +17,11 @@ program::void main() {
     print((string)hi);
     print((string)*hip);
     print((string)xd[2]);
+
+    for (i::int = 0; i <= 10; i++) {
+        print("Line #" + (string)i);
+        if (i == 5) {
+            break;
+        }
+    }
 }

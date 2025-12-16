@@ -268,6 +268,9 @@ ASTNode* parse_statement(Parser* parser) {
 		case TOKEN_BREAK:
 			return parse_break_statement(parser);
 			break;
+		case TOKEN_CONTINUE:
+			return parse_continue_statement(parser);
+			break;
 		case TOKEN_RETURN:
 			return parse_return_statement(parser);
 			break;
@@ -314,6 +317,17 @@ ASTNode* parse_break_statement(Parser* parser) {
 		return NULL;
 	}
 	if (!expect(parser, TOKEN_SEMICOLON, PARSER_EXPECTED, "';'' after 'break'", parser->current_token.text)) {
+		return NULL;
+	}
+	return node;
+}
+
+ASTNode* parse_continue_statement(Parser* parser) {
+	ASTNode* node = create_ast_node(AST_CONTINUE, parser->current_token);
+	if (!expect(parser, TOKEN_CONTINUE, PARSER_EXPECTED, "'continue'", parser->current_token.text)) {
+		return NULL;
+	}
+	if (!expect(parser, TOKEN_SEMICOLON, PARSER_EXPECTED, "';' after 'continue'", parser->current_token.text)) {
 		return NULL;
 	}
 	return node;
@@ -1016,13 +1030,13 @@ ASTNode* parse_if_statement(Parser* parser) {
 		if (t != TOKEN_EQUALS && t != TOKEN_GREATER &&
 			t != TOKEN_LESS && t != TOKEN_GREATER_EQUALS &&
 			t != TOKEN_LESS_EQUALS && t != TOKEN_NOT_EQUALS &&
-			t != TOKEN_AND) {
+			t != TOKEN_AND && t != TOKEN_OR) {
 				set_error(parser, PARSER_EXPECTED, "comparison operator", parser->current_token.text);
 				return NULL;
 		}
 		match(parser, t);
 
-		ASTNode* right = parse_statement(parser);
+		ASTNode* right = parse_expression(parser);
 		if (!right) {
 			set_error(parser, PARSER_EXPECTED, "expression in if condition", parser->current_token.text);
 			return NULL;
@@ -1083,7 +1097,7 @@ ASTNode* parse_while_statement(Parser* parser) {
 		if (op.type != TOKEN_EQUALS && op.type != TOKEN_GREATER &&
 			op.type != TOKEN_LESS && op.type != TOKEN_GREATER_EQUALS &&
 			op.type != TOKEN_LESS_EQUALS && op.type != TOKEN_NOT_EQUALS &&
-			op.type != TOKEN_AND) {
+			op.type != TOKEN_AND && op.type != TOKEN_OR) {
 				set_error(parser, PARSER_EXPECTED, "comparison operator", parser->current_token.text);
 				return NULL;
 		}
@@ -1319,12 +1333,28 @@ ASTNode* parse_function_call(Parser* parser) {
 	return node;
 }
 
+static ASTNode* parse_include_name(Parser* parser) {
+	Token id_token = parser->current_token;
+	if (id_token.type == TOKEN_IDENTIFIER || id_token.type == TOKEN_STRING ||
+		id_token.type == TOKEN_INT || id_token.type == TOKEN_FLOAT ||
+		id_token.type == TOKEN_CHAR || id_token.type == TOKEN_BOOLEAN ||
+		id_token.type == TOKEN_VOID) {
+		if (id_token.text) id_token.text = strdup(id_token.text);
+		match(parser, parser->current_token.type);
+		return create_ast_node(AST_IDENTIFIER, id_token);
+	}
+	set_error(parser, PARSER_EXPECTED, "identifier or type name", parser->current_token.text);
+	return NULL;
+}
+
 ASTNode* parse_include_statement(Parser* parser) {
 	ASTNode* include_node = create_ast_node(AST_INCLUDE, parser->current_token);
 	if (!expect(parser, TOKEN_INCLUDE, PARSER_EXPECTED, "'include'", parser->current_token.text)) return NULL;
-	ASTNode* publisher = parse_identifier(parser);
+	ASTNode* publisher = parse_include_name(parser);
+	if (!publisher) return NULL;
 	if (!expect(parser, TOKEN_PERIOD, PARSER_EXPECTED, "'.'", parser->current_token.text)) return NULL;
-	ASTNode* package = parse_identifier(parser);
+	ASTNode* package = parse_include_name(parser);
+	if (!package) return NULL;
 	if (!expect(parser, TOKEN_SEMICOLON, PARSER_EXPECTED, "';'", parser->current_token.text)) return NULL;
 	include_node->child_count = 2;
 	include_node->children = malloc(sizeof(ASTNode*) * 2);

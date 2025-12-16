@@ -29,6 +29,7 @@ typedef enum {
 	AST_WHILE,
 	AST_INCLUDE,
 	AST_BREAK,
+	AST_CONTINUE,
 	AST_RETURN,
 	AST_FOR,
 	AST_ELSE,
@@ -47,6 +48,7 @@ typedef enum {
 	AST_MEMBER_ACCESS,
 	AST_TYPE,
 	AST_PARAMS,
+	AST_VARIADIC_PARAM,
 	
 	// 
 	//  Expressions
@@ -121,6 +123,8 @@ static inline const char* node_type_to_string(ASTNodeType type) {
 		case AST_ADDRESS_OF: return "AST_ADDRESS_OF";
 		case AST_DEREFERENCE: return "AST_DEREFERENCE";
 		case AST_ARRAY_INDEX: return "AST_ARRAY_INDEX";
+		case AST_CONTINUE: return "AST_CONTINUE";
+		case AST_VARIADIC_PARAM: return "AST_VARIADIC_PARAM";
 		default: return "AST_UNKNOWN";
 	}
 }

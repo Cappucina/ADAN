@@ -1,3 +1,0 @@
-ADD ONTO ADAN
-	- File system library
-	- Optimization

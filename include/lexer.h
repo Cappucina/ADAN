@@ -60,27 +60,30 @@ typedef enum {
 	//
 	//  Signs
 	//
-	TOKEN_EQUALS,			 // Used during checking the equality between two values. (==, NOT =)
+	TOKEN_EQUALS,
 	TOKEN_GREATER,
 	TOKEN_LESS,
 	TOKEN_GREATER_EQUALS,
 	TOKEN_LESS_EQUALS,
-	TOKEN_ASSIGN,			 // Used explicitly for variable assignment, NOT equality checking.
+	TOKEN_ASSIGN,
 	TOKEN_NOT_EQUALS,
 	TOKEN_AND,
+	TOKEN_OR,
+	TOKEN_ELLIPSIS,
 
 	//
 	//  Keywords
 	//
-	TOKEN_IF,		  // Comparison between two values.
-	TOKEN_WHILE,	  // Loops until the condition provided is true.
-	TOKEN_FOR,		  // Loops specific code for a certain amount of times.
-	TOKEN_INCLUDE,	  // Import third party libraries into your project to get more functionality.
-	TOKEN_BREAK,	  // Stops a loop regardless if the condition is met.
+	TOKEN_IF,
+	TOKEN_WHILE,
+	TOKEN_FOR,
+	TOKEN_INCLUDE,
+	TOKEN_BREAK,
+	TOKEN_CONTINUE,
 	TOKEN_TRUE,
 	TOKEN_FALSE,
-	TOKEN_PROGRAM,    // Defines a new function, allowing code to be reusable.
-	TOKEN_RETURN,	  // Return a value from a program or loop statement. Does not stop loops directly.
+	TOKEN_PROGRAM,
+	TOKEN_RETURN,
 	TOKEN_ELSE,
 
 	//
@@ -120,6 +123,8 @@ static inline bool is_whitespace(char c) {
 }
 
 Lexer* create_lexer(const char *src);
+
+void free_lexer(Lexer *lexer);
 
 Token* make_token(Lexer *lexer, TokenType type, const char *parts[], int part_count);
 
