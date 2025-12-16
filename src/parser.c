@@ -869,6 +869,9 @@ int get_node_precedence(ASTNode* node) {
 	if (!node) return -1;
 
 	switch (node->token.type) {
+		case TOKEN_EXPONENT: // **
+			return 5;
+		
 		case TOKEN_CAROT: // ^
 			return 4;
 
@@ -879,7 +882,15 @@ int get_node_precedence(ASTNode* node) {
 		
 		case TOKEN_PLUS: // +
 		case TOKEN_MINUS: // -
+		case TOKEN_LEFT_SHIFT:
+		case TOKEN_RIGHT_SHIFT:
 			return 2;
+		
+		case TOKEN_AMPERSAND:
+			return 1;
+		
+		case TOKEN_PIPE:
+			return 0;
 		
 		default:
 			return -1;
@@ -901,6 +912,11 @@ ASTNode* parse_binary(Parser* parser) {
 		int right_assoc = 0;
 
 		switch (op_type) {
+			case TOKEN_EXPONENT:
+				precedence = 5;
+				right_assoc = 1;
+				break;
+			
 			case TOKEN_CAROT:
 				precedence = 4;
 				right_assoc = 1;
@@ -914,7 +930,17 @@ ASTNode* parse_binary(Parser* parser) {
 			
 			case TOKEN_PLUS:
 			case TOKEN_MINUS:
+			case TOKEN_LEFT_SHIFT:
+			case TOKEN_RIGHT_SHIFT:
 				precedence = 2;
+				break;
+			
+			case TOKEN_AMPERSAND:
+				precedence = 1;
+				break;
+			
+			case TOKEN_PIPE:
+				precedence = 0;
 				break;
 			
 			default:
@@ -949,6 +975,24 @@ ASTNode* parse_binary(Parser* parser) {
 ASTNode* parse_unary(Parser* parser) {
 	TokenType op_type = parser->current_token.type;
 
+	if (op_type == TOKEN_AT) {
+		Token op_token = parser->current_token;
+		match(parser, TOKEN_AT);
+
+		ASTNode* operand = parse_unary(parser);
+		if (!operand) {
+			set_error(parser, PARSER_EXPECTED, "expression after '@'", parser->current_token.text);
+			return NULL;
+		}
+
+		ASTNode* node = create_ast_node(AST_ADDRESS_OF, op_token);
+		node->child_count = 1;
+		node->children = malloc(sizeof(ASTNode*));
+		node->children[0] = operand;
+
+		return node;
+	}
+
 	if (op_type == TOKEN_MINUS || op_type == TOKEN_NOT) {
 		Token op_token = parser->current_token;
 		match(parser, op_type);
@@ -968,23 +1012,7 @@ ASTNode* parse_unary(Parser* parser) {
 		return node;
 	}
 
-	if (op_type == TOKEN_AMPERSAND) {
-		Token op_token = parser->current_token;
-		match(parser, TOKEN_AMPERSAND);
 
-		ASTNode* operand = parse_unary(parser);
-		if (!operand) {
-			set_error(parser, PARSER_EXPECTED, "expression after '&'", parser->current_token.text);
-			return NULL;
-		}
-
-		ASTNode* node = create_ast_node(AST_ADDRESS_OF, op_token);
-		node->child_count = 1;
-		node->children = malloc(sizeof(ASTNode*));
-		node->children[0] = operand;
-
-		return node;
-	}
 
 	if (op_type == TOKEN_ASTERISK) {
 		Token op_token = parser->current_token;

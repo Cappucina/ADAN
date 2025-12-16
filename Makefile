@@ -27,7 +27,7 @@ compile: docker
 execute:
 	docker exec -i adan-dev-container sh -c "cd /workspace && compiled/main examples/my-program.adn"
 
-	docker exec -i adan-dev-container sh -c "gcc -I include -I lib/adan/include -I lib/adan/include -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1 || clang -I include -I lib/adan/include -I lib/adan/include compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1"
+	docker exec -i adan-dev-container sh -c "gcc -I include -I lib/adan/include -I lib/adan/include -no-pie compiled/assembled.s lib/adan/*.c -lm -o compiled/program 2>&1 || clang -I include -I lib/adan/include -I lib/adan/include compiled/assembled.s lib/adan/*.c -lm -o compiled/program 2>&1"
 	docker exec -i adan-dev-container sh -c "./compiled/program"
 	
 	make format -silent

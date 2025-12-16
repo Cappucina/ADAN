@@ -1,0 +1,25 @@
+include adan.io;
+
+program::void main() {
+    print("Testing exponentiation:\n");
+    result1::int = 2 ** 3;
+    result2::int = 5 ** 2;
+    result3::int = 3 ** 4;
+    
+    print("Testing address-of operator:\n");
+    x::int = 42;
+    y::int = 100;
+    addr1::int = @x;
+    addr2::int = @y;
+    
+    print("Testing bitwise operators:\n");
+    a::int = 5;
+    b::int = 3;
+    and_result::int = a & b;
+    or_result::int = a | b;
+    xor_result::int = a ^ b;
+    shl_result::int = a << 1;
+    shr_result::int = a >> 1;
+    
+    print("All operators implemented successfully!\n");
+}

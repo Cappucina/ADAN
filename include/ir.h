@@ -13,6 +13,7 @@ typedef enum {
 	IR_DIV,       // /
 	IR_ASSIGN,    // =
 	IR_MOD,       // %
+	IR_POW,       // **
 	IR_LABEL,     // L1:
 	IR_JMP,       // GOTO L1
 	IR_JEQ,       // IF a == b GOTO L1
@@ -30,6 +31,14 @@ typedef enum {
 	IR_DEREF,     // *a
 	IR_LOAD_IDX,  // a[i] load
 	IR_STORE_IDX, // a[i] = x store
+	IR_CONTINUE,  // Handle continue
+	IR_NEG,       // -a (unary minus)
+	IR_NOT,       // !a (logical NOT)
+	IR_BIT_AND,   // a & b (bitwise AND)
+	IR_BIT_OR,    // a | b (bitwise OR)
+	IR_BIT_XOR,   // a ^ b (bitwise XOR)
+	IR_SHL,       // a << b (left shift)
+	IR_SHR,       // a >> b (right shift)
 } IROp;
 
 // 

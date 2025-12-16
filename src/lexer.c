@@ -269,7 +269,10 @@ Token* next_token(Lexer* lexer) {
 	if (c == ':' && next == ':') return make_token(lexer, TOKEN_TYPE_DECL, (const char*[]){":", ":"}, 2);
 	if (c == '+' && next == '+') return make_token(lexer, TOKEN_INCREMENT, (const char*[]){"+", "+"}, 2);
 	if (c == '-' && next == '-') return make_token(lexer, TOKEN_DECREMENT, (const char*[]){"-", "-"}, 2);
+	if (c == '*' && next == '*') return make_token(lexer, TOKEN_EXPONENT, (const char*[]){"*", "*"}, 2);
 	if (c == '.' && next == '.' && lexer->src[lexer->position + 2] == '.') return make_token(lexer, TOKEN_ELLIPSIS, (const char*[]){".", ".", "."}, 3);
+	if (c == '<' && next == '<') return make_token(lexer, TOKEN_LEFT_SHIFT, (const char*[]){"<", "<"}, 2);
+	if (c == '>' && next == '>') return make_token(lexer, TOKEN_RIGHT_SHIFT, (const char*[]){">", ">"}, 2);
 	if (c == '/' && next == '/') {
 		advance(lexer); // '/'
 		advance(lexer); // '/'
@@ -319,6 +322,8 @@ Token* next_token(Lexer* lexer) {
 		case '!': return make_token(lexer, TOKEN_NOT, (const char*[]){"!"}, 1);
 		case '=': return make_token(lexer, TOKEN_ASSIGN, (const char*[]){"="}, 1);
 		case '&': return make_token(lexer, TOKEN_AMPERSAND, (const char*[]){"&"}, 1);
+		case '|': return make_token(lexer, TOKEN_PIPE, (const char*[]){"|"}, 1);
+		case '@': return make_token(lexer, TOKEN_AT, (const char*[]){"@"}, 1);
 	}
 
 	if (is_digit(c)) {

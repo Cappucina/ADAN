@@ -70,10 +70,12 @@ typedef enum {
 	SEMANTIC_VOID_IN_EXPRESSION,
 	SEMANTIC_NULL_IN_ARITHMETIC,
 	SEMANTIC_ARRAY_IN_ARITHMETIC,
-	SEMANTIC_MISMATCHED_ARRAY_ELEMENT_TYPE
+	SEMANTIC_MISMATCHED_ARRAY_ELEMENT_TYPE,
+	SEMANTIC_CONTINUE_OUTSIDE_LOOP
 } SemanticErrors;
 
 static const char* SemanticErrorMessages[] = {
+	[SEMANTIC_CONTINUE_OUTSIDE_LOOP] = "'continue' can only be used inside loops",
 	[SEMANTIC_DUPLICATE_SYMBOL] = "Symbol '%s' is already defined in this scope",
 	[SEMANTIC_TYPE_MISMATCH] = "Cannot assign type '%s' to variable of type '%s'",
 	[SEMANTIC_INVALID_ASSIGNMENT] = "Left-hand side of assignment must be a mutable variable",
