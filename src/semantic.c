@@ -870,11 +870,12 @@ Type analyze_binary_op(ASTNode* binary_node, SymbolTable* table) {
 
 	// 
 	//  Arithmetic operators: +, -, *, /, %, ^
+	//  Bitwise operators: |, ^, &
 	// 
 	if (op_type == TOKEN_PLUS || op_type == TOKEN_MINUS || op_type == TOKEN_ASTERISK ||
 		op_type == TOKEN_SLASH || op_type == TOKEN_PERCENT || op_type == TOKEN_CAROT ||
-		op_type == TOKEN_EXPONENT || op_type == TOKEN_AMPERSAND || op_type == TOKEN_PIPE || 
-		op_type == TOKEN_LEFT_SHIFT || op_type == TOKEN_RIGHT_SHIFT) {
+		op_type == TOKEN_EXPONENT || op_type == TOKEN_AMPERSAND || 
+		op_type == TOKEN_LEFT_SHIFT || op_type == TOKEN_RIGHT_SHIFT || op_type == TOKEN_BITWISE_OR) {
 
 		if (op_type == TOKEN_PLUS && (left_type == TYPE_STRING || right_type == TYPE_STRING)) {
 			annotate_node_type(binary_node, TYPE_STRING);

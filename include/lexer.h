@@ -36,6 +36,15 @@ typedef enum {
 	TOKEN_AT,
 
 	//
+	//  Bitwise Operands
+	TOKEN_BITWISE_AND,
+	TOKEN_BITWISE_OR,
+	TOKEN_BITWISE_XOR,
+	TOKEN_BITWISE_NAND,
+	TOKEN_BITWISE_NOR,
+	TOKEN_BITWOSE_XNOR,
+
+	//
 	//  Increment, Decrement
 	// 
 	TOKEN_INCREMENT,
@@ -72,7 +81,6 @@ typedef enum {
 	TOKEN_AND,
 	TOKEN_OR,
 	TOKEN_ELLIPSIS,
-	TOKEN_PIPE,
 	TOKEN_LEFT_SHIFT,
 	TOKEN_RIGHT_SHIFT,
 

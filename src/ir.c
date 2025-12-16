@@ -285,6 +285,15 @@ char* generate_ir(ASTNode* node) {
 
 			IROp opcode;
 			switch (node->token.type) {
+				case TOKEN_BITWISE_OR:
+					opcode = IR_BIT_OR;
+
+				case TOKEN_OR:
+					opcode = IR_OR;
+
+				case TOKEN_AND:
+					opcode = IR_AND;
+
 				case TOKEN_PLUS:
 					opcode = IR_ADD;
 					break;
@@ -309,9 +318,9 @@ char* generate_ir(ASTNode* node) {
 				opcode = IR_POW;
 				break;
 
-				case TOKEN_PIPE:
-					opcode = IR_BIT_OR;
-					break;
+				// case TOKEN_PIPE:
+				// 	opcode = IR_BIT_OR;
+				// 	break;
 
 				case TOKEN_CAROT:
 					opcode = IR_BIT_XOR;

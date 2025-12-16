@@ -141,6 +141,8 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 
 		int reset_args = 1;
 
+		printf("%d", current->op);
+
 		switch (current->op) {
 #if ARCH_X86_64
 			case IR_ADD:
@@ -218,6 +220,32 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				fprintf(out, "cvttsd2siq %%xmm0, %%r11\n");
 				fprintf(out, "movq %%r11, %s\n", result_loc);
 				break;
+
+			case IR_AND:
+				if (strchr(result_loc, '(') != NULL) {
+					fprintf(out, "movq %s, %%r11\n", loc1);
+					fprintf(out, "andq %s, %%r11\n", loc2);
+					fprintf(out, "movq %%r11, %s\n", result_loc);
+				} else {
+					fprintf(out, "movq %s, %s\n", loc1, result_loc);
+					fprintf(out, "addq %s, %s\n", loc2, result_loc);
+				}
+				break;
+
+			
+			case IR_OR:
+    if (strchr(result_loc, '(') != NULL) {
+        // memory destination
+        fprintf(out, "movq %s, %%r11\n", loc1);
+        fprintf(out, "orq %s, %%r11\n", loc2);
+        fprintf(out, "movq %%r11, %s\n", result_loc);
+    } else {
+        // register destination
+        fprintf(out, "movq %s, %s\n", loc1, result_loc);
+        fprintf(out, "orq %s, %s\n", loc2, result_loc);
+    }
+    break;
+
 
 			case IR_ASSIGN:
 				if (current->arg1[0] == '.' && current->arg1[1] == 'S' && current->arg1[2] == 'T' && current->arg1[3] == 'R') {
@@ -446,11 +474,21 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				fprintf(out, "movq %%r11, %s\n", result_loc);
 				break;
 
-			case IR_BIT_OR:
-				fprintf(out, "movq %s, %%r11\n", loc1);
-				fprintf(out, "orq %s, %%r11\n", loc2);
-				fprintf(out, "movq %%r11, %s\n", result_loc);
-				break;
+			case IR_BIT_OR: {
+    int result_is_mem = strchr(result_loc, '(') != NULL;
+
+    // Always use a register for the operation
+    fprintf(out, "movq %s, %%r11\n", loc1);   // load first operand
+    fprintf(out, "orq %s, %%r11\n", loc2);    // OR with second operand
+
+    // Store result back
+    if (result_is_mem) {
+        fprintf(out, "movq %%r11, %s\n", result_loc);
+    } else {
+        fprintf(out, "movq %%r11, %s\n", result_loc);
+    }
+    break;
+}
 
 			case IR_BIT_XOR:
 				fprintf(out, "movq %s, %%r11\n", loc1);

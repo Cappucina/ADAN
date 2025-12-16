@@ -869,6 +869,9 @@ int get_node_precedence(ASTNode* node) {
 	if (!node) return -1;
 
 	switch (node->token.type) {
+		case TOKEN_BITWISE_OR:
+			return 7;
+
 		case TOKEN_EXPONENT: // **
 			return 5;
 		
@@ -901,8 +904,8 @@ int get_node_precedence(ASTNode* node) {
 		case TOKEN_AMPERSAND:
 			return 1;
 		
-		case TOKEN_PIPE:
-			return 0;
+		// case TOKEN_PIPE:
+		// 	return 0;
 		
 		default:
 			return -1;
@@ -911,6 +914,7 @@ int get_node_precedence(ASTNode* node) {
 
 static int precedence_of(TokenType t) {
 	switch (t) {
+		case TOKEN_BITWISE_OR: return 7;
 		case TOKEN_CAROT: return 6;
 		case TOKEN_ASTERISK:
 		case TOKEN_SLASH:
@@ -1463,7 +1467,7 @@ ASTNode* parse_identifier(Parser* parser) {
 				case TOKEN_SUB_IMMEDIATE: bin_token.type = TOKEN_MINUS; bin_token.text = "-"; break;
 				case TOKEN_MUL_IMMEDIATE: bin_token.type = TOKEN_ASTERISK; bin_token.text = "*"; break;
 				case TOKEN_DIV_IMMEDIATE: bin_token.type = TOKEN_SLASH; bin_token.text = "/"; break;
-				case TOKEN_MOD_IMMEDIATE: bin_token.type = TOKEN_PERCENT; bin_token.text = "%"; break;
+				case TOKEN_MOD_IMMEDIATE: bin_token.type = TOKEN_PERCENT; bin_token.text = "%%"; break;
 				default: free_ast(identifier_node); free_ast(rhs); return NULL;
 			}
 
@@ -1489,6 +1493,23 @@ ASTNode* parse_primary(Parser* parser) {
 	ASTNode* primary_node = NULL;
 
 	switch (type) {
+		case TOKEN_BITWISE_OR: {
+			Token op_token = parser->current_token;
+			if (op_token.text) op_token.text = strdup(op_token.text);
+			match(parser, type);
+			ASTNode* operand = parse_primary(parser);
+			if (!operand) {
+				set_error(parser, PARSER_EXPECTED, "expression after unary operator", op_token.text);
+				return NULL;
+			}
+			ASTNode* node = create_ast_node(AST_UNARY_OP, op_token);
+			node->child_count = 1;
+			node->children = malloc(sizeof(ASTNode*));
+			node->children[0] = operand;
+			primary_node = node;
+			break;
+		}
+
 		case TOKEN_IDENTIFIER: {
 			Token id_token = parser->current_token;
 			if (id_token.text) id_token.text = strdup(id_token.text);

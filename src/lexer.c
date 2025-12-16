@@ -301,11 +301,12 @@ Token* next_token(Lexer* lexer) {
 	if (c == '%' && next == '=') return make_token(lexer, TOKEN_MOD_IMMEDIATE, (const char*[]){"%", "="}, 2);
 
 	switch(c) {
+		case '|': return make_token(lexer, TOKEN_BITWISE_OR, (const char*[]){"|"}, 1);
 		case '+': return make_token(lexer, TOKEN_PLUS, (const char*[]){"+"}, 1);
 		case '-': return make_token(lexer, TOKEN_MINUS, (const char*[]){"-"}, 1);
 		case '*': return make_token(lexer, TOKEN_ASTERISK, (const char*[]){"*"}, 1);
 		case '/': return make_token(lexer, TOKEN_SLASH, (const char*[]){"/"}, 1);
-			case '%': return make_token(lexer, TOKEN_PERCENT, (const char*[]){"%%"}, 1);
+		case '%': return make_token(lexer, TOKEN_PERCENT, (const char*[]){"%%"}, 1);
 		case '^': return make_token(lexer, TOKEN_CAROT, (const char*[]){"^"}, 1);
 		case '(': return make_token(lexer, TOKEN_LPAREN, (const char*[]){"("}, 1);
 		case ')': return make_token(lexer, TOKEN_RPAREN, (const char*[]){")"}, 1);
@@ -322,7 +323,7 @@ Token* next_token(Lexer* lexer) {
 		case '!': return make_token(lexer, TOKEN_NOT, (const char*[]){"!"}, 1);
 		case '=': return make_token(lexer, TOKEN_ASSIGN, (const char*[]){"="}, 1);
 		case '&': return make_token(lexer, TOKEN_AMPERSAND, (const char*[]){"&"}, 1);
-		case '|': return make_token(lexer, TOKEN_PIPE, (const char*[]){"|"}, 1);
+		// case '|': return make_token(lexer, TOKEN_PIPE, (const char*[]){"|"}, 1);
 		case '@': return make_token(lexer, TOKEN_AT, (const char*[]){"@"}, 1);
 	}
 
