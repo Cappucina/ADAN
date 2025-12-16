@@ -869,7 +869,12 @@ int get_node_precedence(ASTNode* node) {
 	if (!node) return -1;
 
 	switch (node->token.type) {
+		case TOKEN_BITWISE_AND:
 		case TOKEN_BITWISE_OR:
+		case TOKEN_BITWISE_XOR:
+		case TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT:
+		case TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT:
+		case TOKEN_BITWISE_SIGNED_RIGHT_SHIFT:
 			return 7;
 
 		case TOKEN_EXPONENT: // **
@@ -914,7 +919,12 @@ int get_node_precedence(ASTNode* node) {
 
 static int precedence_of(TokenType t) {
 	switch (t) {
-		case TOKEN_BITWISE_OR: return 7;
+		case TOKEN_BITWISE_AND:
+		case TOKEN_BITWISE_OR:
+		case TOKEN_BITWISE_XOR:
+		case TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT:
+		case TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT:
+		case TOKEN_BITWISE_SIGNED_RIGHT_SHIFT: return 7;
 		case TOKEN_CAROT: return 6;
 		case TOKEN_ASTERISK:
 		case TOKEN_SLASH:
@@ -1493,7 +1503,12 @@ ASTNode* parse_primary(Parser* parser) {
 	ASTNode* primary_node = NULL;
 
 	switch (type) {
-		case TOKEN_BITWISE_OR: {
+		case TOKEN_BITWISE_AND:
+		case TOKEN_BITWISE_OR:
+		case TOKEN_BITWISE_XOR:
+		case TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT:
+		case TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT:
+		case TOKEN_BITWISE_SIGNED_RIGHT_SHIFT: {
 			Token op_token = parser->current_token;
 			if (op_token.text) op_token.text = strdup(op_token.text);
 			match(parser, type);

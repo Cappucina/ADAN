@@ -271,8 +271,6 @@ Token* next_token(Lexer* lexer) {
 	if (c == '-' && next == '-') return make_token(lexer, TOKEN_DECREMENT, (const char*[]){"-", "-"}, 2);
 	if (c == '*' && next == '*') return make_token(lexer, TOKEN_EXPONENT, (const char*[]){"*", "*"}, 2);
 	if (c == '.' && next == '.' && lexer->src[lexer->position + 2] == '.') return make_token(lexer, TOKEN_ELLIPSIS, (const char*[]){".", ".", "."}, 3);
-	if (c == '<' && next == '<') return make_token(lexer, TOKEN_LEFT_SHIFT, (const char*[]){"<", "<"}, 2);
-	if (c == '>' && next == '>') return make_token(lexer, TOKEN_RIGHT_SHIFT, (const char*[]){">", ">"}, 2);
 	if (c == '/' && next == '/') {
 		advance(lexer); // '/'
 		advance(lexer); // '/'
@@ -298,16 +296,23 @@ Token* next_token(Lexer* lexer) {
 	if (c == '-' && next == '=') return make_token(lexer, TOKEN_SUB_IMMEDIATE, (const char*[]){"-", "="}, 2);
 	if (c == '*' && next == '=') return make_token(lexer, TOKEN_MUL_IMMEDIATE, (const char*[]){"*", "="}, 2);
 	if (c == '/' && next == '=') return make_token(lexer, TOKEN_DIV_IMMEDIATE, (const char*[]){"/", "="}, 2);
-	if (c == '%' && next == '=') return make_token(lexer, TOKEN_MOD_IMMEDIATE, (const char*[]){"%", "="}, 2);
+	if (c == '%' && next == '=') return make_token(lexer, TOKEN_MOD_IMMEDIATE, (const char*[]){"%%", "="}, 2);
+
+
+	if (c == '<' && next == '<') return make_token(lexer, TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT, (const char*[]){"<", "<"}, 2);
+	if (c == '>' && next == '>') return make_token(lexer, TOKEN_BITWISE_SIGNED_RIGHT_SHIFT, (const char*[]){">", ">"}, 2);
+	if (c == '>' && next == '>' && lexer->src[lexer->position + 2] == '>') return make_token(lexer, TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT, (const char*[]){">", ">", ">"}, 3);
+
 
 	switch(c) {
 		case '|': return make_token(lexer, TOKEN_BITWISE_OR, (const char*[]){"|"}, 1);
+		case '&': return make_token(lexer, TOKEN_BITWISE_AND, (const char*[]){"&"}, 1);
+		case '^': return make_token(lexer, TOKEN_BITWISE_XOR, (const char*[]){"^"}, 1);
 		case '+': return make_token(lexer, TOKEN_PLUS, (const char*[]){"+"}, 1);
 		case '-': return make_token(lexer, TOKEN_MINUS, (const char*[]){"-"}, 1);
 		case '*': return make_token(lexer, TOKEN_ASTERISK, (const char*[]){"*"}, 1);
 		case '/': return make_token(lexer, TOKEN_SLASH, (const char*[]){"/"}, 1);
 		case '%': return make_token(lexer, TOKEN_PERCENT, (const char*[]){"%%"}, 1);
-		case '^': return make_token(lexer, TOKEN_CAROT, (const char*[]){"^"}, 1);
 		case '(': return make_token(lexer, TOKEN_LPAREN, (const char*[]){"("}, 1);
 		case ')': return make_token(lexer, TOKEN_RPAREN, (const char*[]){")"}, 1);
 		case '{': return make_token(lexer, TOKEN_LBRACE, (const char*[]){"{"}, 1);
@@ -322,8 +327,6 @@ Token* next_token(Lexer* lexer) {
 		case '<': return make_token(lexer, TOKEN_LESS, (const char*[]){"<"}, 1);
 		case '!': return make_token(lexer, TOKEN_NOT, (const char*[]){"!"}, 1);
 		case '=': return make_token(lexer, TOKEN_ASSIGN, (const char*[]){"="}, 1);
-		case '&': return make_token(lexer, TOKEN_AMPERSAND, (const char*[]){"&"}, 1);
-		// case '|': return make_token(lexer, TOKEN_PIPE, (const char*[]){"|"}, 1);
 		case '@': return make_token(lexer, TOKEN_AT, (const char*[]){"@"}, 1);
 	}
 

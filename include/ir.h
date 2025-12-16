@@ -37,6 +37,9 @@ typedef enum {
 	IR_BIT_AND,   // a & b (bitwise AND)
 	IR_BIT_OR,    // a | b (bitwise OR)
 	IR_BIT_XOR,   // a ^ b (bitwise XOR)
+	IR_BIT_ZERO_FILL_LEFT_SHIFT,
+	IR_BIT_ZERO_FILL_RIGHT_SHIFT,
+	IR_BIT_SIGNED_RIGHT_SHIFT,
 	IR_SHL,       // a << b (left shift)
 	IR_SHR,       // a >> b (right shift)
 } IROp;

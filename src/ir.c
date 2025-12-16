@@ -73,6 +73,18 @@ void print_ir() {
 	IRInstruction* current = ir_head;
 	while (current != NULL) {
 		switch (current->op) {
+			case IR_BIT_ZERO_FILL_LEFT_SHIFT:
+				printf("%s = %s << %s\n", current->result, current->arg1, current->arg2);
+				break;
+
+			case IR_BIT_ZERO_FILL_RIGHT_SHIFT:
+				printf("%s = %s >> %s\n", current->result, current->arg1, current->arg2);
+				break;
+
+			case IR_BIT_SIGNED_RIGHT_SHIFT:
+				printf("%s = %s >>> %s\n", current->result, current->arg1, current->arg2);
+				break;
+
 			case IR_ADD:
 				printf("%s = %s + %s\n", current->result, current->arg1, current->arg2);
 				break;
@@ -285,6 +297,18 @@ char* generate_ir(ASTNode* node) {
 
 			IROp opcode;
 			switch (node->token.type) {
+				case TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT:
+					opcode = IR_BIT_ZERO_FILL_LEFT_SHIFT;
+					break;
+
+				case TOKEN_BITWISE_SIGNED_RIGHT_SHIFT:
+					opcode = IR_BIT_SIGNED_RIGHT_SHIFT;
+					break;
+
+				case TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT:
+					opcode = IR_BIT_ZERO_FILL_RIGHT_SHIFT;
+					break;
+
 				case TOKEN_BITWISE_OR:
 					opcode = IR_BIT_OR;
 					break;
@@ -327,10 +351,6 @@ char* generate_ir(ASTNode* node) {
 			case TOKEN_EXPONENT:
 				opcode = IR_POW;
 				break;
-
-				// case TOKEN_PIPE:
-				// 	opcode = IR_BIT_OR;
-				// 	break;
 
 				case TOKEN_CAROT:
 					opcode = IR_BIT_XOR;
