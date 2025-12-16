@@ -13,6 +13,9 @@ static StringLiteral* string_literals = NULL;
 static char* current_function = NULL;
 static GlobalVariable* global_vars = NULL;
 
+static char* loop_start_label = NULL;
+static char* loop_end_label = NULL;
+
 static char* find_global_var_label(const char* name) {
 	GlobalVariable* cur = global_vars;
 	while (cur) {
@@ -136,6 +139,29 @@ void print_ir() {
 			
 			case IR_RETURN:
 				printf("RETURN %s\n", current->arg1);
+				break;
+
+			case IR_ADDR_OF:
+				printf("%s = &%s\n", current->result, current->arg1);
+				break;
+
+			case IR_DEREF:
+				printf("%s = *%s\n", current->result, current->arg1);
+				break;
+
+			case IR_LOAD_IDX:
+				printf("%s = %s[%s]\n", current->result, current->arg1, current->arg2);
+				break;
+
+			case IR_STORE_IDX:
+				printf("%s[%s] = %s\n", current->arg1, current->arg2, current->result);
+				break;
+
+			case IR_AND:
+				printf("%s = %s && %s\n", current->result, current->arg1, current->arg2);
+				break;
+			case IR_OR:
+				printf("%s = %s || %s\n", current->result, current->arg1, current->arg2);
 				break;
 		}
 		current = current->next;
@@ -584,6 +610,52 @@ char* generate_ir(ASTNode* node) {
 			char* l_true = new_temporary();
 			char* l_end = new_temporary();
 
+			if (node->token.type == TOKEN_AND) {
+				char* l_false = new_temporary();
+				IRInstruction* check_left = create_instruction(IR_JEQ, left, "0", l_false);
+				emit(check_left);
+				IRInstruction* check_right = create_instruction(IR_JEQ, right, "0", l_false);
+				emit(check_right);
+				IRInstruction* assign_true = create_instruction(IR_ASSIGN, "1", NULL, result);
+				emit(assign_true);
+				IRInstruction* jump_end = create_instruction(IR_JMP, l_end, NULL, NULL);
+				emit(jump_end);
+				IRInstruction* false_label = create_instruction(IR_LABEL, l_false, NULL, NULL);
+				emit(false_label);
+				IRInstruction* assign_false = create_instruction(IR_ASSIGN, "0", NULL, result);
+				emit(assign_false);
+				IRInstruction* end_label = create_instruction(IR_LABEL, l_end, NULL, NULL);
+				emit(end_label);
+				free(left);
+				free(right);
+				free(l_true);
+				free(l_false);
+				free(l_end);
+				return result;
+			}
+			
+			if (node->token.type == TOKEN_OR) {
+				IRInstruction* check_left = create_instruction(IR_JNE, left, "0", l_true);
+				emit(check_left);
+				IRInstruction* check_right = create_instruction(IR_JNE, right, "0", l_true);
+				emit(check_right);
+				IRInstruction* assign_false = create_instruction(IR_ASSIGN, "0", NULL, result);
+				emit(assign_false);
+				IRInstruction* jump_end = create_instruction(IR_JMP, l_end, NULL, NULL);
+				emit(jump_end);
+				IRInstruction* true_label = create_instruction(IR_LABEL, l_true, NULL, NULL);
+				emit(true_label);
+				IRInstruction* assign_true = create_instruction(IR_ASSIGN, "1", NULL, result);
+				emit(assign_true);
+				IRInstruction* end_label = create_instruction(IR_LABEL, l_end, NULL, NULL);
+				emit(end_label);
+				free(left);
+				free(right);
+				free(l_true);
+				free(l_end);
+				return result;
+			}
+
 			IROp opcode;
 			switch (node->token.type) {
 				case TOKEN_EQUALS: opcode = IR_JEQ; break;
@@ -667,14 +739,22 @@ char* generate_ir(ASTNode* node) {
 		case AST_WHILE: {
 			if (node->child_count < 2) return NULL;
 
+char* outer_start = loop_start_label;
+			char* outer_end = loop_end_label;
+
 			char* loop_label = new_temporary();
 			char* end_label = new_temporary();
+
+			loop_start_label = loop_label;
+			loop_end_label = end_label;
 
 			IRInstruction* label_inst = create_instruction(IR_LABEL, loop_label, NULL, NULL);
 			emit(label_inst);
 
 			char* condition = generate_ir(node->children[0]);
 			if (!condition) {
+				loop_start_label = outer_start;
+				loop_end_label = outer_end;
 				free(loop_label);
 				free(end_label);
 				return NULL;
@@ -691,6 +771,9 @@ char* generate_ir(ASTNode* node) {
 			IRInstruction* end_label_inst = create_instruction(IR_LABEL, end_label, NULL, NULL);
 			emit(end_label_inst);
 
+			loop_start_label = outer_start;
+			loop_end_label = outer_end;
+
 			free(loop_label);
 			free(end_label);
 			free(condition);
@@ -701,19 +784,29 @@ char* generate_ir(ASTNode* node) {
 		case AST_FOR: {
 			if (node->child_count < 3) return NULL;
 
+			char* outer_start = loop_start_label;
+			char* outer_end = loop_end_label;
+
 			char* init_result = generate_ir(node->children[0]);
 			free(init_result);
 
 			char* loop_label = new_temporary();
 			char* end_label = new_temporary();
+			char* continue_label = new_temporary();
+
+			loop_start_label = continue_label;
+			loop_end_label = end_label;
 
 			IRInstruction* label_inst = create_instruction(IR_LABEL, loop_label, NULL, NULL);
 			emit(label_inst);
 
 			char* condition = generate_ir(node->children[1]);
 			if (!condition) {
+				loop_start_label = outer_start;
+				loop_end_label = outer_end;
 				free(loop_label);
 				free(end_label);
+				free(continue_label);
 				return NULL;
 			}
 
@@ -724,6 +817,9 @@ char* generate_ir(ASTNode* node) {
 				generate_ir(node->children[3]);
 			}
 
+			IRInstruction* cont_label_inst = create_instruction(IR_LABEL, continue_label, NULL, NULL);
+			emit(cont_label_inst);
+
 			char* incr_result = generate_ir(node->children[2]);
 			free(incr_result);
 
@@ -733,8 +829,12 @@ char* generate_ir(ASTNode* node) {
 			IRInstruction* end_label_inst = create_instruction(IR_LABEL, end_label, NULL, NULL);
 			emit(end_label_inst);
 
+			loop_start_label = outer_start;
+			loop_end_label = outer_end;
+
 			free(loop_label);
 			free(end_label);
+			free(continue_label);
 			free(condition);
 
 			return NULL;
@@ -753,16 +853,44 @@ char* generate_ir(ASTNode* node) {
 			return NULL;
 		}
 
+		case AST_BREAK: {
+			if (loop_end_label) {
+				IRInstruction* break_jmp = create_instruction(IR_JMP, loop_end_label, NULL, NULL);
+				emit(break_jmp);
+			}
+			return NULL;
+		}
+
+		case AST_CONTINUE: {
+			if (loop_start_label) {
+				IRInstruction* continue_jmp = create_instruction(IR_JMP, loop_start_label, NULL, NULL);
+				emit(continue_jmp);
+			}
+			return NULL;
+		}
+
 		case AST_ARRAY_LITERAL: {
-			for (int i = 0; i < node->child_count; i++) {
+			char* arr_ptr = new_temporary();
+			int count = node->child_count;
+			
+			char count_str[32];
+			snprintf(count_str, sizeof(count_str), "%d", count * 8);
+			IRInstruction* alloc_param = create_instruction(IR_PARAM, count_str, NULL, NULL);
+			emit(alloc_param);
+			IRInstruction* alloc_call = create_instruction(IR_CALL, "malloc", NULL, arr_ptr);
+			emit(alloc_call);
+
+			for (int i = 0; i < count; i++) {
 				char* element = generate_ir(node->children[i]);
 				if (element) {
-					IRInstruction* param_inst = create_instruction(IR_PARAM, element, NULL, NULL);
-					emit(param_inst);
+					char idx_str[32];
+					snprintf(idx_str, sizeof(idx_str), "%d", i);
+					IRInstruction* store_inst = create_instruction(IR_STORE_IDX, arr_ptr, idx_str, element);
+					emit(store_inst);
 					free(element);
 				}
 			}
-			return NULL;
+			return arr_ptr;
 		}
 
 		case AST_ARRAY_ACCESS: {
@@ -778,9 +906,54 @@ char* generate_ir(ASTNode* node) {
 
 			char* result = new_temporary();
 			
-			IRInstruction* access_inst = create_instruction(IR_ASSIGN, array, index, result);
+			IRInstruction* access_inst = create_instruction(IR_LOAD_IDX, array, index, result);
 			emit(access_inst);
 			free(array);
+			free(index);
+
+			return result;
+		}
+
+		case AST_ADDRESS_OF: {
+			if (node->child_count < 1) return NULL;
+			char* operand = generate_ir(node->children[0]);
+			if (!operand) return NULL;
+
+			char* result = new_temporary();
+			IRInstruction* inst = create_instruction(IR_ADDR_OF, operand, NULL, result);
+			emit(inst);
+			free(operand);
+
+			return result;
+		}
+
+		case AST_DEREFERENCE: {
+			if (node->child_count < 1) return NULL;
+			char* operand = generate_ir(node->children[0]);
+			if (!operand) return NULL;
+
+			char* result = new_temporary();
+			IRInstruction* inst = create_instruction(IR_DEREF, operand, NULL, result);
+			emit(inst);
+			free(operand);
+
+			return result;
+		}
+
+		case AST_ARRAY_INDEX: {
+			if (node->child_count < 2) return NULL;
+			char* base = generate_ir(node->children[0]);
+			char* index = generate_ir(node->children[1]);
+			if (!base || !index) {
+				free(base);
+				free(index);
+				return NULL;
+			}
+
+			char* result = new_temporary();
+			IRInstruction* inst = create_instruction(IR_LOAD_IDX, base, index, result);
+			emit(inst);
+			free(base);
 			free(index);
 
 			return result;
@@ -808,6 +981,15 @@ void free_ir() {
 		
 		free(temp->label);
 		free(temp->value);
+		free(temp);
+	}
+
+	while (global_vars != NULL) {
+		GlobalVariable* temp = global_vars;
+		global_vars = global_vars->next;
+		free(temp->label);
+		free(temp->name);
+		free(temp->initial);
 		free(temp);
 	}
 }

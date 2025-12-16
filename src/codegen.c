@@ -198,6 +198,39 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 					}
 				}
 				break;
+
+			case IR_ADDR_OF:
+				fprintf(out, "leaq %s, %%r11\n", loc1);
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+				break;
+
+			case IR_DEREF: {
+				int src_is_mem = (strchr(loc1, '(') != NULL);
+				if (src_is_mem) {
+					fprintf(out, "movq %s, %%r11\n", loc1);
+					fprintf(out, "movq (%%r11), %%r11\n");
+				} else {
+					fprintf(out, "movq (%s), %%r11\n", loc1);
+				}
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+				break;
+			}
+
+			case IR_LOAD_IDX: {
+				fprintf(out, "movq %s, %%r10\n", loc1);
+				fprintf(out, "movq %s, %%r11\n", loc2);
+				fprintf(out, "movq (%%r10, %%r11, 8), %%r11\n");
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+				break;
+			}
+
+			case IR_STORE_IDX: {
+				fprintf(out, "movq %s, %%r10\n", loc1);
+				fprintf(out, "movq %s, %%r11\n", loc2);
+				fprintf(out, "movq %s, %%rax\n", result_loc);
+				fprintf(out, "movq %%rax, (%%r10, %%r11, 8)\n");
+				break;
+			}
 			
 			case IR_LABEL: {
 				int is_block_label = (current->arg1 && current->arg1[0] == '_');

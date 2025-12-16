@@ -86,6 +86,8 @@ ASTNode* parse_statement(Parser* parser);
 
 ASTNode* parse_break_statement(Parser* parser);
 
+ASTNode* parse_continue_statement(Parser* parser);
+
 ASTNode* parse_return_statement(Parser* parser);
 
 //

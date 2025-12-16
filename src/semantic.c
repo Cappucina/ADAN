@@ -193,6 +193,7 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 			break;
 
 		case AST_ARRAY_ACCESS:
+		case AST_ARRAY_INDEX:
 			analyze_array_access(statement, table);
 			break;
 		
@@ -203,6 +204,8 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 		case AST_UNARY_EXPR:
 		case AST_COMPARISON:
 		case AST_LOGICAL_OP:
+		case AST_ADDRESS_OF:
+		case AST_DEREFERENCE:
 			analyze_expression(statement, table);
 			break;
 
@@ -710,7 +713,6 @@ void check_type_cast_validity(Type from, Type to, ASTNode* node) {
 	// 
 	if (from == TYPE_ARRAY || to == TYPE_ARRAY) {
 		semantic_error(node, "Cannot cast arrays to or from other types");
-		return;
 	}
 	
 	// 
@@ -998,6 +1000,14 @@ Type analyze_unary_op(ASTNode* unary_node, SymbolTable* table) {
 Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 	if (!expr_node) return TYPE_UNKNOWN;
 	if (expr_node->type == AST_TYPE) {
+		const char* text = expr_node->token.text;
+		int len = text ? strlen(text) : 0;
+
+		if (len >= 2 && text[len-1] == ']' && text[len-2] == '[') {
+			annotate_node_type(expr_node, TYPE_ARRAY);
+			return TYPE_ARRAY;
+		}
+
 		switch (expr_node->token.type) {
 			case TOKEN_INT:
 				annotate_node_type(expr_node, TYPE_INT);
@@ -1152,6 +1162,37 @@ Type get_expression_type(ASTNode* expr_node, SymbolTable* table) {
 		Type t = get_expression_type(expr_node->children[0], table);
 		annotate_node_type(expr_node, t);
 		return t;
+	}
+
+	if (expr_node->type == AST_ADDRESS_OF) {
+		if (expr_node->child_count < 1) {
+			annotate_node_type(expr_node, TYPE_UNKNOWN);
+			return TYPE_UNKNOWN;
+		}
+		get_expression_type(expr_node->children[0], table);
+		annotate_node_type(expr_node, TYPE_INT);
+		return TYPE_INT;
+	}
+
+	if (expr_node->type == AST_DEREFERENCE) {
+		if (expr_node->child_count < 1) {
+			annotate_node_type(expr_node, TYPE_UNKNOWN);
+			return TYPE_UNKNOWN;
+		}
+		get_expression_type(expr_node->children[0], table);
+		annotate_node_type(expr_node, TYPE_INT);
+		return TYPE_INT;
+	}
+
+	if (expr_node->type == AST_ARRAY_INDEX) {
+		if (expr_node->child_count < 2) {
+			annotate_node_type(expr_node, TYPE_UNKNOWN);
+			return TYPE_UNKNOWN;
+		}
+		get_expression_type(expr_node->children[0], table);
+		get_expression_type(expr_node->children[1], table);
+		annotate_node_type(expr_node, TYPE_INT);
+		return TYPE_INT;
 	}
 
 	if (expr_node->type == AST_ARRAY_LITERAL) {
