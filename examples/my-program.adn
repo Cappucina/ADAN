@@ -1,8 +1,10 @@
 include adan.io;
 include adan.string;
+include adan.system;
 
 program::string cool_message() {
-    variable::string = "Adan is the best";
+    variable::string = "Adan is the best, ";
+    variable += get_current_user();
     variable = variable + "!\n";
     return variable;
 }
@@ -38,4 +40,6 @@ program::void main() {
             break;
         }
     }
+
+    print("\nProgram finished running in ${get_cwd()}.\n");
 }
