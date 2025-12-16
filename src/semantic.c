@@ -164,6 +164,10 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 		case AST_DECLARATION:
 			analyze_declaration(statement, table);
 			break;
+
+		case AST_CONTINUE:
+			analyze_continue(statement, table);
+			break;
 		
 		case AST_IF:
 			analyze_if(statement, table);
@@ -326,6 +330,16 @@ void analyze_for(ASTNode* for_node, SymbolTable* table) {
 	}
 
 	exit_scope(table);
+}
+
+void analyze_continue(ASTNode* continue_node, SymbolTable* table) {
+	if (!continue_node || !table) return;
+	if (continue_node->type != AST_CONTINUE) return;
+
+	int depth = table->loop_depth;
+	if (depth <= 0) {
+		semantic_error(continue_node, SemanticErrorMessages[SEMANTIC_CONTINUE_OUTSIDE_LOOP]);
+	}
 }
 
 void analyze_if(ASTNode* if_node, SymbolTable* table) {
@@ -871,7 +885,9 @@ Type analyze_binary_op(ASTNode* binary_node, SymbolTable* table) {
 	//  Arithmetic operators: +, -, *, /, %, ^
 	// 
 	if (op_type == TOKEN_PLUS || op_type == TOKEN_MINUS || op_type == TOKEN_ASTERISK ||
-		op_type == TOKEN_SLASH || op_type == TOKEN_PERCENT || op_type == TOKEN_CAROT) {
+		op_type == TOKEN_SLASH || op_type == TOKEN_PERCENT || op_type == TOKEN_CAROT ||
+		op_type == TOKEN_EXPONENT || op_type == TOKEN_AMPERSAND || op_type == TOKEN_PIPE || 
+		op_type == TOKEN_LEFT_SHIFT || op_type == TOKEN_RIGHT_SHIFT) {
 
 		if (op_type == TOKEN_PLUS && (left_type == TYPE_STRING || right_type == TYPE_STRING)) {
 			annotate_node_type(binary_node, TYPE_STRING);

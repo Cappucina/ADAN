@@ -1,49 +1,11 @@
 // NOTE: About the array when I was talking to Lily privatly she aproved my implementations syntax using [] rathar than {} for defining arrays. Should we create a place as mantainers to talk about specs and what we are currenlty workling on? 
 
 include adan.io;
-include adan.string;
-include adan.system;
-
-program::string cool_message() {
-    variable::string = "Adan is the best, ";
-    variable += get_current_user();
-    variable = variable + "!\n";
-    return variable;
-}
 
 program::void main() {
-    print("Called function \"cool_message\", returned: " + cool_message());
-    
-    sleep_ns(5000000000); // Sleep for 5 seconds
+    val::int = -2;
 
-    hi::int = 5;
-    print("cool int: " + (string)hi);
-    hip::int* = &hi;
-    print("cool int pointer: " + (string)hip);
-    print("dereferencing hip: " + (string)*hip);
+    print((string)val);
 
-    numbers::int[] = {10, 20, 30, 40, 50};
-    print("Array at index 2: " + (string)numbers[2]);
-
-    print("cool loop:\n");
-    for (i::int = 0; i < 10; i++) {
-
-        // add compound comparisons in if statements with logical operators, this causes compiler error
-        if (i == 3 || i == 7) {
-            continue;
-        }
-
-        if (i == 5) {
-            print("skipped 5");
-            continue;
-        }
-
-        if (i == 8) {
-            break;
-        }
-
-        print((string)i);
-    }
-
-    print("\nProgram finished running in ${get_cwd()}.\n");
+    return;
 }

@@ -48,6 +48,8 @@ void analyze_statement(ASTNode* statement, SymbolTable* table);
 
 void analyze_for(ASTNode* for_node, SymbolTable* table);
 
+void analyze_continue(ASTNode* continue_node, SymbolTable* table);
+
 void analyze_if(ASTNode* if_node, SymbolTable* table);
 
 void analyze_while(ASTNode* while_node, SymbolTable* table);

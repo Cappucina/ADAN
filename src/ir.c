@@ -93,6 +93,10 @@ void print_ir() {
 				printf("%s = %s %% %s\n", current->result, current->arg1, current->arg2);
 				break;
 			
+			case IR_POW:
+				printf("%s = %s ** %s\n", current->result, current->arg1, current->arg2);
+				break;
+			
 			case IR_ASSIGN:
 				printf("%s = %s\n", current->result, current->arg1);
 				break;
@@ -157,11 +161,36 @@ void print_ir() {
 				printf("%s[%s] = %s\n", current->arg1, current->arg2, current->result);
 				break;
 
+			case IR_CONTINUE:
+				printf("CONTINUE %s\n", current->arg1);
+				break;
+
 			case IR_AND:
 				printf("%s = %s && %s\n", current->result, current->arg1, current->arg2);
 				break;
 			case IR_OR:
 				printf("%s = %s || %s\n", current->result, current->arg1, current->arg2);
+				break;
+			case IR_NEG:
+				printf("%s = -%s\n", current->result, current->arg1);
+				break;
+			case IR_NOT:
+				printf("%s = !%s\n", current->result, current->arg1);
+				break;
+			case IR_BIT_AND:
+				printf("%s = %s & %s\n", current->result, current->arg1, current->arg2);
+				break;
+			case IR_BIT_OR:
+				printf("%s = %s | %s\n", current->result, current->arg1, current->arg2);
+				break;
+			case IR_BIT_XOR:
+				printf("%s = %s ^ %s\n", current->result, current->arg1, current->arg2);
+				break;
+			case IR_SHL:
+				printf("%s = %s << %s\n", current->result, current->arg1, current->arg2);
+				break;
+			case IR_SHR:
+				printf("%s = %s >> %s\n", current->result, current->arg1, current->arg2);
 				break;
 		}
 		current = current->next;
@@ -274,6 +303,26 @@ char* generate_ir(ASTNode* node) {
 				
 				case TOKEN_PERCENT:
 					opcode = IR_MOD;
+					break;
+
+			case TOKEN_EXPONENT:
+				opcode = IR_POW;
+				break;
+
+				case TOKEN_PIPE:
+					opcode = IR_BIT_OR;
+					break;
+
+				case TOKEN_CAROT:
+					opcode = IR_BIT_XOR;
+					break;
+
+				case TOKEN_LEFT_SHIFT:
+					opcode = IR_SHL;
+					break;
+
+				case TOKEN_RIGHT_SHIFT:
+					opcode = IR_SHR;
 					break;
 
 				default:
@@ -795,7 +844,7 @@ case AST_BLOCK: {
 		case AST_WHILE: {
 			if (node->child_count < 2) return NULL;
 
-char* outer_start = loop_start_label;
+			char* outer_start = loop_start_label;
 			char* outer_end = loop_end_label;
 
 			char* loop_label = new_temporary();
@@ -896,6 +945,14 @@ char* outer_start = loop_start_label;
 			return NULL;
 		}
 
+		case AST_CONTINUE: {
+			if (loop_start_label) {
+				IRInstruction* continue_jmp = create_instruction(IR_JMP, loop_start_label, NULL, NULL);
+				emit(continue_jmp);
+			}
+			return NULL;
+		}
+
 		case AST_RETURN: {
 			if (node->child_count > 0) {
 				char* return_value = generate_ir(node->children[0]);
@@ -913,14 +970,6 @@ char* outer_start = loop_start_label;
 			if (loop_end_label) {
 				IRInstruction* break_jmp = create_instruction(IR_JMP, loop_end_label, NULL, NULL);
 				emit(break_jmp);
-			}
-			return NULL;
-		}
-
-		case AST_CONTINUE: {
-			if (loop_start_label) {
-				IRInstruction* continue_jmp = create_instruction(IR_JMP, loop_start_label, NULL, NULL);
-				emit(continue_jmp);
 			}
 			return NULL;
 		}
@@ -951,6 +1000,7 @@ char* outer_start = loop_start_label;
 
 		case AST_ARRAY_ACCESS: {
 			if (node->child_count < 2) return NULL;
+
 			char* array = generate_ir(node->children[0]);
 			char* index = generate_ir(node->children[1]);
 			if (!array || !index) {

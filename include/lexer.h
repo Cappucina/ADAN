@@ -32,6 +32,8 @@ typedef enum {
 	TOKEN_SLASH,
 	TOKEN_PERCENT,
 	TOKEN_CAROT,
+	TOKEN_EXPONENT,
+	TOKEN_AT,
 
 	//
 	//  Increment, Decrement
@@ -70,6 +72,9 @@ typedef enum {
 	TOKEN_AND,
 	TOKEN_OR,
 	TOKEN_ELLIPSIS,
+	TOKEN_PIPE,
+	TOKEN_LEFT_SHIFT,
+	TOKEN_RIGHT_SHIFT,
 
 	//
 	//  Keywords

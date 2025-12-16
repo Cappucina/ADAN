@@ -183,6 +183,24 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				fprintf(out, "movq %%rdx, %s\n", result_loc);
 				break;
 
+			case IR_POW:
+				if (loc1[0] == '$') {
+					fprintf(out, "movq %s, %%rax\n", loc1);
+					fprintf(out, "cvtsi2sdq %%rax, %%xmm0\n");
+				} else {
+					fprintf(out, "cvtsi2sdq %s, %%xmm0\n", loc1);
+				}
+				if (loc2[0] == '$') {
+					fprintf(out, "movq %s, %%rax\n", loc2);
+					fprintf(out, "cvtsi2sdq %%rax, %%xmm1\n");
+				} else {
+					fprintf(out, "cvtsi2sdq %s, %%xmm1\n", loc2);
+				}
+				fprintf(out, "call pow\n");
+				fprintf(out, "cvttsd2siq %%xmm0, %%r11\n");
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+				break;
+
 			case IR_ASSIGN:
 				if (current->arg1[0] == '.' && current->arg1[1] == 'S' && current->arg1[2] == 'T' && current->arg1[3] == 'R') {
 					fprintf(out, "leaq %s, %%rax\n", loc1);
@@ -273,7 +291,12 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 					fprintf(out, "cmpq %%r11, %s\n", loc1);
 				}
 				fprintf(out, "je %s\n", current->result);
-				break; }
+				break;
+			}
+
+			case IR_CONTINUE:
+				fprintf(out, "jmp %s\n", current->result);
+				break;
 
 			case IR_JNE: {
 				int loc1_is_imm = (loc1[0] == '$');
@@ -288,7 +311,8 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 					fprintf(out, "cmpq %%r11, %s\n", loc1);
 				}
 				fprintf(out, "jne %s\n", current->result);
-				break; }
+				break;
+			}
 
 			case IR_LT: {
 				int loc1_is_imm = (loc1[0] == '$');
@@ -303,7 +327,8 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 					fprintf(out, "cmpq %%r11, %s\n", loc1);
 				}
 				fprintf(out, "jl %s\n", current->result);
-				break; }
+				break;
+			}
 
 			case IR_GT: {
 				int loc1_is_imm = (loc1[0] == '$');
@@ -318,7 +343,8 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 					fprintf(out, "cmpq %%r11, %s\n", loc1);
 				}
 				fprintf(out, "jg %s\n", current->result);
-				break; }
+				break;
+			}
 
 			case IR_LTE: {
 				int loc1_is_imm = (loc1[0] == '$');
@@ -333,7 +359,8 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 					fprintf(out, "cmpq %%r11, %s\n", loc1);
 				}
 				fprintf(out, "jle %s\n", current->result);
-				break; }
+				break;
+			}
 
 			case IR_GTE: {
 				int loc1_is_imm = (loc1[0] == '$');
@@ -348,7 +375,8 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 					fprintf(out, "cmpq %%r11, %s\n", loc1);
 				}
 				fprintf(out, "jge %s\n", current->result);
-				break; }
+				break;
+			}
 
 			case IR_PARAM: {
 				reset_args = 0;
@@ -381,6 +409,50 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				fprintf(out, "movq %%rax, %s\n", result_loc);
 				break;
 			}
+
+			case IR_NEG:
+				fprintf(out, "movq %s, %%r11\n", loc1);
+				fprintf(out, "negq %%r11\n");
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+				break;
+
+			case IR_NOT:
+				fprintf(out, "movq %s, %%r11\n", loc1);
+				fprintf(out, "xorq $1, %%r11\n");
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+				break;
+
+			case IR_BIT_AND:
+				fprintf(out, "movq %s, %%r11\n", loc1);
+				fprintf(out, "andq %s, %%r11\n", loc2);
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+				break;
+
+			case IR_BIT_OR:
+				fprintf(out, "movq %s, %%r11\n", loc1);
+				fprintf(out, "orq %s, %%r11\n", loc2);
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+				break;
+
+			case IR_BIT_XOR:
+				fprintf(out, "movq %s, %%r11\n", loc1);
+				fprintf(out, "xorq %s, %%r11\n", loc2);
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+				break;
+
+			case IR_SHL:
+				fprintf(out, "movq %s, %%r11\n", loc1);
+				fprintf(out, "movq %s, %%rcx\n", loc2);
+				fprintf(out, "shlq %%cl, %%r11\n");
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+				break;
+
+			case IR_SHR:
+				fprintf(out, "movq %s, %%r11\n", loc1);
+				fprintf(out, "movq %s, %%rcx\n", loc2);
+				fprintf(out, "shrq %%cl, %%r11\n");
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+				break;
 
 			default:
 				break;

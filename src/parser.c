@@ -869,6 +869,9 @@ int get_node_precedence(ASTNode* node) {
 	if (!node) return -1;
 
 	switch (node->token.type) {
+		case TOKEN_EXPONENT: // **
+			return 5;
+		
 		case TOKEN_CAROT: // ^
 			return 6;
 
@@ -879,6 +882,7 @@ int get_node_precedence(ASTNode* node) {
 		
 		case TOKEN_PLUS: // +
 		case TOKEN_MINUS: // -
+<<<<<<< HEAD
 			return 4;
 
 		case TOKEN_GREATER:
@@ -890,10 +894,20 @@ int get_node_precedence(ASTNode* node) {
 			return 3;
 
 		case TOKEN_AND:
+=======
+		case TOKEN_LEFT_SHIFT:
+		case TOKEN_RIGHT_SHIFT:
+>>>>>>> 2f28ce9483eb0faca2f6f9f4d1b1b4e61dbf5cb0
 			return 2;
 
 		case TOKEN_OR:
 			return 1;
+		
+		case TOKEN_AMPERSAND:
+			return 1;
+		
+		case TOKEN_PIPE:
+			return 0;
 		
 		default:
 			return -1;
@@ -930,8 +944,53 @@ static ASTNode* parse_binary_prec(Parser* parser, int min_prec) {
 
 	while (1) {
 		TokenType op_type = parser->current_token.type;
+<<<<<<< HEAD
 		int prec = precedence_of(op_type);
 		if (prec < min_prec) break;
+=======
+
+		int precedence;
+		int right_assoc = 0;
+
+		switch (op_type) {
+			case TOKEN_EXPONENT:
+				precedence = 5;
+				right_assoc = 1;
+				break;
+			
+			case TOKEN_CAROT:
+				precedence = 4;
+				right_assoc = 1;
+				break;
+			
+			case TOKEN_ASTERISK:
+			case TOKEN_SLASH:
+			case TOKEN_PERCENT:
+				precedence = 3;
+				break;
+			
+			case TOKEN_PLUS:
+			case TOKEN_MINUS:
+			case TOKEN_LEFT_SHIFT:
+			case TOKEN_RIGHT_SHIFT:
+				precedence = 2;
+				break;
+			
+			case TOKEN_AMPERSAND:
+				precedence = 1;
+				break;
+			
+			case TOKEN_PIPE:
+				precedence = 0;
+				break;
+			
+			default:
+				return left;
+		}
+
+		if (!right_assoc && precedence < get_node_precedence(left)) break;
+		if (right_assoc && precedence <= get_node_precedence(left)) break;
+>>>>>>> 2f28ce9483eb0faca2f6f9f4d1b1b4e61dbf5cb0
 
 		Token op_token = parser->current_token;
 		char* op_text_copy = NULL;
@@ -984,6 +1043,24 @@ ASTNode* parse_binary(Parser* parser) {
 ASTNode* parse_unary(Parser* parser) {
 	TokenType op_type = parser->current_token.type;
 
+	if (op_type == TOKEN_AT) {
+		Token op_token = parser->current_token;
+		match(parser, TOKEN_AT);
+
+		ASTNode* operand = parse_unary(parser);
+		if (!operand) {
+			set_error(parser, PARSER_EXPECTED, "expression after '@'", parser->current_token.text);
+			return NULL;
+		}
+
+		ASTNode* node = create_ast_node(AST_ADDRESS_OF, op_token);
+		node->child_count = 1;
+		node->children = malloc(sizeof(ASTNode*));
+		node->children[0] = operand;
+
+		return node;
+	}
+
 	if (op_type == TOKEN_MINUS || op_type == TOKEN_NOT) {
 		Token op_token = parser->current_token;
 		char* op_text_copy = NULL;
@@ -1010,23 +1087,7 @@ ASTNode* parse_unary(Parser* parser) {
 		return node;
 	}
 
-	if (op_type == TOKEN_AMPERSAND) {
-		Token op_token = parser->current_token;
-		match(parser, TOKEN_AMPERSAND);
 
-		ASTNode* operand = parse_unary(parser);
-		if (!operand) {
-			set_error(parser, PARSER_EXPECTED, "expression after '&'", parser->current_token.text);
-			return NULL;
-		}
-
-		ASTNode* node = create_ast_node(AST_ADDRESS_OF, op_token);
-		node->child_count = 1;
-		node->children = malloc(sizeof(ASTNode*));
-		node->children[0] = operand;
-
-		return node;
-	}
 
 	if (op_type == TOKEN_ASTERISK) {
 		Token op_token = parser->current_token;
