@@ -14,26 +14,29 @@ docker:
 
 # 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
 
-format:
+format: docker
 	docker exec -i adan-dev-container sh -c "python3 ./scripts/beautifier.py --file ./compiled/assembled.s > assembled.tmp && mv assembled.tmp ./compiled/assembled.s"
 
-compile: docker
-	docker exec -i adan-dev-container sh -c "rm -rf compiled"
-	docker exec -i adan-dev-container sh -c "mkdir -p compiled"
+compile: docker clean
 	docker exec -i adan-dev-container sh -c "gcc -DBUILDING_COMPILER_MAIN src/*.c tests/*.c lib/adan/*.c -I include -I lib/adan/include -o compiled/main"
 	
 	sudo chown -R $$(id -u):$$(id -g) compiled || true
 
-execute:
+execute: compile
 	docker exec -i adan-dev-container sh -c "cd /workspace && compiled/main examples/my-program.adn"
 
 	docker exec -i adan-dev-container sh -c "gcc -I include -I lib/adan/include -I lib/adan/include -no-pie compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1 || clang -I include -I lib/adan/include -I lib/adan/include compiled/assembled.s lib/adan/*.c -o compiled/program 2>&1"
 	docker exec -i adan-dev-container sh -c "./compiled/program"
 	
 	make format -silent
-
+	
 debug: compile
 	make execute -silent
+
+clean: docker
+	docker exec -i adan-dev-container sh -c "rm -rf compiled"
+	docker exec -i adan-dev-container sh -c "mkdir -p compiled"
+	docker exec -i adan-dev-container sh -c "touch compiled/.keep"
 
 # 
 #  CODESPACES EXCLUSIVE

@@ -1,6 +1,9 @@
 __pycache__/
-compiled/
 .vscode/
 .DS_Store
 .cache
 compile_commands.json
+
+tmp/
+compiled/*
+!compiled/.keep
