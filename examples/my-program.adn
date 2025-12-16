@@ -1,26 +1,40 @@
 include adan.io;
-include adan.strlib;
+include adan.string;
 
 program::string cool_message() {
-    variable::string = "The best language of all time";
-
+    variable::string = "Adan is the best";
+    variable = variable + "!\n";
     return variable;
 }
 
 program::void main() {
+
+    print("Called function \"cool_message\", returned: " + cool_message());
+    
     hi::int = 5;
+    print("cool int: " + (string)hi);
     hip::int* = &hi;
+    print("cool int pointer: " + (string)hip);
+    print("dereferencing hip: " + (string)*hip);
 
-    xd::int[] = {1, 2, 3};
+    numbers::int[] = {10, 20, 30, 40, 50};
+    print("Array at index 2: " + (string)numbers[2]);
 
-    print(cool_message());
-    print((string)hi);
-    print((string)*hip);
-    print((string)xd[2]);
+    print("cool loop:\n");
+    for (i::int = 0; i < 10; i++) {
 
-    for (i::int = 0; i <= 10; i++) {
-        print("Line #" + (string)i);
+        // add compound comparisons in if statements with logical operators, this causes compiler error
+        // if (i == 3 || i == 7) {
+        //     continue;
+        // }
+
+        print((string)i);
         if (i == 5) {
+            // print("skipped 5");
+            //continue;
+            // continue gives error
+        }
+        if (i == 8) {
             break;
         }
     }
