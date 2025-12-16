@@ -4,13 +4,16 @@
 #include "ir.h"
 #include "string.h"
 
-#ifdef __aarch64__
-	#define ARCH_ARM64 1
-#elif defined(__x86_64__) || defined(_M_X64)
-	#define ARCH_X86_64 1
-#else
+
+// working out arm but tests I need to look into fixing
+
+// #ifdef __aarch64__
+// 	#define ARCH_ARM64 1
+// #elif defined(__x86_64__) || defined(_M_X64)
+// 	#define ARCH_X86_64 1
+// #else
 	#define ARCH_X86_64 1  // Default to x86_64
-#endif
+// #endif
 
 static int last_frame_adjust = 0;
 
@@ -68,13 +71,20 @@ void get_location(char* result_buffer, char* variable_name, LiveInterval* interv
 	}
 
 	if (variable_name[0] == '.' && variable_name[1] == 'S' && variable_name[2] == 'T' && variable_name[3] == 'R') {
-		// TODO: Full ARM64 code generation requires rewriting all instruction generation
+#if ARCH_X86_64
 		sprintf(result_buffer, "%s(%%rip)", variable_name);
+#elif ARCH_ARM64
+		sprintf(result_buffer, "%s", variable_name);
+#endif
 		return;
 	}
 
 	if (variable_name[0] == 'G' && variable_name[1] == '_') {
+#if ARCH_X86_64
 		sprintf(result_buffer, "%s(%%rip)", variable_name);
+#elif ARCH_ARM64
+		sprintf(result_buffer, "%s", variable_name);
+#endif
 		return;
 	}
 
@@ -86,7 +96,11 @@ void get_location(char* result_buffer, char* variable_name, LiveInterval* interv
 				sprintf(result_buffer, "%%%s", register_name);
 				return;
 			} else {
+#if ARCH_X86_64
 				sprintf(result_buffer, "%d(%%rbp)", current->stack_offset);
+#elif ARCH_ARM64
+				sprintf(result_buffer, "[x29, #%d]", current->stack_offset);
+#endif
 				return;
 			}
 		}
@@ -104,8 +118,11 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 	int arg_is_lea[8];
 	int arg_count = 0;
 	
-	// TODO: Full ARM64 code generation requires rewriting all instruction generation
+#if ARCH_X86_64
 	const char* arg_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+#elif ARCH_ARM64
+	const char* arg_regs[] = {"x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7"};
+#endif
 	
 	char loc1[64];
 	char loc2[64];
@@ -125,6 +142,7 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 		int reset_args = 1;
 
 		switch (current->op) {
+#if ARCH_X86_64
 			case IR_ADD:
 				{
 					int result_is_mem = strchr(result_loc, '(') != NULL;
@@ -453,9 +471,719 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 				fprintf(out, "shrq %%cl, %%r11\n");
 				fprintf(out, "movq %%r11, %s\n", result_loc);
 				break;
+#elif ARCH_ARM64
+			case IR_ADD: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				// Load loc1 into x11
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				// Load loc2 into x12
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x12, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x12, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x12, %s\n", loc2);
+				}
+
+				fprintf(out, "add x11, x11, x12\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_SUB: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x12, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x12, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x12, %s\n", loc2);
+				}
+
+				fprintf(out, "sub x11, x11, x12\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_MUL: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x0, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x0, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x0, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x1, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x1, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x1, %s\n", loc2);
+				}
+
+				fprintf(out, "mul x0, x0, x1\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x0, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x0\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_DIV: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x0, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x0, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x0, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x1, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x1, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x1, %s\n", loc2);
+				}
+
+				fprintf(out, "sdiv x2, x0, x1\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x2, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x2\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_MOD: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x0, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x0, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x0, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x1, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x1, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x1, %s\n", loc2);
+				}
+
+				fprintf(out, "sdiv x2, x0, x1\n");     // quotient
+				fprintf(out, "msub x3, x2, x1, x0\n"); // remainder = x0 - x2*x1
+
+				if (result_is_mem) {
+					fprintf(out, "str x3, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x3\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_POW: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+
+				if (loc1[0] == '$') {
+					fprintf(out, "mov x0, %s\n", loc1);
+				} else if (strchr(loc1, '[')) {
+					fprintf(out, "ldr x0, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x0, %s\n", loc1);
+				}
+				fprintf(out, "scvtf d0, x0\n");
+
+				if (loc2[0] == '$') {
+					fprintf(out, "mov x1, %s\n", loc2);
+				} else if (strchr(loc2, '[')) {
+					fprintf(out, "ldr x1, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x1, %s\n", loc2);
+				}
+				fprintf(out, "scvtf d1, x1\n");
+
+				fprintf(out, "bl pow\n");
+
+				fprintf(out, "fcvtzs x11, d0\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_ASSIGN: {
+				int src_is_mem = strchr(loc1, '[') != NULL;
+				int dst_is_mem = strchr(result_loc, '[') != NULL;
+
+				if (src_is_mem && dst_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else if (src_is_mem && !dst_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+					fprintf(out, "mov %s, x11\n", result_loc);
+				} else if (!src_is_mem && dst_is_mem) {
+					fprintf(out, "mov x11, %s\n", loc1);
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, %s\n", result_loc, loc1);
+				}
+				break;
+			}
+
+			case IR_ADDR_OF: {
+				// For ARM64, if loc1 is a label (no brackets or prefix), use adrp + add sequence otherwise fallback
+				int is_label = (loc1[0] != '[' && loc1[0] != '$' && loc1[0] != '%');
+				if (is_label) {
+					#ifdef __APPLE__
+					fprintf(out, "adrp x11, _%s\n", current->arg1);
+					fprintf(out, "add x11, x11, :lo12:_ %s\n", current->arg1);
+					#else
+					fprintf(out, "adrp x11, %s\n", current->arg1);
+					fprintf(out, "add x11, x11, :lo12:%s\n", current->arg1);
+					#endif
+					fprintf(out, "mov %s, x11\n", result_loc);
+				} else if (strchr(loc1, '[') != NULL) {
+					// Address is stack slot or memory reference
+					// Attempt to parse offset from [x29, #offset]
+					// Since we can't parse here easily, just emit add with zero offset
+					// TODO: refine offset calculation
+					fprintf(out, "mov x11, x29\n");
+					fprintf(out, "mov %s, x11\n", result_loc);
+				} else {
+					// Fallback
+					fprintf(out, "// TODO: IR_ADDR_OF unhandled case\n");
+					fprintf(out, "mov x11, x29\n");
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_DEREF: {
+				int src_is_mem = strchr(loc1, '[') != NULL;
+				if (src_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+					fprintf(out, "ldr x11, [x11]\n");
+				} else {
+					fprintf(out, "ldr x11, [%s]\n", loc1);
+				}
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_LOAD_IDX: {
+				fprintf(out, "ldr x10, %s\n", loc1);
+				fprintf(out, "ldr x11, %s\n", loc2);
+				fprintf(out, "ldr x11, [x10, x11, lsl #3]\n");
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_STORE_IDX: {
+				fprintf(out, "ldr x10, %s\n", loc1);
+				fprintf(out, "ldr x11, %s\n", loc2);
+				int src_is_mem = strchr(result_loc, '[') != NULL;
+				if (src_is_mem) {
+					fprintf(out, "ldr x0, %s\n", result_loc);
+					fprintf(out, "str x0, [x10, x11, lsl #3]\n");
+				} else {
+					fprintf(out, "str %s, [x10, x11, lsl #3]\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_LABEL: {
+				int is_block_label = (current->arg1 && current->arg1[0] == '_');
+				if (!is_block_label) {
+					if (in_function) emit_epilogue(out, cfg);
+					#ifdef __APPLE__
+						fprintf(out, "_%s:\n", current->arg1);
+					#else
+						fprintf(out, "%s:\n", current->arg1);
+					#endif
+					emit_prologue(out, cfg, stack_bytes);
+					in_function = true;
+				} else {
+					fprintf(out, "%s:\n", current->arg1);
+				}
+				break;
+			}
+
+			case IR_RETURN: {
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x0, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x0, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x0, %s\n", loc1);
+				}
+				break;
+			}
+
+			case IR_JMP: {
+				fprintf(out, "b %s\n", current->arg1);
+				break;
+			}
+
+			case IR_JEQ: {
+				int loc2_is_zero = (strcmp(loc2, "$0") == 0);
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				// Load loc1 into x11
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				// Load loc2 into x12
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x12, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x12, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x12, %s\n", loc2);
+				}
+
+				fprintf(out, "cmp x11, x12\n");
+				fprintf(out, "b.eq %s\n", current->result);
+				break;
+			}
+
+			case IR_CONTINUE:
+				fprintf(out, "b %s\n", current->result);
+				break;
+
+			case IR_JNE: {
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x12, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x12, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x12, %s\n", loc2);
+				}
+
+				fprintf(out, "cmp x11, x12\n");
+				fprintf(out, "b.ne %s\n", current->result);
+				break;
+			}
+
+			case IR_LT: {
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x12, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x12, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x12, %s\n", loc2);
+				}
+
+				fprintf(out, "cmp x11, x12\n");
+				fprintf(out, "b.lt %s\n", current->result);
+				break;
+			}
+
+			case IR_GT: {
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x12, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x12, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x12, %s\n", loc2);
+				}
+
+				fprintf(out, "cmp x11, x12\n");
+				fprintf(out, "b.gt %s\n", current->result);
+				break;
+			}
+
+			case IR_LTE: {
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x12, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x12, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x12, %s\n", loc2);
+				}
+
+				fprintf(out, "cmp x11, x12\n");
+				fprintf(out, "b.le %s\n", current->result);
+				break;
+			}
+
+			case IR_GTE: {
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x12, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x12, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x12, %s\n", loc2);
+				}
+
+				fprintf(out, "cmp x11, x12\n");
+				fprintf(out, "b.ge %s\n", current->result);
+				break;
+			}
+
+			case IR_PARAM: {
+				reset_args = 0;
+				if (arg_count < 8) {
+					strcpy(arg_locs[arg_count], loc1);
+					arg_is_lea[arg_count] = (current->arg1 && strncmp(current->arg1, ".STR", 4) == 0);
+					arg_count++;
+				}
+				break;
+			}
+
+			case IR_CALL: {
+				reset_args = 0;
+				int pass = arg_count;
+				if (pass > 8) pass = 8;
+				for (int i = 0; i < pass; i++) {
+					if (arg_is_lea[i]) {
+						fprintf(out, "adrp x%d, %s\n", i, arg_locs[i]);
+						fprintf(out, "add x%d, x%d, :lo12:%s\n", i, i, arg_locs[i]);
+					} else {
+						fprintf(out, "mov %s, %s\n", arg_regs[i], arg_locs[i]);
+					}
+				}
+				arg_count = 0;
+				const char* target = current->arg1 ? current->arg1 : loc1;
+				#ifdef __APPLE__
+					fprintf(out, "bl _%s\n", target);
+				#else
+					fprintf(out, "bl %s\n", target);
+				#endif
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				if (result_is_mem) {
+					fprintf(out, "str x0, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x0\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_NEG: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				fprintf(out, "neg x11, x11\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_NOT: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				fprintf(out, "eor x11, x11, #1\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_BIT_AND: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x12, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x12, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x12, %s\n", loc2);
+				}
+
+				fprintf(out, "and x11, x11, x12\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_BIT_OR: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x12, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x12, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x12, %s\n", loc2);
+				}
+
+				fprintf(out, "orr x11, x11, x12\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_BIT_XOR: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x12, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x12, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x12, %s\n", loc2);
+				}
+
+				fprintf(out, "eor x11, x11, x12\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_SHL: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x2, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x2, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x2, %s\n", loc2);
+				}
+
+				fprintf(out, "lsl x11, x11, x2\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
+
+			case IR_SHR: {
+				int result_is_mem = strchr(result_loc, '[') != NULL;
+				int loc1_is_mem = strchr(loc1, '[') != NULL;
+				int loc2_is_mem = strchr(loc2, '[') != NULL;
+
+				if (loc1_is_mem) {
+					fprintf(out, "ldr x11, %s\n", loc1);
+				} else if (loc1[0] == '$') {
+					fprintf(out, "mov x11, %s\n", loc1);
+				} else {
+					fprintf(out, "mov x11, %s\n", loc1);
+				}
+
+				if (loc2_is_mem) {
+					fprintf(out, "ldr x2, %s\n", loc2);
+				} else if (loc2[0] == '$') {
+					fprintf(out, "mov x2, %s\n", loc2);
+				} else {
+					fprintf(out, "mov x2, %s\n", loc2);
+				}
+
+				fprintf(out, "lsr x11, x11, x2\n");
+
+				if (result_is_mem) {
+					fprintf(out, "str x11, %s\n", result_loc);
+				} else {
+					fprintf(out, "mov %s, x11\n", result_loc);
+				}
+				break;
+			}
 
 			default:
 				break;
+#endif
 		}
 
 		if (reset_args) arg_count = 0;
@@ -472,22 +1200,41 @@ void emit_prologue(FILE* out, const TargetConfig* cfg, int stack_bytes) {
 
 	last_frame_adjust = stack_bytes;
 
+#if ARCH_X86_64
 	// TODO: Full ARM64 code generation requires rewriting all instruction generation
 	fprintf(out, "\tpushq %%rbp\n");
 	fprintf(out, "\tmovq %%rsp, %%rbp\n");
 	if (stack_bytes > 0) {
 		fprintf(out, "\tsubq $%d, %%rsp\n", stack_bytes);
 	}
+#elif ARCH_ARM64
+	fprintf(out, "\tstp x29, x30, [sp, #-16]!\n");
+	fprintf(out, "\tmov x29, sp\n");
+	if (stack_bytes > 0) {
+		// Align to 16 bytes
+		int adjust = ((stack_bytes + 15) / 16) * 16;
+		last_frame_adjust = adjust;
+		fprintf(out, "\tsub sp, sp, #%d\n", adjust);
+	}
+#endif
 }
 
 void emit_epilogue(FILE* out, const TargetConfig* cfg) {
 	if (out == NULL) return;
+#if ARCH_X86_64
 	// TODO: Full ARM64 code generation requires rewriting all instruction generation
 	if (last_frame_adjust > 0) {
 		fprintf(out, "addq $%d, %%rsp\n", last_frame_adjust);
 	}
 	fprintf(out, "popq %%rbp\n");
 	fprintf(out, "ret\n");
+#elif ARCH_ARM64
+	if (last_frame_adjust > 0) {
+		fprintf(out, "add sp, sp, #%d\n", last_frame_adjust);
+	}
+	fprintf(out, "ldp x29, x30, [sp], #16\n");
+	fprintf(out, "ret\n");
+#endif
 }
 
 void assign_stack_offsets(LiveInterval* intervals, const TargetConfig* cfg) {
