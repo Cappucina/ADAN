@@ -177,6 +177,10 @@ void print_ir() {
 				printf("CONTINUE %s\n", current->arg1);
 				break;
 
+			case IR_BIT_NOT:
+				printf("%s = ~%s", current->result, current->arg1);
+				break;
+
 			case IR_AND:
 				printf("%s = %s && %s\n", current->result, current->arg1, current->arg2);
 				break;
@@ -297,6 +301,10 @@ char* generate_ir(ASTNode* node) {
 
 			IROp opcode;
 			switch (node->token.type) {
+				case TOKEN_BITWISE_NOT:
+					opcode = IR_BIT_NOT;
+					break;
+
 				case TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT:
 					opcode = IR_BIT_ZERO_FILL_LEFT_SHIFT;
 					break;
@@ -611,6 +619,14 @@ case AST_BLOCK: {
 			if (node->token.type == TOKEN_MINUS) {
 				char* temp = new_temporary();
 				IRInstruction* new_instruction = create_instruction(IR_SUB, "0", operand, temp);
+				emit(new_instruction);
+				free(operand);
+				return temp;
+			}
+
+			if (node->token.type == TOKEN_BITWISE_NOT) {
+				char* temp = new_temporary();
+				IRInstruction* new_instruction = create_instruction(IR_BIT_NOT, operand, operand, temp);
 				emit(new_instruction);
 				free(operand);
 				return temp;

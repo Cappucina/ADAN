@@ -306,6 +306,7 @@ Token* next_token(Lexer* lexer) {
 
 	switch(c) {
 		case '|': return make_token(lexer, TOKEN_BITWISE_OR, (const char*[]){"|"}, 1);
+		case '~': return make_token(lexer, TOKEN_BITWISE_NOT, (const char*[]){"~"}, 1);
 		case '&': return make_token(lexer, TOKEN_BITWISE_AND, (const char*[]){"&"}, 1);
 		case '^': return make_token(lexer, TOKEN_BITWISE_XOR, (const char*[]){"^"}, 1);
 		case '+': return make_token(lexer, TOKEN_PLUS, (const char*[]){"+"}, 1);

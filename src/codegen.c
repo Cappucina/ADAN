@@ -599,6 +599,24 @@ void generate_asm(IRInstruction *ir_head, LiveInterval *intervals, const TargetC
 			}
 			break;
 		}
+
+		case IR_BIT_NOT:
+		{
+			int result_is_mem = strchr(result_loc, '(') != NULL;
+			if (result_is_mem)
+			{
+				fprintf(out, "movq %s, %%r11\n", loc1);
+				fprintf(out, "notq %%r11\n");
+				fprintf(out, "movq %%r11, %s\n", result_loc);
+			}
+			else
+			{
+				fprintf(out, "movq %s, %s\n", loc1, result_loc);
+				fprintf(out, "notq %s\n", result_loc);
+			}
+			break;
+		}
+
 		case IR_BIT_ZERO_FILL_LEFT_SHIFT:
 		{
 			int result_is_mem = strchr(result_loc, '(') != NULL;
@@ -606,7 +624,7 @@ void generate_asm(IRInstruction *ir_head, LiveInterval *intervals, const TargetC
 			fprintf(out, "movq %s, %%r11\n", loc1);
 			fprintf(out, "movb %s, %%cl\n", loc2);
 			fprintf(out, "salq %%cl, %%r11\n");
-			
+
 			if (result_is_mem)
 			{
 				fprintf(out, "movq %%r11, %s\n", result_loc);
@@ -625,7 +643,7 @@ void generate_asm(IRInstruction *ir_head, LiveInterval *intervals, const TargetC
 			fprintf(out, "movq %s, %%r11\n", loc1);
 			fprintf(out, "movb %s, %%cl\n", loc2);
 			fprintf(out, "shrq %%cl, %%r11\n");
-			
+
 			if (result_is_mem)
 			{
 				fprintf(out, "movq %%r11, %s\n", result_loc);

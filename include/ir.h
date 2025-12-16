@@ -40,6 +40,7 @@ typedef enum {
 	IR_BIT_ZERO_FILL_LEFT_SHIFT,
 	IR_BIT_ZERO_FILL_RIGHT_SHIFT,
 	IR_BIT_SIGNED_RIGHT_SHIFT,
+	IR_BIT_NOT,   // invert all bits
 	IR_SHL,       // a << b (left shift)
 	IR_SHR,       // a >> b (right shift)
 } IROp;

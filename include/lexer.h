@@ -39,6 +39,7 @@ typedef enum {
 	//  Bitwise Operands
 	TOKEN_BITWISE_AND,
 	TOKEN_BITWISE_OR,
+	TOKEN_BITWISE_NOT,
 	TOKEN_BITWISE_XOR,
 	TOKEN_BITWISE_NAND, // Didn't find standard char must be not used often
 	TOKEN_BITWISE_NOR, // same here
