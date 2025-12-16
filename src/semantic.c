@@ -953,9 +953,9 @@ Type analyze_binary_op(ASTNode* binary_node, SymbolTable* table) {
 	}
 
 	// 
-	//  Logical operators: &&
+	//  Logical operators: && and ||
 	// 
-	if (op_type == TOKEN_AND) {
+	if (op_type == TOKEN_AND || op_type == TOKEN_OR) {
 		// 
 		//  STRICT: Both operands must be boolean
 		// 

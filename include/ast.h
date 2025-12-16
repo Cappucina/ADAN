@@ -123,6 +123,7 @@ static inline const char* node_type_to_string(ASTNodeType type) {
 		case AST_ADDRESS_OF: return "AST_ADDRESS_OF";
 		case AST_DEREFERENCE: return "AST_DEREFERENCE";
 		case AST_ARRAY_INDEX: return "AST_ARRAY_INDEX";
+		case AST_LOGICAL_OP: return "AST_LOGICAL_OP";
 		case AST_CONTINUE: return "AST_CONTINUE";
 		case AST_VARIADIC_PARAM: return "AST_VARIADIC_PARAM";
 		default: return "AST_UNKNOWN";

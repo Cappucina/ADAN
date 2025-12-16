@@ -870,80 +870,115 @@ int get_node_precedence(ASTNode* node) {
 
 	switch (node->token.type) {
 		case TOKEN_CAROT: // ^
-			return 4;
+			return 6;
 
 		case TOKEN_ASTERISK: // *
 		case TOKEN_SLASH: // /
 		case TOKEN_PERCENT: // %
-			return 3;
+			return 5;
 		
 		case TOKEN_PLUS: // +
 		case TOKEN_MINUS: // -
+			return 4;
+
+		case TOKEN_GREATER:
+		case TOKEN_LESS:
+		case TOKEN_GREATER_EQUALS:
+		case TOKEN_LESS_EQUALS:
+		case TOKEN_EQUALS:
+		case TOKEN_NOT_EQUALS:
+			return 3;
+
+		case TOKEN_AND:
 			return 2;
+
+		case TOKEN_OR:
+			return 1;
 		
 		default:
 			return -1;
 	}
 }
 
-// 
-//  Supported operators:
-//   *, +, -, /, ^, %
-// 
-ASTNode* parse_binary(Parser* parser) {
+static int precedence_of(TokenType t) {
+	switch (t) {
+		case TOKEN_CAROT: return 6;
+		case TOKEN_ASTERISK:
+		case TOKEN_SLASH:
+		case TOKEN_PERCENT: return 5;
+		case TOKEN_PLUS:
+		case TOKEN_MINUS: return 4;
+		case TOKEN_GREATER:
+		case TOKEN_LESS:
+		case TOKEN_GREATER_EQUALS:
+		case TOKEN_LESS_EQUALS:
+		case TOKEN_EQUALS:
+		case TOKEN_NOT_EQUALS: return 3;
+		case TOKEN_AND: return 2;
+		case TOKEN_OR: return 1;
+		default: return -1;
+	}
+}
+
+static int is_right_assoc(TokenType t) {
+	return t == TOKEN_CAROT;
+}
+
+static ASTNode* parse_binary_prec(Parser* parser, int min_prec) {
 	ASTNode* left = parse_unary(parser);
-	
 	if (!left) return NULL;
+
 	while (1) {
 		TokenType op_type = parser->current_token.type;
-
-		int precedence;
-		int right_assoc = 0;
-
-		switch (op_type) {
-			case TOKEN_CAROT:
-				precedence = 4;
-				right_assoc = 1;
-				break;
-			
-			case TOKEN_ASTERISK:
-			case TOKEN_SLASH:
-			case TOKEN_PERCENT:
-				precedence = 3;
-				break;
-			
-			case TOKEN_PLUS:
-			case TOKEN_MINUS:
-				precedence = 2;
-				break;
-			
-			default:
-				return left;
-		}
-
-		if (!right_assoc && precedence < get_node_precedence(left)) break;
-		if (right_assoc && precedence <= get_node_precedence(left)) break;
+		int prec = precedence_of(op_type);
+		if (prec < min_prec) break;
 
 		Token op_token = parser->current_token;
+		char* op_text_copy = NULL;
+		if (op_token.text) {
+			op_text_copy = strdup(op_token.text);
+			op_token.text = op_text_copy;
+		}
 		match(parser, op_type);
 
-		ASTNode* right = parse_unary(parser);
+		int next_min = is_right_assoc(op_type) ? prec : prec + 1;
+		ASTNode* right = parse_binary_prec(parser, next_min);
 		if (!right) {
 			set_error(parser, PARSER_EXPECTED, "expression after '%s'", op_token.text);
+			if (op_text_copy) free(op_text_copy);
 			return left;
 		}
 
-		ASTNode* new_node = create_ast_node(AST_BINARY_OP, op_token);
-		
-		new_node->child_count = 2;
-		new_node->children = malloc(sizeof(ASTNode*) * 2);
-		new_node->children[0] = left;
-		new_node->children[1] = right;
+		ASTNodeType node_type = AST_BINARY_OP;
+		switch (op_type) {
+			case TOKEN_GREATER:
+			case TOKEN_LESS:
+			case TOKEN_GREATER_EQUALS:
+			case TOKEN_LESS_EQUALS:
+			case TOKEN_EQUALS:
+			case TOKEN_NOT_EQUALS:
+				node_type = AST_COMPARISON; break;
+			case TOKEN_AND:
+			case TOKEN_OR:
+				node_type = AST_LOGICAL_OP; break;
+			default:
+				node_type = AST_BINARY_OP; break;
+		}
 
-		left = new_node;
+		ASTNode* node = create_ast_node(node_type, op_token);
+		if (op_text_copy) free(op_text_copy);
+		node->child_count = 2;
+		node->children = malloc(sizeof(ASTNode*) * 2);
+		node->children[0] = left;
+		node->children[1] = right;
+		left = node;
 	}
 
 	return left;
+}
+
+ASTNode* parse_binary(Parser* parser) {
+	return parse_binary_prec(parser, 1);
 }
 
 ASTNode* parse_unary(Parser* parser) {
@@ -951,15 +986,22 @@ ASTNode* parse_unary(Parser* parser) {
 
 	if (op_type == TOKEN_MINUS || op_type == TOKEN_NOT) {
 		Token op_token = parser->current_token;
+		char* op_text_copy = NULL;
+		if (op_token.text) {
+			op_text_copy = strdup(op_token.text);
+			op_token.text = op_text_copy;
+		}
 		match(parser, op_type);
 
 		ASTNode* operand = parse_unary(parser);
 		if (!operand) {
 			set_error(parser, PARSER_EXPECTED, "expression after unary operator '%s'", op_token.text);
+			if (op_text_copy) free(op_text_copy);
 			return NULL;
 		}
 
 		ASTNode* node = create_ast_node(AST_UNARY_OP, op_token);
+		if (op_text_copy) free(op_text_copy);
 		
 		node->child_count = 1;
 		node->children = malloc(sizeof(ASTNode*));
@@ -1013,40 +1055,10 @@ ASTNode* parse_if_statement(Parser* parser) {
 	if (!expect(parser, TOKEN_IF, PARSER_EXPECTED, "'if'", parser->current_token.text)) return NULL;
 	if (!expect(parser, TOKEN_LPAREN, PARSER_EXPECTED, "'('", parser->current_token.text)) return NULL;
 
-	ASTNode* left = parse_expression(parser);
-	if (!left) {
+	ASTNode* condition = parse_expression(parser);
+	if (!condition) {
 		set_error(parser, PARSER_EXPECTED, "expression in if condition", parser->current_token.text);
 		return NULL;
-	}
-
-	ASTNode* condition = NULL;
-
-	if (parser->current_token.type == TOKEN_RPAREN) {
-		condition = left;
-	} else {
-		Token op = parser->current_token;
-		TokenType t = op.type;
-
-		if (t != TOKEN_EQUALS && t != TOKEN_GREATER &&
-			t != TOKEN_LESS && t != TOKEN_GREATER_EQUALS &&
-			t != TOKEN_LESS_EQUALS && t != TOKEN_NOT_EQUALS &&
-			t != TOKEN_AND && t != TOKEN_OR) {
-				set_error(parser, PARSER_EXPECTED, "comparison operator", parser->current_token.text);
-				return NULL;
-		}
-		match(parser, t);
-
-		ASTNode* right = parse_expression(parser);
-		if (!right) {
-			set_error(parser, PARSER_EXPECTED, "expression in if condition", parser->current_token.text);
-			return NULL;
-		}
-
-		condition = create_ast_node(AST_COMPARISON, op);
-		condition->child_count = 2;
-		condition->children = malloc(sizeof(ASTNode*) * condition->child_count);
-		condition->children[0] = left;
-		condition->children[1] = right;
 	}
 
 	if (!expect(parser, TOKEN_RPAREN, PARSER_EXPECTED, "')'", parser->current_token.text)) return NULL;
@@ -1082,39 +1094,10 @@ ASTNode* parse_while_statement(Parser* parser) {
 	if (!expect(parser, TOKEN_WHILE, PARSER_EXPECTED, "'while'", parser->current_token.text)) return NULL;
 	if (!expect(parser, TOKEN_LPAREN, PARSER_EXPECTED, "'('", parser->current_token.text)) return NULL;
 
-	ASTNode* left = parse_expression(parser);
-	if (!left) {
+	ASTNode* condition = parse_expression(parser);
+	if (!condition) {
 		set_error(parser, PARSER_EXPECTED, "expression in while condition", parser->current_token.text);
 		return NULL;
-	}
-
-	ASTNode* condition = NULL;
-
-	if (parser->current_token.type == TOKEN_RPAREN) {
-		condition = left;
-	} else {
-		Token op = parser->current_token;
-		if (op.type != TOKEN_EQUALS && op.type != TOKEN_GREATER &&
-			op.type != TOKEN_LESS && op.type != TOKEN_GREATER_EQUALS &&
-			op.type != TOKEN_LESS_EQUALS && op.type != TOKEN_NOT_EQUALS &&
-			op.type != TOKEN_AND && op.type != TOKEN_OR) {
-				set_error(parser, PARSER_EXPECTED, "comparison operator", parser->current_token.text);
-				return NULL;
-		}
-
-		match(parser, op.type);
-
-		ASTNode* right = parse_statement(parser);
-		if (!right) {
-			set_error(parser, PARSER_EXPECTED, "expression in while condition", parser->current_token.text);
-			return NULL;
-		}
-
-		condition = create_ast_node(AST_COMPARISON, op);
-		condition->child_count = 2;
-		condition->children = malloc(sizeof(ASTNode*) * 2);
-		condition->children[0] = left;
-		condition->children[1] = right;
 	}
 
 	if (!expect(parser, TOKEN_RPAREN, PARSER_EXPECTED, "')'", parser->current_token.text)) return NULL;
@@ -1173,31 +1156,18 @@ ASTNode* parse_for_statement(Parser* parser) {
 		return NULL;
 	}
 
-	ASTNode* left_cond = parse_expression(parser);
-	Token op_token = parser->current_token;
-	Token cmp_token = (Token){ .type = op_token.type, .text = NULL };
-	if (!match(parser, TOKEN_LESS) && !match(parser, TOKEN_GREATER) &&
-		!match(parser, TOKEN_EQUALS) && !match(parser, TOKEN_NOT_EQUALS) &&
-		!match(parser, TOKEN_LESS_EQUALS) && !match(parser, TOKEN_GREATER_EQUALS)) {
-			set_error(parser, PARSER_EXPECTED, "comparison operator", parser->current_token.text);
-			free_ast(left_cond);
-			free_ast(initial_value);
+	ASTNode* cond = NULL;
+	if (parser->current_token.type != TOKEN_SEMICOLON) {
+		cond = parse_expression(parser);
+		if (!cond) {
+			set_error(parser, PARSER_EXPECTED, "expression in for condition", parser->current_token.text);
+			if (id_token.text) free(id_token.text);
+			if (type_token.text) free(type_token.text);
 			return NULL;
 		}
-
-	ASTNode* right_cond = parse_expression(parser);
-	if (!right_cond) {
-		free_ast(left_cond);
-		free_ast(initial_value);
-		return NULL;
 	}
 
-	ASTNode* condition_node = create_ast_node(AST_COMPARISON, cmp_token);
-	condition_node->child_count = 2;
-	condition_node->children = malloc(sizeof(ASTNode*) * 2);
-	condition_node->children[0] = left_cond;
-	condition_node->children[1] = right_cond;
-
+	ASTNode* condition_node = cond;
 	ASTNode* identifier_node = create_ast_node(AST_IDENTIFIER, id_token);
 	ASTNode* type_node = create_ast_node(AST_TYPE, type_token);
 	ASTNode* assignment_node = create_ast_node(AST_DECLARATION, (Token){0});

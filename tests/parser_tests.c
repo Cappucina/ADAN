@@ -136,6 +136,146 @@ ExpectedNode* create_expected_continue() {
 	return node;
 }
 
+ExpectedNode* create_expected_if_logical(TokenType op_type, const char* op_text) {
+	ExpectedNode* left = malloc(sizeof(ExpectedNode));
+	left->type = AST_IDENTIFIER;
+	left->token_text = "x";
+	left->child_count = 0;
+	left->children = NULL;
+
+	ExpectedNode* right = malloc(sizeof(ExpectedNode));
+	right->type = AST_IDENTIFIER;
+	right->token_text = "y";
+	right->child_count = 0;
+	right->children = NULL;
+
+	ExpectedNode* op = malloc(sizeof(ExpectedNode));
+	op->type = AST_LOGICAL_OP;
+	op->token_text = op_text;
+	op->token_type = op_type;
+	op->child_count = 2;
+	op->children = malloc(sizeof(ExpectedNode*) * 2);
+	op->children[0] = left;
+	op->children[1] = right;
+
+	ExpectedNode* block = malloc(sizeof(ExpectedNode));
+	block->type = AST_BLOCK;
+	block->token_text = NULL;
+	block->child_count = 0;
+	block->children = NULL;
+
+	ExpectedNode* if_node = malloc(sizeof(ExpectedNode));
+	if_node->type = AST_IF;
+	if_node->token_text = NULL;
+	if_node->child_count = 2;
+	if_node->children = malloc(sizeof(ExpectedNode*) * 2);
+	if_node->children[0] = op;
+	if_node->children[1] = block;
+
+	return if_node;
+}
+
+ExpectedNode* create_expected_if_compound() {
+	ExpectedNode* id = malloc(sizeof(ExpectedNode));
+	id->type = AST_IDENTIFIER;
+	id->token_text = "i";
+	id->child_count = 0;
+	id->children = NULL;
+
+	ExpectedNode* lit3 = malloc(sizeof(ExpectedNode));
+	lit3->type = AST_LITERAL;
+	lit3->token_text = "3";
+	lit3->child_count = 0;
+	lit3->children = NULL;
+
+	ExpectedNode* cmp_left = malloc(sizeof(ExpectedNode));
+	cmp_left->type = AST_COMPARISON;
+	cmp_left->token_text = "==";
+	cmp_left->token_type = TOKEN_EQUALS;
+	cmp_left->child_count = 2;
+	cmp_left->children = malloc(sizeof(ExpectedNode*) * 2);
+	cmp_left->children[0] = id;
+	cmp_left->children[1] = lit3;
+
+	ExpectedNode* lit7 = malloc(sizeof(ExpectedNode));
+	lit7->type = AST_LITERAL;
+	lit7->token_text = "7";
+	lit7->child_count = 0;
+	lit7->children = NULL;
+
+	ExpectedNode* id2 = malloc(sizeof(ExpectedNode));
+	id2->type = AST_IDENTIFIER;
+	id2->token_text = "i";
+	id2->child_count = 0;
+	id2->children = NULL;
+
+	ExpectedNode* cmp_right = malloc(sizeof(ExpectedNode));
+	cmp_right->type = AST_COMPARISON;
+	cmp_right->token_text = "==";
+	cmp_right->token_type = TOKEN_EQUALS;
+	cmp_right->child_count = 2;
+	cmp_right->children = malloc(sizeof(ExpectedNode*) * 2);
+	cmp_right->children[0] = id2;
+	cmp_right->children[1] = lit7;
+
+	ExpectedNode* op = malloc(sizeof(ExpectedNode));
+	op->type = AST_LOGICAL_OP;
+	op->token_text = "||";
+	op->token_type = TOKEN_OR;
+	op->child_count = 2;
+	op->children = malloc(sizeof(ExpectedNode*) * 2);
+	op->children[0] = cmp_left;
+	op->children[1] = cmp_right;
+
+	ExpectedNode* block = malloc(sizeof(ExpectedNode));
+	block->type = AST_BLOCK;
+	block->token_text = NULL;
+	block->child_count = 0;
+	block->children = NULL;
+
+	ExpectedNode* if_node = malloc(sizeof(ExpectedNode));
+	if_node->type = AST_IF;
+	if_node->token_text = NULL;
+	if_node->child_count = 2;
+	if_node->children = malloc(sizeof(ExpectedNode*) * 2);
+	if_node->children[0] = op;
+	if_node->children[1] = block;
+
+	return if_node;
+}
+
+ExpectedNode* create_expected_if_grouped() {
+	ExpectedNode* a = malloc(sizeof(ExpectedNode));
+	a->type = AST_IDENTIFIER; a->token_text = "this"; a->child_count = 0; a->children = NULL;
+	ExpectedNode* b = malloc(sizeof(ExpectedNode));
+	b->type = AST_IDENTIFIER; b->token_text = "that"; b->child_count = 0; b->children = NULL;
+	ExpectedNode* left_or = malloc(sizeof(ExpectedNode));
+	left_or->type = AST_LOGICAL_OP; left_or->token_text = "||"; left_or->token_type = TOKEN_OR;
+	left_or->child_count = 2; left_or->children = malloc(sizeof(ExpectedNode*) * 2);
+	left_or->children[0] = a; left_or->children[1] = b;
+
+	ExpectedNode* c = malloc(sizeof(ExpectedNode));
+	c->type = AST_IDENTIFIER; c->token_text = "then"; c->child_count = 0; c->children = NULL;
+	ExpectedNode* d = malloc(sizeof(ExpectedNode));
+	d->type = AST_IDENTIFIER; d->token_text = "where"; d->child_count = 0; d->children = NULL;
+	ExpectedNode* right_and = malloc(sizeof(ExpectedNode));
+	right_and->type = AST_LOGICAL_OP; right_and->token_text = "&&"; right_and->token_type = TOKEN_AND;
+	right_and->child_count = 2; right_and->children = malloc(sizeof(ExpectedNode*) * 2);
+	right_and->children[0] = c; right_and->children[1] = d;
+
+	ExpectedNode* top_and = malloc(sizeof(ExpectedNode));
+	top_and->type = AST_LOGICAL_OP; top_and->token_text = "&&"; top_and->token_type = TOKEN_AND;
+	top_and->child_count = 2; top_and->children = malloc(sizeof(ExpectedNode*) * 2);
+	top_and->children[0] = left_or; top_and->children[1] = right_and;
+
+	ExpectedNode* block = malloc(sizeof(ExpectedNode));
+	block->type = AST_BLOCK; block->token_text = NULL; block->child_count = 0; block->children = NULL;
+
+	ExpectedNode* if_node = malloc(sizeof(ExpectedNode));
+	if_node->type = AST_IF; if_node->token_text = NULL; if_node->child_count = 2; if_node->children = malloc(sizeof(ExpectedNode*) * 2);
+	if_node->children[0] = top_and; if_node->children[1] = block;
+	return if_node;
+}
 
 ExpectedNode* create_expected_increment() {
 	ExpectedNode* inc_var = malloc(sizeof(ExpectedNode));
@@ -498,6 +638,10 @@ void create_parser_tests() {
 		{ "print(\"${2++}\");", create_expected_increment_literal() },
 		{ "i++;", create_expected_increment() },
 		{ "continue;", create_expected_continue() },
+		{ "if (x || y) {}", create_expected_if_logical(TOKEN_OR, "||") },
+		{ "if (x && y) {}", create_expected_if_logical(TOKEN_AND, "&&") },
+		{ "if (i == 3 || i == 7) {}", create_expected_if_compound() },
+		{ "if ((this || that) && (then && where)) {}", create_expected_if_grouped() },
 	};
 
 	int num_tests = sizeof(tests) / sizeof(tests[0]);

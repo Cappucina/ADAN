@@ -364,6 +364,10 @@ int main(int argc, char** argv) {
 	fclose(asm_file);
 	fprintf(stderr, "Assembly written to compiled/assembled.s\n");
 	free_symbol_table(symbols);
+	if (VERBOSE) {
+		print_ast(ast, NODE_ACTUAL, 0);
+	}
+
 	free_ast(ast);
 	free_parser(&parser);
 	free(lexer);

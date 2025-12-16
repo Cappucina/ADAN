@@ -33,14 +33,16 @@ program::void main() {
             continue;
         }
 
-        print((string)i);
         if (i == 5) {
             print("skipped 5");
             continue;
         }
+
         if (i == 8) {
             break;
         }
+
+        print((string)i);
     }
 
     print("\nProgram finished running in ${get_cwd()}.\n");
