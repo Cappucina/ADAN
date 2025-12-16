@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
 
 void print(const char* str) {
 	if (!str) return;
@@ -153,4 +154,12 @@ bool move_file(const char* src_path, const char* dest_path) {
 	int res = system(cmd);
 	return res == 0;
 }
+
+void sleep_ns(int64_t nanoseconds) {
+	struct timespec req, rem;
+	req.tv_sec = nanoseconds / 1000000000;
+	req.tv_nsec = nanoseconds % 1000000000;
+	nanosleep(&req, &rem);
+}
+
 #endif

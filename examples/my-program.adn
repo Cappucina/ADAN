@@ -10,9 +10,10 @@ program::string cool_message() {
 }
 
 program::void main() {
-
     print("Called function \"cool_message\", returned: " + cool_message());
     
+    sleep_ns(5000000000); // Sleep for 5 seconds
+
     hi::int = 5;
     print("cool int: " + (string)hi);
     hip::int* = &hi;

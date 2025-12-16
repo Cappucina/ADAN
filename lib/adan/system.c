@@ -50,3 +50,19 @@ char *get_current_user(void) {
 
     return username;
 }
+
+char *get_user_home() {
+    struct passwd *pw = getpwuid(getuid());
+    if (pw) {
+        return strdup(pw->pw_dir);
+    }
+    return NULL;
+}
+
+char *get_env_variable(const char *name) {
+    char *value = getenv(name);
+    if (value) {
+        return strdup(value);
+    }
+    return NULL;
+}
