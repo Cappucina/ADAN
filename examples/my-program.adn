@@ -1,3 +1,5 @@
+// NOTE: About the array when I was talking to Lily privatly she aproved my implementations syntax using [] rathar than {} for defining arrays. Should we create a place as mantainers to talk about specs and what we are currenlty workling on? 
+
 include adan.io;
 include adan.string;
 include adan.system;
@@ -27,15 +29,14 @@ program::void main() {
     for (i::int = 0; i < 10; i++) {
 
         // add compound comparisons in if statements with logical operators, this causes compiler error
-        // if (i == 3 || i == 7) {
-        //     continue;
-        // }
+        if (i == 3 || i == 7) {
+            continue;
+        }
 
         print((string)i);
         if (i == 5) {
-            // print("skipped 5");
-            //continue;
-            // continue gives error
+            print("skipped 5");
+            continue;
         }
         if (i == 8) {
             break;

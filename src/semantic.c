@@ -143,6 +143,7 @@ bool symbol_in_scope(SymbolTable* table, const char* name) {
 // 
 //  AST Traversal / Semantic Checks
 //
+void analyze_continue(ASTNode* continue_node, SymbolTable* table);
 void analyze_block(ASTNode* block, SymbolTable* table) {
 	if (block == NULL || table == NULL) return;
 	if (block->type != AST_BLOCK) return;
@@ -183,13 +184,10 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 		case AST_BREAK:
 			analyze_break(statement, table);
 			break;
-		
-		case AST_BLOCK:
-			analyze_block(statement, table);
-			break;
 
-		case AST_INCLUDE:
-			analyze_include(statement, table);
+		case AST_CONTINUE:
+			analyze_continue(statement, table);
+			break;
 			break;
 
 		case AST_ARRAY_ACCESS:
@@ -423,6 +421,16 @@ void analyze_break(ASTNode* break_node, SymbolTable* table) {
 		semantic_error(break_node, SemanticErrorMessages[SEMANTIC_BREAK_OUTSIDE_LOOP]);
 	}
 }
+
+void analyze_continue(ASTNode* continue_node, SymbolTable* table) {
+	if (!continue_node || !table) return;
+	if (continue_node->type != AST_CONTINUE) return;
+
+	int depth = table->loop_depth;
+	if (depth <= 0) {
+		semantic_error(continue_node, SemanticErrorMessages[SEMANTIC_CONTINUE_OUTSIDE_LOOP]);
+	}
+} 
 
 void analyze_declaration(ASTNode* declaration_node, SymbolTable* table) {
 	if (!declaration_node || !table) return;

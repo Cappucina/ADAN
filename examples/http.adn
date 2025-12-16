@@ -1,6 +1,3 @@
-// TODO: I leave this HTTP example here as we continue keyword has been broken with a recent commit. I am trying to understand changes as it appears someone else finished arrays before I got my implementation done.
-// NOTE: About the array when I was talking to Lily privatly she aproved my implementations syntax using [] rathar than {} for defining arrays.
-
 include adan.io;
 include adan.net;
 

@@ -127,6 +127,16 @@ ExpectedNode* create_expected_while() {
 	return while_node;
 }
 
+ExpectedNode* create_expected_continue() {
+	ExpectedNode* node = malloc(sizeof(ExpectedNode));
+	node->type = AST_CONTINUE;
+	node->token_text = NULL;
+	node->child_count = 0;
+	node->children = NULL;
+	return node;
+}
+
+
 ExpectedNode* create_expected_increment() {
 	ExpectedNode* inc_var = malloc(sizeof(ExpectedNode));
 	inc_var->type = AST_IDENTIFIER;
@@ -487,6 +497,7 @@ void create_parser_tests() {
 		{ "print(\"${test()}\");", NULL },
 		{ "print(\"${2++}\");", create_expected_increment_literal() },
 		{ "i++;", create_expected_increment() },
+		{ "continue;", create_expected_continue() },
 	};
 
 	int num_tests = sizeof(tests) / sizeof(tests[0]);
