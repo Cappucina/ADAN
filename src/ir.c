@@ -287,9 +287,19 @@ char* generate_ir(ASTNode* node) {
 			switch (node->token.type) {
 				case TOKEN_BITWISE_OR:
 					opcode = IR_BIT_OR;
+					break;
+				
+				case TOKEN_BITWISE_AND:
+					opcode = IR_BIT_AND;
+					break;
+				
+				case TOKEN_BITWISE_XOR:
+					opcode = IR_BIT_XOR;
+					break;
 
 				case TOKEN_OR:
 					opcode = IR_OR;
+					break;
 
 				case TOKEN_AND:
 					opcode = IR_AND;
