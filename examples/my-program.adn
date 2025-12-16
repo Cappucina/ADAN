@@ -1,11 +1,12 @@
 include adan.io;
+include adan.strlib;
 
-program::string my_amazing_function() {
-    my_message::string = "Hello world from the best programming language ever!";
+program::string cool_message() {
+    variable::string = "The best language of all time";
 
-    return my_message;
+    return variable;
 }
 
 program::void main() {
-    print(my_amazing_function());
+    print(cool_message());
 }

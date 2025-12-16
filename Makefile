@@ -6,7 +6,6 @@ docker:
 
 	python3 scripts/container.py || python scripts/container.py || python scripts/container.py
 
-	-docker rm -f adan-dev-container >/dev/null 2>&1
 	if [ -z "$$(docker ps -a -q -f name=^/adan-dev-container$$)" ]; then \
 		docker run -dit --name adan-dev-container -u $$(id -u):$$(id -g) -v $$(pwd):/workspace adan-dev-container /bin/sh >/dev/null 2>&1; \
 	elif [ -z "$$(docker ps -q -f name=^/adan-dev-container$$)" ]; then \
