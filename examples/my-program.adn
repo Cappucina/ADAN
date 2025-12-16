@@ -8,5 +8,13 @@ program::string cool_message() {
 }
 
 program::void main() {
+    hi::int = 5;
+    hip::int* = &hi;
+
+    xd::int[] = {1, 2, 3};
+
     print(cool_message());
+    print((string)hi);
+    print((string)*hip);
+    print((string)xd[2]);
 }

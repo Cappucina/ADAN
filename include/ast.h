@@ -58,6 +58,9 @@ typedef enum {
 	AST_GROUPED_EXPR,
 	AST_TERNARY_EXPR,
 	AST_CAST_EXPR,
+	AST_ADDRESS_OF,
+	AST_DEREFERENCE,
+	AST_ARRAY_INDEX,
 	
 	// 
 	//  Types of Operators
@@ -115,6 +118,9 @@ static inline const char* node_type_to_string(ASTNodeType type) {
 		case AST_UNARY_OP: return "AST_UNARY_OP";
 		case AST_UNARY_EXPR: return "AST_UNARY_EXPR";
 		case AST_ARRAY_LITERAL: return "AST_ARRAY_LITERAL";
+		case AST_ADDRESS_OF: return "AST_ADDRESS_OF";
+		case AST_DEREFERENCE: return "AST_DEREFERENCE";
+		case AST_ARRAY_INDEX: return "AST_ARRAY_INDEX";
 		default: return "AST_UNKNOWN";
 	}
 }

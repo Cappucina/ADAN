@@ -46,13 +46,16 @@ typedef enum {
 	TOKEN_RPAREN,
 	TOKEN_LBRACE,
 	TOKEN_RBRACE,
+	TOKEN_LBRACKET,
+	TOKEN_RBRACKET,
 	TOKEN_SEMICOLON,
 	TOKEN_COMMA,
 	TOKEN_PERIOD,
 	TOKEN_APOSTROPHE,
 	TOKEN_QUOTATION,
-	TOKEN_NOT,		     // Is used for negation. Use `!=` for checking for not-equal values.
-	TOKEN_TYPE_DECL,	 // Used when declaring a type of something, usually a variable or program.
+	TOKEN_NOT,
+	TOKEN_AMPERSAND,
+	TOKEN_TYPE_DECL,
 
 	//
 	//  Signs

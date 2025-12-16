@@ -294,6 +294,8 @@ Token* next_token(Lexer* lexer) {
 		case ')': return make_token(lexer, TOKEN_RPAREN, (const char*[]){")"}, 1);
 		case '{': return make_token(lexer, TOKEN_LBRACE, (const char*[]){"{"}, 1);
 		case '}': return make_token(lexer, TOKEN_RBRACE, (const char*[]){"}"}, 1);
+		case '[': return make_token(lexer, TOKEN_LBRACKET, (const char*[]){"["}, 1);
+		case ']': return make_token(lexer, TOKEN_RBRACKET, (const char*[]){"]"}, 1);
 		case ';': return make_token(lexer, TOKEN_SEMICOLON, (const char*[]){";"}, 1);
 		case ',': return make_token(lexer, TOKEN_COMMA, (const char*[]){","}, 1);
 		case '.': return make_token(lexer, TOKEN_PERIOD, (const char*[]){"."}, 1);
@@ -302,6 +304,7 @@ Token* next_token(Lexer* lexer) {
 		case '<': return make_token(lexer, TOKEN_LESS, (const char*[]){"<"}, 1);
 		case '!': return make_token(lexer, TOKEN_NOT, (const char*[]){"!"}, 1);
 		case '=': return make_token(lexer, TOKEN_ASSIGN, (const char*[]){"="}, 1);
+		case '&': return make_token(lexer, TOKEN_AMPERSAND, (const char*[]){"&"}, 1);
 	}
 
 	if (is_digit(c)) {

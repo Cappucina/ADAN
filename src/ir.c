@@ -137,6 +137,22 @@ void print_ir() {
 			case IR_RETURN:
 				printf("RETURN %s\n", current->arg1);
 				break;
+
+			case IR_ADDR_OF:
+				printf("%s = &%s\n", current->result, current->arg1);
+				break;
+
+			case IR_DEREF:
+				printf("%s = *%s\n", current->result, current->arg1);
+				break;
+
+			case IR_LOAD_IDX:
+				printf("%s = %s[%s]\n", current->result, current->arg1, current->arg2);
+				break;
+
+			case IR_STORE_IDX:
+				printf("%s[%s] = %s\n", current->arg1, current->arg2, current->result);
+				break;
 		}
 		current = current->next;
 	}
@@ -754,15 +770,27 @@ char* generate_ir(ASTNode* node) {
 		}
 
 		case AST_ARRAY_LITERAL: {
-			for (int i = 0; i < node->child_count; i++) {
+			char* arr_ptr = new_temporary();
+			int count = node->child_count;
+			
+			char count_str[32];
+			snprintf(count_str, sizeof(count_str), "%d", count * 8);
+			IRInstruction* alloc_param = create_instruction(IR_PARAM, count_str, NULL, NULL);
+			emit(alloc_param);
+			IRInstruction* alloc_call = create_instruction(IR_CALL, "malloc", NULL, arr_ptr);
+			emit(alloc_call);
+
+			for (int i = 0; i < count; i++) {
 				char* element = generate_ir(node->children[i]);
 				if (element) {
-					IRInstruction* param_inst = create_instruction(IR_PARAM, element, NULL, NULL);
-					emit(param_inst);
+					char idx_str[32];
+					snprintf(idx_str, sizeof(idx_str), "%d", i);
+					IRInstruction* store_inst = create_instruction(IR_STORE_IDX, arr_ptr, idx_str, element);
+					emit(store_inst);
 					free(element);
 				}
 			}
-			return NULL;
+			return arr_ptr;
 		}
 
 		case AST_ARRAY_ACCESS: {
@@ -781,6 +809,51 @@ char* generate_ir(ASTNode* node) {
 			IRInstruction* access_inst = create_instruction(IR_ASSIGN, array, index, result);
 			emit(access_inst);
 			free(array);
+			free(index);
+
+			return result;
+		}
+
+		case AST_ADDRESS_OF: {
+			if (node->child_count < 1) return NULL;
+			char* operand = generate_ir(node->children[0]);
+			if (!operand) return NULL;
+
+			char* result = new_temporary();
+			IRInstruction* inst = create_instruction(IR_ADDR_OF, operand, NULL, result);
+			emit(inst);
+			free(operand);
+
+			return result;
+		}
+
+		case AST_DEREFERENCE: {
+			if (node->child_count < 1) return NULL;
+			char* operand = generate_ir(node->children[0]);
+			if (!operand) return NULL;
+
+			char* result = new_temporary();
+			IRInstruction* inst = create_instruction(IR_DEREF, operand, NULL, result);
+			emit(inst);
+			free(operand);
+
+			return result;
+		}
+
+		case AST_ARRAY_INDEX: {
+			if (node->child_count < 2) return NULL;
+			char* base = generate_ir(node->children[0]);
+			char* index = generate_ir(node->children[1]);
+			if (!base || !index) {
+				free(base);
+				free(index);
+				return NULL;
+			}
+
+			char* result = new_temporary();
+			IRInstruction* inst = create_instruction(IR_LOAD_IDX, base, index, result);
+			emit(inst);
+			free(base);
 			free(index);
 
 			return result;
