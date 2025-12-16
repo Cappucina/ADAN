@@ -300,8 +300,8 @@ Token* next_token(Lexer* lexer) {
 
 
 	if (c == '<' && next == '<') return make_token(lexer, TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT, (const char*[]){"<", "<"}, 2);
+	if (c == '>' && next == '>' && lexer->src[lexer->position + 2] == '>') return make_token(lexer, TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT, (const char*[]){">", ">", ">"}, 3); // needs to be first or next one will fail
 	if (c == '>' && next == '>') return make_token(lexer, TOKEN_BITWISE_SIGNED_RIGHT_SHIFT, (const char*[]){">", ">"}, 2);
-	if (c == '>' && next == '>' && lexer->src[lexer->position + 2] == '>') return make_token(lexer, TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT, (const char*[]){">", ">", ">"}, 3);
 
 
 	switch(c) {
