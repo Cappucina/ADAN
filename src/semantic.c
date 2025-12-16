@@ -189,11 +189,6 @@ void analyze_statement(ASTNode* statement, SymbolTable* table) {
 			analyze_break(statement, table);
 			break;
 
-		case AST_CONTINUE:
-			analyze_continue(statement, table);
-			break;
-			break;
-
 		case AST_ARRAY_ACCESS:
 		case AST_ARRAY_INDEX:
 			analyze_array_access(statement, table);
@@ -436,15 +431,7 @@ void analyze_break(ASTNode* break_node, SymbolTable* table) {
 	}
 }
 
-void analyze_continue(ASTNode* continue_node, SymbolTable* table) {
-	if (!continue_node || !table) return;
-	if (continue_node->type != AST_CONTINUE) return;
 
-	int depth = table->loop_depth;
-	if (depth <= 0) {
-		semantic_error(continue_node, SemanticErrorMessages[SEMANTIC_CONTINUE_OUTSIDE_LOOP]);
-	}
-} 
 
 void analyze_declaration(ASTNode* declaration_node, SymbolTable* table) {
 	if (!declaration_node || !table) return;

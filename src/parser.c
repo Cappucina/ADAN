@@ -882,7 +882,6 @@ int get_node_precedence(ASTNode* node) {
 		
 		case TOKEN_PLUS: // +
 		case TOKEN_MINUS: // -
-<<<<<<< HEAD
 			return 4;
 
 		case TOKEN_GREATER:
@@ -894,10 +893,6 @@ int get_node_precedence(ASTNode* node) {
 			return 3;
 
 		case TOKEN_AND:
-=======
-		case TOKEN_LEFT_SHIFT:
-		case TOKEN_RIGHT_SHIFT:
->>>>>>> 2f28ce9483eb0faca2f6f9f4d1b1b4e61dbf5cb0
 			return 2;
 
 		case TOKEN_OR:
@@ -944,53 +939,8 @@ static ASTNode* parse_binary_prec(Parser* parser, int min_prec) {
 
 	while (1) {
 		TokenType op_type = parser->current_token.type;
-<<<<<<< HEAD
 		int prec = precedence_of(op_type);
 		if (prec < min_prec) break;
-=======
-
-		int precedence;
-		int right_assoc = 0;
-
-		switch (op_type) {
-			case TOKEN_EXPONENT:
-				precedence = 5;
-				right_assoc = 1;
-				break;
-			
-			case TOKEN_CAROT:
-				precedence = 4;
-				right_assoc = 1;
-				break;
-			
-			case TOKEN_ASTERISK:
-			case TOKEN_SLASH:
-			case TOKEN_PERCENT:
-				precedence = 3;
-				break;
-			
-			case TOKEN_PLUS:
-			case TOKEN_MINUS:
-			case TOKEN_LEFT_SHIFT:
-			case TOKEN_RIGHT_SHIFT:
-				precedence = 2;
-				break;
-			
-			case TOKEN_AMPERSAND:
-				precedence = 1;
-				break;
-			
-			case TOKEN_PIPE:
-				precedence = 0;
-				break;
-			
-			default:
-				return left;
-		}
-
-		if (!right_assoc && precedence < get_node_precedence(left)) break;
-		if (right_assoc && precedence <= get_node_precedence(left)) break;
->>>>>>> 2f28ce9483eb0faca2f6f9f4d1b1b4e61dbf5cb0
 
 		Token op_token = parser->current_token;
 		char* op_text_copy = NULL;
