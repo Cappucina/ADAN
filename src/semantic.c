@@ -16,8 +16,70 @@ static int semantic_tip_count = 0;
 int semantic_get_error_count() { return semantic_error_count; }
 int semantic_get_warning_count() { return semantic_warning_count; }
 int semantic_get_tip_count() { return semantic_tip_count; }
+bool array_element_types_match(CompleteType array_type, ASTNode *array_literal, SymbolTable *table);
 
 const char *type_to_string(CompleteType cType);
+
+bool same_type_recursive(CompleteType a, CompleteType b)
+{
+	if (a.type != b.type)
+		return false;
+
+	if (a.type == TYPE_ARRAY)
+	{
+		if (!a.pointsTo || !b.pointsTo)
+			return false;
+		return same_type_recursive(*a.pointsTo, *b.pointsTo);
+	}
+
+	return true;
+}
+
+void type_to_string_recursive(CompleteType t, char *buf, size_t bufsize)
+{
+	if (t.type != TYPE_ARRAY)
+	{
+		switch (t.type)
+		{
+		case TYPE_INT:
+			snprintf(buf, bufsize, "int");
+			break;
+		case TYPE_FLOAT:
+			snprintf(buf, bufsize, "float");
+			break;
+		case TYPE_STRING:
+			snprintf(buf, bufsize, "string");
+			break;
+		case TYPE_CHAR:
+			snprintf(buf, bufsize, "char");
+			break;
+		case TYPE_BOOLEAN:
+			snprintf(buf, bufsize, "bool");
+			break;
+		case TYPE_VOID:
+			snprintf(buf, bufsize, "void");
+			break;
+		case TYPE_NULL:
+			snprintf(buf, bufsize, "null");
+			break;
+		case TYPE_UNKNOWN:
+			snprintf(buf, bufsize, "unknown");
+			break;
+		default:
+			snprintf(buf, bufsize, "array");
+			break;
+		}
+	}
+	else
+	{
+		char inner[128];
+		if (t.pointsTo)
+			type_to_string_recursive(*t.pointsTo, inner, sizeof(inner));
+		else
+			snprintf(inner, sizeof(inner), "unknown");
+		snprintf(buf, bufsize, "%s[]", inner);
+	}
+}
 
 SymbolTable *init_symbol_table()
 {
@@ -186,6 +248,8 @@ void analyze_statement(ASTNode *statement, SymbolTable *table)
 {
 	if (statement == NULL || table == NULL)
 		return;
+
+	printf("%d", statement->type);
 
 	switch (statement->type)
 	{
@@ -558,6 +622,7 @@ void analyze_declaration(ASTNode *declaration_node, SymbolTable *table)
 	ASTNode *type_node = declaration_node->children[1];
 
 	CompleteType expected_type = get_expression_type(type_node, table);
+
 	if (declaration_node->child_count >= 3)
 	{
 		ASTNode *expression_node = declaration_node->children[2];
@@ -565,10 +630,34 @@ void analyze_declaration(ASTNode *declaration_node, SymbolTable *table)
 		analyze_expression(expression_node, table);
 
 		CompleteType actual_type = get_expression_type(expression_node, table);
-		if (actual_type.type != expected_type.type)
+
+		if (!same_type_recursive(actual_type, expected_type))
 		{
-			semantic_error(declaration_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], type_node->token.text, expression_node->token.text);
+			char expected_str[128], actual_str[128];
+			type_to_string_recursive(expected_type, expected_str, sizeof(expected_str));
+			type_to_string_recursive(actual_type, actual_str, sizeof(actual_str));
+
+			semantic_error(declaration_node,
+						   SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH],
+						   expected_str,
+						   actual_str);
 			return;
+		}
+
+		if (expected_type.type == TYPE_ARRAY && expected_type.pointsTo &&
+			expression_node->type == AST_ARRAY_LITERAL)
+		{
+			if (!array_element_types_match(expected_type, expression_node, table))
+			{
+				char elem_str[128];
+				type_to_string_recursive(*expected_type.pointsTo, elem_str, sizeof(elem_str));
+
+				semantic_error(declaration_node,
+							   SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH],
+							   elem_str,
+							   "<array element>");
+				return;
+			}
 		}
 	}
 
@@ -578,6 +667,62 @@ void analyze_declaration(ASTNode *declaration_node, SymbolTable *table)
 //
 //  See the visualized form (Tree): `../diagrams/variable_assignment.txt`
 //
+void print_type(CompleteType t)
+{
+	if (!t.pointsTo)
+	{
+		switch (t.type)
+		{
+		case TYPE_INT:
+			printf("int");
+			break;
+		case TYPE_FLOAT:
+			printf("float");
+			break;
+		case TYPE_STRING:
+			printf("string");
+			break;
+		case TYPE_CHAR:
+			printf("char");
+			break;
+		case TYPE_BOOLEAN:
+			printf("bool");
+			break;
+		case TYPE_VOID:
+			printf("void");
+			break;
+		case TYPE_NULL:
+			printf("null");
+			break;
+		case TYPE_UNKNOWN:
+			printf("unknown");
+			break;
+		case TYPE_ARRAY:
+			printf("array[]");
+			break; // fallback
+		}
+	}
+	else
+	{
+		printf("array of ");
+		print_type(*t.pointsTo);
+	}
+}
+
+bool array_element_types_match(CompleteType array_type, ASTNode *array_literal, SymbolTable *table)
+{
+	if (!array_type.pointsTo || !array_literal)
+		return false;
+
+	for (int i = 0; i < array_literal->child_count; i++)
+	{
+		CompleteType elem_type = get_expression_type(array_literal->children[i], table);
+		if (!same_type_recursive(*array_type.pointsTo, elem_type))
+			return false;
+	}
+	return true;
+}
+
 void analyze_assignment(ASTNode *assignment_node, SymbolTable *table)
 {
 	if (!assignment_node || !table)
@@ -588,21 +733,45 @@ void analyze_assignment(ASTNode *assignment_node, SymbolTable *table)
 
 	analyze_expression(expression_node, table);
 
-	Symbol *identifier_symbol = lookup_symbol(table, identifier_node->token.text);
-	CompleteType expression_type = get_expression_type(expression_node, table);
-
-	if (identifier_symbol == NULL)
+	Symbol *symbol = lookup_symbol(table, identifier_node->token.text);
+	if (!symbol)
 	{
-		semantic_error(assignment_node, SemanticErrorMessages[SEMANTIC_UNKNOWN_VARIABLE], identifier_node->token.text);
+		semantic_error(assignment_node,
+					   SemanticErrorMessages[SEMANTIC_UNKNOWN_VARIABLE],
+					   identifier_node->token.text);
 		return;
 	}
 
-	//
-	//  STRICT: No implicit type conversion in assignment
-	//
-	if (identifier_symbol->type.type != expression_type.type)
+	CompleteType lhs = symbol->type;
+	CompleteType rhs = get_expression_type(expression_node, table);
+
+	if (!same_type_recursive(lhs, rhs))
 	{
+		char lhs_str[128], rhs_str[128];
+		type_to_string_recursive(lhs, lhs_str, sizeof(lhs_str));
+		type_to_string_recursive(rhs, rhs_str, sizeof(rhs_str));
+
+		semantic_error(assignment_node,
+					   SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH],
+					   lhs_str,
+					   rhs_str);
 		return;
+	}
+
+	if (lhs.type == TYPE_ARRAY && lhs.pointsTo &&
+		expression_node->type == AST_ARRAY_LITERAL)
+	{
+		if (!array_element_types_match(lhs, expression_node, table))
+		{
+			char elem_str[128];
+			type_to_string_recursive(*lhs.pointsTo, elem_str, sizeof(elem_str));
+
+			semantic_error(assignment_node,
+						   SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH],
+						   elem_str,
+						   "<array element>");
+			return;
+		}
 	}
 }
 
@@ -1295,45 +1464,29 @@ CompleteType analyze_unary_op(ASTNode *unary_node, SymbolTable *table)
 //
 CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 {
-	CompleteType ArrayType;
-	ArrayType.type = TYPE_ARRAY;
-
-	CompleteType IntType;
-	IntType.type = TYPE_INT;
-
-	CompleteType FloatType;
-	FloatType.type = TYPE_FLOAT;
-
-	CompleteType StringType;
-	StringType.type = TYPE_STRING;
-
-	CompleteType CharType;
-	CharType.type = TYPE_CHAR;
-
-	CompleteType BooleanType;
-	BooleanType.type = TYPE_BOOLEAN;
-
-	CompleteType NullType;
-	NullType.type = TYPE_NULL;
-
-	CompleteType UnknownType;
-	UnknownType.type = TYPE_UNKNOWN;
-
-	CompleteType VoidType;
-	VoidType.type = TYPE_VOID;
+	CompleteType ArrayType = {.type = TYPE_ARRAY, .pointsTo = NULL};
+	CompleteType IntType = {.type = TYPE_INT};
+	CompleteType FloatType = {.type = TYPE_FLOAT};
+	CompleteType StringType = {.type = TYPE_STRING};
+	CompleteType CharType = {.type = TYPE_CHAR};
+	CompleteType BooleanType = {.type = TYPE_BOOLEAN};
+	CompleteType NullType = {.type = TYPE_NULL};
+	CompleteType UnknownType = {.type = TYPE_UNKNOWN};
+	CompleteType VoidType = {.type = TYPE_VOID};
 
 	if (!expr_node)
 		return UnknownType;
 
+	// AST_TYPE nodes
 	if (expr_node->type == AST_TYPE)
 	{
 		const char *text = expr_node->token.text;
 		int len = text ? strlen(text) : 0;
 
-		if (len >= 2 && text[len - 1] == ']' && text[len - 2] == '[')
+		// Array type like bool[], int[]
+		if (len >= 2 && text[len - 2] == '[' && text[len - 1] == ']')
 		{
 			CompleteType elem = UnknownType;
-
 			char base[64];
 			strncpy(base, text, len - 2);
 			base[len - 2] = '\0';
@@ -1358,6 +1511,7 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 			return arr;
 		}
 
+		// Scalar types
 		switch (expr_node->token.type)
 		{
 		case TOKEN_INT:
@@ -1387,12 +1541,29 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 		}
 	}
 
+	// Array literals: infer type from first element
+	if (expr_node->type == AST_ARRAY_LITERAL)
+	{
+		CompleteType arr;
+		arr.type = TYPE_ARRAY;
+		arr.pointsTo = NULL;
+
+		if (expr_node->child_count > 0)
+		{
+			// Recursively get element type
+			CompleteType first_elem_type = get_expression_type(expr_node->children[0], table);
+			arr.pointsTo = malloc(sizeof(CompleteType));
+			*arr.pointsTo = first_elem_type;
+		}
+		annotate_node_type(expr_node, arr);
+		return arr;
+	}
+
+	// Other expression types handled recursively (identifier, literals, operators)
 	if (expr_node->type == AST_LITERAL)
 	{
-		TokenType tt = expr_node->token.type;
 		CompleteType inferred = UnknownType;
-
-		switch (tt)
+		switch (expr_node->token.type)
 		{
 		case TOKEN_INT_LITERAL:
 			inferred = IntType;
@@ -1424,159 +1595,19 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 			inferred = UnknownType;
 			break;
 		}
-
 		annotate_node_type(expr_node, inferred);
 		return inferred;
 	}
 
-	if (expr_node->type == AST_IDENTIFIER)
+	if (expr_node->type == AST_IDENTIFIER && table)
 	{
-		if (expr_node->token.text && table)
-		{
-			Symbol *s = lookup_symbol(table, expr_node->token.text);
-			CompleteType t = s ? s->type : UnknownType;
-			annotate_node_type(expr_node, t);
-			return t;
-		}
-
-		annotate_node_type(expr_node, UnknownType);
-		return UnknownType;
-	}
-
-	if (expr_node->type == AST_CAST_EXPR)
-	{
-		if (expr_node->child_count < 2)
-		{
-			annotate_node_type(expr_node, UnknownType);
-			return UnknownType;
-		}
-
-		CompleteType to = get_expression_type(expr_node->children[0], table);
-		CompleteType from = get_expression_type(expr_node->children[1], table);
-		check_type_cast_validity(from, to, expr_node);
-		annotate_node_type(expr_node, to);
-		return to;
-	}
-
-	if (expr_node->type == AST_BINARY_OP || expr_node->type == AST_BINARY_EXPR ||
-		expr_node->type == AST_COMPARISON || expr_node->type == AST_LOGICAL_OP)
-	{
-		if (expr_node->child_count < 2)
-		{
-			annotate_node_type(expr_node, UnknownType);
-			return UnknownType;
-		}
-
-		CompleteType L = get_expression_type(expr_node->children[0], table);
-		CompleteType R = get_expression_type(expr_node->children[1], table);
-
-		if (expr_node->type == AST_COMPARISON || expr_node->type == AST_LOGICAL_OP)
-		{
-			annotate_node_type(expr_node, BooleanType);
-			return BooleanType;
-		}
-
-		if (is_numeric_type(L) && is_numeric_type(R))
-		{
-			CompleteType res = (L.type == TYPE_FLOAT || R.type == TYPE_FLOAT) ? FloatType : IntType;
-			annotate_node_type(expr_node, res);
-			return res;
-		}
-
-		if (L.type == R.type && L.type != TYPE_UNKNOWN)
-		{
-			annotate_node_type(expr_node, L);
-			return L;
-		}
-
-		annotate_node_type(expr_node, UnknownType);
-		return UnknownType;
-	}
-
-	if (expr_node->type == AST_UNARY_OP || expr_node->type == AST_UNARY_EXPR)
-	{
-		if (expr_node->child_count < 1)
-		{
-			annotate_node_type(expr_node, UnknownType);
-			return UnknownType;
-		}
-
-		if (expr_node->token.type == TOKEN_NOT)
-		{
-			annotate_node_type(expr_node, UnknownType);
-			return BooleanType;
-		}
-
-		CompleteType inner = get_expression_type(expr_node->children[0], table);
-		annotate_node_type(expr_node, inner);
-
-		return inner;
-	}
-
-	if (expr_node->type == AST_INCREMENT_EXPR)
-	{
-		CompleteType t = get_expression_type(expr_node->children[0], table);
+		Symbol *s = lookup_symbol(table, expr_node->token.text);
+		CompleteType t = s ? s->type : UnknownType;
 		annotate_node_type(expr_node, t);
 		return t;
 	}
 
-	if (expr_node->type == AST_ADDRESS_OF)
-	{
-		if (expr_node->child_count < 1)
-		{
-			annotate_node_type(expr_node, UnknownType);
-			return UnknownType;
-		}
-		get_expression_type(expr_node->children[0], table);
-		annotate_node_type(expr_node, IntType);
-		return IntType;
-	}
-
-	if (expr_node->type == AST_DEREFERENCE)
-	{
-		if (expr_node->child_count < 1)
-		{
-			annotate_node_type(expr_node, UnknownType);
-			return UnknownType;
-		}
-		get_expression_type(expr_node->children[0], table);
-		annotate_node_type(expr_node, IntType);
-		return IntType;
-	}
-
-	if (expr_node->type == AST_ARRAY_INDEX)
-	{
-		if (expr_node->child_count < 2)
-		{
-			annotate_node_type(expr_node, UnknownType);
-			return UnknownType;
-		}
-		get_expression_type(expr_node->children[0], table);
-		get_expression_type(expr_node->children[1], table);
-		annotate_node_type(expr_node, IntType);
-		return IntType;
-	}
-
-	if (expr_node->type == AST_ARRAY_LITERAL)
-	{
-		annotate_node_type(expr_node, ArrayType);
-		return ArrayType;
-	}
-
-	if (expr_node->type == AST_FUNCTION_CALL)
-	{
-		if (expr_node->child_count < 1)
-		{
-			annotate_node_type(expr_node, UnknownType);
-			return UnknownType;
-		}
-		ASTNode *func_name_node = expr_node->children[0];
-		Symbol *func_symbol = lookup_symbol(table, func_name_node->token.text);
-		CompleteType ret_type = func_symbol ? func_symbol->type : UnknownType;
-		annotate_node_type(expr_node, ret_type);
-		return ret_type;
-	}
-
+	// Fallback: recurse to first child
 	if (expr_node->child_count > 0)
 	{
 		CompleteType t = get_expression_type(expr_node->children[0], table);

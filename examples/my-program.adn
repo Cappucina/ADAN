@@ -1,8 +1,7 @@
 include adan.io;
 
 program::void main() {
-    // shouldn't work, but it does currently
-    val::bool[] = {2};
+    val::bool[] = {3};
 
     println((string)val[0]);
     
