@@ -6,6 +6,10 @@ MISSING FEATURES
     - Enums
 
 ISSUES
+    - Arrays allow for defining arrays with types separate from the expected type
     - Unsafe with memory (memory leaks)
     - Possible over-allocation for stack memory (stack calculated globally, not per-function)
     - No real registry allocation causing inefficient code generation
+
+IDEAS
+    - Either types, for example: `my_var::int || string = 1;`, where it can be either a number or a string
