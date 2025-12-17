@@ -1,7 +1,10 @@
 include adan.io;
 
 program::void main() {
-    println("hey!");
+    // shouldn't work, but it does currently
+    val::bool[] = {2};
+
+    println((string)val[0]);
 
     return;
 }
