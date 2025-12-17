@@ -12,7 +12,7 @@
 
 void print(const char* str) {
 	if (!str) return;
-	printf("%s\n", str);
+	printf("%s", str);
 	fflush(stdout);
 }
 

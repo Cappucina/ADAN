@@ -3,9 +3,15 @@
 include adan.io;
 
 program::void main() {
-    val::int = -(~2);
+    val::int[] = {1,2};
 
-    
+    // print((string)val[0]);
+
+    if (val[0] == 1) {
+        print("TRUE\n");
+    } else {
+        print("FALSE\n");
+    }
 
     return;
 }
