@@ -1,0 +1,21 @@
+include adan.io;
+include adan.system;
+include adan.string;
+
+program::int main() {
+    exec("clear");
+
+    while (true) {
+        print("> ");
+
+        cmd::string = readln();
+
+        if (starts_with(cmd) == 1) {
+            break;
+        }
+
+        exec(cmd);
+    }
+
+    return 0;
+}

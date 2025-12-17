@@ -66,3 +66,7 @@ char *get_env_variable(const char *name) {
     }
     return NULL;
 }
+
+void exec(const char *cmd) {
+    system(cmd);
+}
