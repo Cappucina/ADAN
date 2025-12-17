@@ -10,7 +10,7 @@ program::int main() {
 
         cmd::string = readln();
 
-        if (starts_with(cmd) == 1) {
+        if (starts_with(cmd, "clear") == 1) {
             break;
         }
 
