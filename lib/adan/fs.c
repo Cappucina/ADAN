@@ -11,7 +11,7 @@
 #include <fcntl.h>
 
 #ifndef BUILDING_COMPILER_MAIN
-const char* read_file_source(const char* file_path) {
+const char* read_file(const char* file_path) {
 	FILE* fp = fopen(file_path, "rb");
 	if (!fp) {
 		printf("error: failed to open file %s\n", file_path);
@@ -52,7 +52,7 @@ const char* read_file_source(const char* file_path) {
 	return out;
 }
 
-bool write_file_source(const char* file_path, const char* content) {
+bool write_file(const char* file_path, const char* content) {
 	FILE* fp = fopen(file_path, "wb");
 	if (!fp) {
 		char cmd[1024];
@@ -71,7 +71,7 @@ bool write_file_source(const char* file_path, const char* content) {
 	return written == strlen(content);
 }
 
-bool append_file_source(const char* file_path, const char* content) {
+bool append_file(const char* file_path, const char* content) {
 	FILE* fp = fopen(file_path, "ab");
 	if (!fp) {
 		char cmd[1024];
