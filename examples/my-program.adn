@@ -1,9 +1,9 @@
 include adan.io;
 
 program::void main() {
-    val::bool[] = {3};
+    val::int[][] = {{3, 5}, {4235, 532}};
 
-    println((string)val[0]);
+    println((string)val[1][0]);
     
     return;
 }

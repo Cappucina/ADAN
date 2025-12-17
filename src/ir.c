@@ -1059,22 +1059,20 @@ case AST_BLOCK: {
 		case AST_ARRAY_ACCESS: {
 			if (node->child_count < 2) return NULL;
 
-			char* array = generate_ir(node->children[0]);
+			char* base = generate_ir(node->children[0]);
 			char* index = generate_ir(node->children[1]);
-			if (!array || !index) {
-				free(array);
+			if (!base || !index) {
+				free(base);
 				free(index);
-
 				return NULL;
 			}
 
 			char* result = new_temporary();
-			
-			IRInstruction* access_inst = create_instruction(IR_LOAD_IDX, array, index, result);
-			emit(access_inst);
-			free(array);
-			free(index);
+			IRInstruction* inst = create_instruction(IR_LOAD_IDX, base, index, result);
+			emit(inst);
 
+			free(base);
+			free(index);
 			return result;
 		}
 

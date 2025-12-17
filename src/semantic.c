@@ -249,8 +249,6 @@ void analyze_statement(ASTNode *statement, SymbolTable *table)
 	if (statement == NULL || table == NULL)
 		return;
 
-	printf("%d", statement->type);
-
 	switch (statement->type)
 	{
 	case AST_ASSIGNMENT:
@@ -1462,6 +1460,45 @@ CompleteType analyze_unary_op(ASTNode *unary_node, SymbolTable *table)
 //
 //  Type System / Helper functions
 //
+CompleteType parse_type_recursive(const char *type_str)
+{
+	CompleteType ArrayType = {.type = TYPE_ARRAY, .pointsTo = NULL};
+	CompleteType IntType = {.type = TYPE_INT};
+	CompleteType FloatType = {.type = TYPE_FLOAT};
+	CompleteType StringType = {.type = TYPE_STRING};
+	CompleteType CharType = {.type = TYPE_CHAR};
+	CompleteType BooleanType = {.type = TYPE_BOOLEAN};
+	CompleteType NullType = {.type = TYPE_NULL};
+	CompleteType UnknownType = {.type = TYPE_UNKNOWN};
+	CompleteType VoidType = {.type = TYPE_VOID};
+
+	int type_len = strlen(type_str);
+	if (type_len >= 2 && type_str[type_len - 2] == '[' && type_str[type_len - 1] == ']')
+	{
+		char inner[64];
+		strncpy(inner, type_str, type_len - 2);
+		inner[type_len - 2] = '\0';
+		CompleteType inner_type = parse_type_recursive(inner);
+		CompleteType arr;
+		arr.type = TYPE_ARRAY;
+		arr.pointsTo = malloc(sizeof(CompleteType));
+		*arr.pointsTo = inner_type;
+		return arr;
+	}
+
+	if (strcmp(type_str, "int") == 0)
+		return IntType;
+	if (strcmp(type_str, "float") == 0)
+		return FloatType;
+	if (strcmp(type_str, "bool") == 0)
+		return BooleanType;
+	if (strcmp(type_str, "char") == 0)
+		return CharType;
+	if (strcmp(type_str, "string") == 0)
+		return StringType;
+	return UnknownType;
+}
+
 CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 {
 	CompleteType ArrayType = {.type = TYPE_ARRAY, .pointsTo = NULL};
@@ -1477,13 +1514,11 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 	if (!expr_node)
 		return UnknownType;
 
-	// AST_TYPE nodes
 	if (expr_node->type == AST_TYPE)
 	{
 		const char *text = expr_node->token.text;
 		int len = text ? strlen(text) : 0;
 
-		// Array type like bool[], int[]
 		if (len >= 2 && text[len - 2] == '[' && text[len - 1] == ']')
 		{
 			CompleteType elem = UnknownType;
@@ -1491,27 +1526,11 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 			strncpy(base, text, len - 2);
 			base[len - 2] = '\0';
 
-			if (strcmp(base, "int") == 0)
-				elem = IntType;
-			else if (strcmp(base, "float") == 0)
-				elem = FloatType;
-			else if (strcmp(base, "bool") == 0)
-				elem = BooleanType;
-			else if (strcmp(base, "char") == 0)
-				elem = CharType;
-			else if (strcmp(base, "string") == 0)
-				elem = StringType;
-
-			CompleteType arr;
-			arr.type = TYPE_ARRAY;
-			arr.pointsTo = malloc(sizeof(CompleteType));
-			*arr.pointsTo = elem;
-
-			annotate_node_type(expr_node, arr);
-			return arr;
+			CompleteType arr_type = parse_type_recursive(text);
+			annotate_node_type(expr_node, arr_type);
+			return arr_type;
 		}
 
-		// Scalar types
 		switch (expr_node->token.type)
 		{
 		case TOKEN_INT:
@@ -1541,7 +1560,6 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 		}
 	}
 
-	// Array literals: infer type from first element
 	if (expr_node->type == AST_ARRAY_LITERAL)
 	{
 		CompleteType arr;
@@ -1550,7 +1568,6 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 
 		if (expr_node->child_count > 0)
 		{
-			// Recursively get element type
 			CompleteType first_elem_type = get_expression_type(expr_node->children[0], table);
 			arr.pointsTo = malloc(sizeof(CompleteType));
 			*arr.pointsTo = first_elem_type;
@@ -1559,7 +1576,6 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 		return arr;
 	}
 
-	// Other expression types handled recursively (identifier, literals, operators)
 	if (expr_node->type == AST_LITERAL)
 	{
 		CompleteType inferred = UnknownType;
@@ -1607,7 +1623,6 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 		return t;
 	}
 
-	// Fallback: recurse to first child
 	if (expr_node->child_count > 0)
 	{
 		CompleteType t = get_expression_type(expr_node->children[0], table);
