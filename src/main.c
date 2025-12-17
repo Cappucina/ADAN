@@ -215,7 +215,6 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-
 	analyze_file(ast, symbols);
 	check_entry_point(symbols);
 	analyze_variable_usage(symbols);

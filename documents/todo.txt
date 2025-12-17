@@ -1,6 +1,6 @@
 TODO
-    - Finish array logic
-    
+    - Finish Structures
+
 MISSING FEATURES
     - Structs
     - Enums

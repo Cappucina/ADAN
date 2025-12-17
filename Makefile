@@ -1,7 +1,6 @@
 .SILENT:
 
 docker:
-	clear 2>/dev/null || true
 # 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
 
 	python3 scripts/container.py || python scripts/container.py || python scripts/container.py

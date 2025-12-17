@@ -1,0 +1,7 @@
+include adan.io;
+
+program::void main() {
+    println("hey!");
+
+    return;
+}
