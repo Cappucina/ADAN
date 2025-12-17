@@ -1,5 +1,6 @@
 TODO
     - Finish Structures
+    - Create a CLI tool to compile any `.adn` file
 
 MISSING FEATURES
     - Structs
