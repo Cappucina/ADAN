@@ -10,10 +10,15 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-void print(const char* str) {
+void writeln(const char* str) {
 	if (!str) return;
 	printf("%s", str);
 	fflush(stdout);
+}
+
+void print(const char* str) {
+	writeln(str);
+	writeln("\n");
 }
 
 #ifndef BUILDING_COMPILER_MAIN
