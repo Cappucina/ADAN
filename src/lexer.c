@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include "lexer.h"
 #include <string.h>
-#include "string_utils.h"
+#include <stdint.h>
+
+const char* cast(const void* input);
 
 extern int VERBOSE;
 
