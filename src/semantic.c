@@ -1588,9 +1588,11 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table) {
     res.type = type;
     res.pointsTo = NULL;
 
-    if (type == TYPE_ARRAY) {
+    if (type == TYPE_ARRAY && table->parent && table->parent->buckets[0] && table->parent->buckets[0]->node) {
 		res.pointsTo = &table->parent->buckets[0]->node->annotated_type;
-    }
+	} else {
+		res.pointsTo = NULL;
+	}
 
     return res;
 }
