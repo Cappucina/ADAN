@@ -283,10 +283,9 @@ void analyze_file(ASTNode *file_node, SymbolTable *table)
 
 void analyze_program(ASTNode *func_node, SymbolTable *table)
 {
-	if (!func_node || !table)
+	if (!func_node || !table || func_node->type != AST_PROGRAM)
 		return;
-	if (func_node->type != AST_PROGRAM)
-		return;
+
 	ASTNode *return_type_node = func_node->children[0];
 	ASTNode *func_name_node = func_node->children[1];
 	ASTNode *params_node = func_node->children[2];
@@ -297,50 +296,65 @@ void analyze_program(ASTNode *func_node, SymbolTable *table)
 
 	if (!add_symbol(table, func_name_node->token.text, return_type, func_node))
 	{
-		semantic_error(func_name_node, SemanticErrorMessages[SEMANTIC_DUPLICATE_SYMBOL], func_name_node->token.text);
+		semantic_error(func_name_node,
+					   SemanticErrorMessages[SEMANTIC_DUPLICATE_SYMBOL],
+					   func_name_node->token.text);
 		return;
 	}
 
 	enter_scope(table);
+
+	/* Parameters */
 	if (params_node && params_node->type == AST_PARAMS)
 	{
 		for (int i = 0; i < params_node->child_count; i++)
 		{
 			ASTNode *param = params_node->children[i];
-			CompleteType param_type = get_expression_type(param->children[1], table);
+			CompleteType param_type =
+				get_expression_type(param->children[1], table);
 
 			const char *param_name = param->children[0]->token.text;
 			if (!add_symbol(table, param_name, param_type, param))
 			{
-				semantic_error(param, SemanticErrorMessages[SEMANTIC_DUPLICATE_SYMBOL], param_name);
+				semantic_error(param,
+							   SemanticErrorMessages[SEMANTIC_DUPLICATE_SYMBOL],
+							   param_name);
 			}
 		}
 	}
 
+	/* Analyze body */
 	if (block_node && block_node->type == AST_BLOCK)
-	{
 		analyze_block(block_node, table);
-	}
 
+	/* Return checking */
 	if (return_type.type != TYPE_VOID)
 	{
 		bool has_return = false;
+
 		for (int i = 0; i < block_node->child_count; i++)
 		{
 			ASTNode *stmt = block_node->children[i];
-			if (stmt->type == AST_RETURN)
+			if (stmt->type != AST_RETURN)
+				continue;
+
+			has_return = true;
+
+			CompleteType actual = stmt->children[0]
+									  ? stmt->children[0]->annotated_type
+									  : (CompleteType){.type = TYPE_VOID};
+
+			if (!check_type_compatibility(return_type, actual))
 			{
-				has_return = true;
-				CompleteType actual = get_expression_type(stmt->children[0], table);
-				if (!check_type_compatibility(return_type, actual))
-				{
-					semantic_error(stmt, SemanticErrorMessages[SEMANTIC_RETURN_TYPE_MISMATCH], return_type_node->token.text, stmt->children[0]->token.text);
-				}
+				semantic_error(stmt,
+							   SemanticErrorMessages[SEMANTIC_RETURN_TYPE_MISMATCH]);
 			}
 		}
+
 		if (!has_return)
 		{
-			semantic_error(func_node, SemanticErrorMessages[SEMANTIC_MISSING_RETURN]);
+			semantic_error(func_node,
+						   SemanticErrorMessages[SEMANTIC_MISSING_RETURN]);
 		}
 	}
 
@@ -1309,67 +1323,69 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 	VoidType.type = TYPE_VOID;
 
 	if (!expr_node)
-		if (expr_node->type == AST_TYPE)
+		return UnknownType;
+
+	if (expr_node->type == AST_TYPE)
+	{
+		const char *text = expr_node->token.text;
+		int len = text ? strlen(text) : 0;
+
+		if (len >= 2 && text[len - 1] == ']' && text[len - 2] == '[')
 		{
-			const char *text = expr_node->token.text;
-			int len = text ? strlen(text) : 0;
+			CompleteType elem = UnknownType;
 
-			if (len >= 2 && text[len - 1] == ']' && text[len - 2] == '[')
-			{
-				CompleteType elem = UnknownType;
+			char base[64];
+			strncpy(base, text, len - 2);
+			base[len - 2] = '\0';
 
-				char base[64];
-				strncpy(base, text, len - 2);
-				base[len - 2] = '\0';
+			if (strcmp(base, "int") == 0)
+				elem = IntType;
+			else if (strcmp(base, "float") == 0)
+				elem = FloatType;
+			else if (strcmp(base, "bool") == 0)
+				elem = BooleanType;
+			else if (strcmp(base, "char") == 0)
+				elem = CharType;
+			else if (strcmp(base, "string") == 0)
+				elem = StringType;
 
-				if (strcmp(base, "int") == 0)
-					elem = IntType;
-				else if (strcmp(base, "float") == 0)
-					elem = FloatType;
-				else if (strcmp(base, "bool") == 0)
-					elem = BooleanType;
-				else if (strcmp(base, "char") == 0)
-					elem = CharType;
-				else if (strcmp(base, "string") == 0)
-					elem = StringType;
+			CompleteType arr;
+			arr.type = TYPE_ARRAY;
+			arr.pointsTo = malloc(sizeof(CompleteType));
+			*arr.pointsTo = elem;
 
-				CompleteType arr;
-				arr.type = TYPE_ARRAY;
-				arr.pointsTo = malloc(sizeof(CompleteType));
-				*arr.pointsTo = elem;
-
-				annotate_node_type(expr_node, arr);
-				return arr;
-			}
-
-			switch (expr_node->token.type)
-			{
-			case TOKEN_INT:
-				annotate_node_type(expr_node, IntType);
-				return IntType;
-			case TOKEN_FLOAT:
-				annotate_node_type(expr_node, FloatType);
-				return FloatType;
-			case TOKEN_STRING:
-				annotate_node_type(expr_node, StringType);
-				return StringType;
-			case TOKEN_BOOLEAN:
-				annotate_node_type(expr_node, BooleanType);
-				return BooleanType;
-			case TOKEN_CHAR:
-				annotate_node_type(expr_node, CharType);
-				return CharType;
-			case TOKEN_NULL:
-				annotate_node_type(expr_node, NullType);
-				return NullType;
-			case TOKEN_VOID:
-				annotate_node_type(expr_node, VoidType);
-				return VoidType;
-			default:
-				annotate_node_type(expr_node, UnknownType);
-				return UnknownType;
-			}
+			annotate_node_type(expr_node, arr);
+			return arr;
 		}
+
+		switch (expr_node->token.type)
+		{
+		case TOKEN_INT:
+			annotate_node_type(expr_node, IntType);
+			return IntType;
+		case TOKEN_FLOAT:
+			annotate_node_type(expr_node, FloatType);
+			return FloatType;
+		case TOKEN_STRING:
+			annotate_node_type(expr_node, StringType);
+			return StringType;
+		case TOKEN_BOOLEAN:
+			annotate_node_type(expr_node, BooleanType);
+			return BooleanType;
+		case TOKEN_CHAR:
+			annotate_node_type(expr_node, CharType);
+			return CharType;
+		case TOKEN_NULL:
+			annotate_node_type(expr_node, NullType);
+			return NullType;
+		case TOKEN_VOID:
+			annotate_node_type(expr_node, VoidType);
+			return VoidType;
+		default:
+			annotate_node_type(expr_node, UnknownType);
+			return UnknownType;
+		}
+	}
 
 	if (expr_node->type == AST_LITERAL)
 	{
@@ -1572,20 +1588,41 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 	return UnknownType;
 }
 
-bool check_type_compatibility(CompleteType completeExpected, CompleteType completeActual)
+bool check_type_compatibility(CompleteType expected, CompleteType actual)
 {
-	Type expected = completeExpected.type;
-	Type actual = completeActual.type;
-
-	if (expected == TYPE_UNKNOWN || actual == TYPE_UNKNOWN)
+	/* Unknown propagates: do not hard-fail, but incompatible */
+	if (expected.type == TYPE_UNKNOWN || actual.type == TYPE_UNKNOWN)
 		return false;
-	if (expected == actual)
+
+	/* Array handling: structural comparison */
+	if (expected.type == TYPE_ARRAY || actual.type == TYPE_ARRAY)
+	{
+		if (expected.type != TYPE_ARRAY || actual.type != TYPE_ARRAY)
+			return false;
+
+		if (!expected.pointsTo || !actual.pointsTo)
+			return false;
+
+		return check_type_compatibility(*expected.pointsTo, *actual.pointsTo);
+	}
+
+	/* Exact match */
+	if (expected.type == actual.type)
 		return true;
-	if (is_numeric_type(completeExpected) && is_numeric_type(completeActual))
+
+	/* Numeric widening */
+	if (is_numeric_type(expected) && is_numeric_type(actual))
 		return true;
-	if (is_numeric_type(completeExpected) && actual == TYPE_CHAR)
+
+	/* char → numeric */
+	if (is_numeric_type(expected) && actual.type == TYPE_CHAR)
 		return true;
-	if (actual == TYPE_NULL && (expected == TYPE_STRING || expected == TYPE_ARRAY || expected == TYPE_NULL))
+
+	/* null compatibility */
+	if (actual.type == TYPE_NULL &&
+		(expected.type == TYPE_STRING ||
+		 expected.type == TYPE_ARRAY ||
+		 expected.type == TYPE_NULL))
 		return true;
 
 	return false;

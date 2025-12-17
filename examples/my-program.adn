@@ -2,9 +2,9 @@ include adan.io;
 
 program::void main() {
     // shouldn't work, but it does currently
-    val::int[] = {2};
+    val::bool[] = {2};
 
     println((string)val[0]);
-
+    
     return;
 }
