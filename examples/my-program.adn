@@ -5,7 +5,7 @@ include adan.io;
 program::void main() {
     val::int = -(~2);
 
-    print((string)val);
+    
 
     return;
 }

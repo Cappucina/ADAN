@@ -400,28 +400,7 @@ int main(int argc, char** argv) {
 			fprintf(stderr, "error: failed to assemble/link compiled/assembled.s into compiled/program\n");
 			return 1;
 		}
-
-		// I removed this as I tested running program.bin without the wrapper script on Apple Silicon.
-		// It should be noted I have modified my Mac quite a bit and I may have things like custom Rosetta that my make it diffrent on my mac.
-		// Someone with a stock Apple Silicon mac should test this.
-
-		// Also just creating arm code is the best thing to do although focusing on or architecture first makes sense for now.
-
 		
-		// if (strstr(arch, "arm") || strstr(arch, "aarch64")) {
-		// 	remove("compiled/program.bin");
-		// 	if (rename("compiled/program", "compiled/program.bin") != 0) {
-		// 		perror("warning: failed to rename compiled/program");
-		// 	} else {
-		// 		FILE* w = fopen("compiled/program", "w");
-		// 		if (w) {
-		// 			fprintf(w, "#!/bin/sh\nif command -v arch >/dev/null 2>&1; then\n  exec arch -x86_64 \"$(dirname \"$0\")/program.bin\" \"$@\"\nelse\n  echo \"error: this program is x86_64; on Apple Silicon run with Rosetta: arch -x86_64 ./compiled/program.bin\" >&2\n  exit 1\nfi\n");
-		// 			fclose(w);
-		// 			chmod("compiled/program", 0755);
-		// 		}
-		// 	}
-		// }
-
 		fprintf(stderr, "Compilation successful: compiled/program\n");
 	} else {
 		fprintf(stderr, "Assembly-only mode: compiled/assembled.s (not linking to binary)\n");
@@ -430,4 +409,3 @@ int main(int argc, char** argv) {
 	system("clear");
 	return 0;
 }
-

@@ -5,6 +5,6 @@ __pycache__/
 compile_commands.json
 *.DS_Store
 tmp/
-compiled/*
-!compiled/.keep
+compiled/
 *.o
+*.tmp

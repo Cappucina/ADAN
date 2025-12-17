@@ -241,5 +241,4 @@ void sleep_ns(int64_t nanoseconds) {
 	req.tv_nsec = nanoseconds % 1000000000;
 	nanosleep(&req, &rem);
 }
-
 #endif
