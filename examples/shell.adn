@@ -5,12 +5,14 @@ include adan.string;
 program::int main() {
     exec("clear");
 
+    set_seed_as_current_time();
+
     while (true) {
         print("> ");
 
         cmd::string = readln();
 
-        if (starts_with(cmd, "clear") == 1) {
+        if (starts_with(cmd, "exit") == 1) {
             break;
         }
 

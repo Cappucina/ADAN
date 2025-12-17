@@ -1,0 +1,27 @@
+include adan.io;
+include adan.random;
+
+program::void main() {
+    seen::int[] = {};
+
+    while (not_all_seen) {
+        n::int = generate_random_int_unrestrained();
+
+        seem[length(seen)] = n;
+
+        for (i::int = 0; i < 1024; i++) {
+            in::bool = false;
+
+            for (j::int = 0; j < length(seen); j++) {
+                if (seen[j] == i) {
+                    in = true;
+                    break;
+                }
+            }
+
+            if (i > 1024) {
+                not_all_seen = !not_all_seen;
+            }
+        }
+    }
+}
