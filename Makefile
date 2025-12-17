@@ -38,13 +38,6 @@ clean: docker
 	docker exec -i adan-dev-container sh -c "mkdir -p compiled"
 	docker exec -i adan-dev-container sh -c "touch compiled/.keep"
 
-test_all_examples: compile
-	for file in examples/*.adn; do \
-		echo "Running test for $$file"; \
-		docker exec -i adan-dev-container sh -c "compiled/main $$file"; \
-		docker exec -i adan-dev-container sh -c "./compiled/program"; \
-	done
-
 # 
 #  CODESPACES EXCLUSIVE
 # 

@@ -3,6 +3,7 @@
 #include "lexer.h"
 #include <string.h>
 #include <stdint.h>
+#include "util.h"
 
 const char* cast(const void* input);
 
