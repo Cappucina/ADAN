@@ -4,24 +4,34 @@ include adan.random;
 program::void main() {
     seen::int[] = {};
 
+    not_all_seen::bool = true;
+
     while (not_all_seen) {
         n::int = generate_random_int_unrestrained();
 
-        seem[length(seen)] = n;
+        println((string)n);
+
+        if (n <= 0) {
+            break;
+        }
+
+        // seen[length(seen)] = n;
 
         for (i::int = 0; i < 1024; i++) {
             in::bool = false;
 
             for (j::int = 0; j < length(seen); j++) {
                 if (seen[j] == i) {
-                    in = true;
+                    // in = true;
                     break;
                 }
             }
 
             if (i > 1024) {
-                not_all_seen = !not_all_seen;
+                // not_all_seen = !not_all_seen; this line breaks the code
             }
         }
     }
+
+    return;
 }

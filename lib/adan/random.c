@@ -10,8 +10,6 @@ void set_seed_as_current_time() {
 }
 
 int generate_random_int(int min, int max) {
-    max++;
-
     if (min > max) {
         int tmp = min;
         min = max;

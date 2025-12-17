@@ -1532,7 +1532,7 @@ const char *type_to_string(Type type)
 		return "string";
 
 	case TYPE_BOOLEAN:
-		return "boolean";
+		return "bool";
 
 	case TYPE_CHAR:
 		return "char";

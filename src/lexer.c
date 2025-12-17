@@ -106,7 +106,7 @@ Token* next_token(Lexer* lexer) {
 			{"int", TOKEN_INT},
 			{"float", TOKEN_FLOAT},
 			{"string", TOKEN_STRING},
-			{"boolean", TOKEN_BOOLEAN},
+			{"bool", TOKEN_BOOLEAN},
 			{"array", TOKEN_ARRAY},
 			{"char", TOKEN_CHAR},
 			{"null", TOKEN_NULL},

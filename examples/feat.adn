@@ -1,0 +1,11 @@
+include adan.io;
+
+program::void main() {
+    arr::bool = true;
+
+    arr = arr;
+
+    print((string)arr);
+
+    return;
+}
