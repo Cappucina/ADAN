@@ -10,13 +10,13 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-void writeln(const char* str) {
+void print(const char* str) {
 	if (!str) return;
 	printf("%s", str);
 	fflush(stdout);
 }
 
-void print(const char* str) {
+void println(const char* str) {
 	writeln(str);
 	writeln("\n");
 }
