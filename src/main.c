@@ -410,13 +410,8 @@ int main(int argc, char** argv) {
 				}
 			}
 		}
-
-		fprintf(stderr, "Compilation successful: compiled/program\n");
-	} else {
-		fprintf(stderr, "Assembly-only mode: compiled/assembled.s (not linking to binary)\n");
 	}
 
 	system("clear");
 	return 0;
 }
-

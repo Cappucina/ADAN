@@ -5,7 +5,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
-#include "../../include/ast.h"
+#include "ast.h"
 
 char* concat(char* str1, char* str2) {
 	size_t len1 = strlen(str1);
@@ -193,7 +193,6 @@ char* replace_all(char* str, char* old, char* new) {
 
 #ifndef BUILDING_COMPILER_MAIN
 
-// Small helper: stringify whatever the runtime value is.
 static const char* cast_internal(const void* input) {
     static char buf[64];
     intptr_t ip = (intptr_t)input;
@@ -203,11 +202,6 @@ static const char* cast_internal(const void* input) {
     }
     return (const char*)input;
 }
-
-// Named runtime casting helpers (public API similar to other string
-// helpers in this directory). These allow generated code to call
-// `to_string`, `to_int`, `to_bool`, `to_char`, and `to_float` directly
-// without needing compiler-internal headers.
 
 const char* to_string(const void* input) {
     return cast_internal(input);
@@ -242,9 +236,6 @@ double to_float(const void* input) {
     return atof((const char*)input);
 }
 
-// Generic cast (keeps previous behavior for compatibility). Returns
-// a `const void*` encoded value where small integer immediates are
-// represented as pointer-sized integers.
 const void* cast_to(int to_type, const void* input) {
     intptr_t ip = (intptr_t)input;
     int is_small_int = (ip > -4096 && ip < 4096);
@@ -263,9 +254,6 @@ const void* cast_to(int to_type, const void* input) {
             return (const void*)(intptr_t)to_char(input);
 
         case TYPE_FLOAT:
-            // Truncate float to integer-encoded representation for legacy
-            // compatibility; callers that need an actual double should call
-            // `to_float`.
             return (const void*)(intptr_t)((int)to_float(input));
 
         default:
