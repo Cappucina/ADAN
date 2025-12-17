@@ -1,17 +1,9 @@
-// NOTE: About the array when I was talking to Lily privatly she aproved my implementations syntax using [] rathar than {} for defining arrays. Should we create a place as mantainers to talk about specs and what we are currenlty workling on? 
-
 include adan.io;
 
 program::void main() {
-    val::int[] = {1,2};
+    val::int[] = {2};
 
-    // print((string)val[0]);
-
-    if (val[0] == 1) {
-        print("TRUE\n");
-    } else {
-        print("FALSE\n");
-    }
+    print((string)val[0]);
 
     return;
 }

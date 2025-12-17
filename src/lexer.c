@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "lexer.h"
 #include <string.h>
-#include "string_utils.h"
+#include "util.h"
 
 extern int VERBOSE;
 
