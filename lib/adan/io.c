@@ -1,14 +1,6 @@
 #include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
-#include <time.h>
-#include <sys/stat.h>
-#include <errno.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <fcntl.h>
 
 void print(const char* str) {
 	if (!str) return;
@@ -19,4 +11,15 @@ void print(const char* str) {
 void println(const char* str) {
 	print(str);
 	print("\n");
+}
+
+char* readln() {
+    char *buff = malloc(1024);
+    if (buff != NULL && fgets(buff, 1024, stdin)) {
+        size_t len = strlen(buff);
+        if (len > 0 && buff[len-1] == '\n') buff[len-1] = '\0';
+        return buff;
+    }
+    free(buff);
+    return NULL;
 }

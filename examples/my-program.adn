@@ -1,9 +1,12 @@
 include adan.io;
+include adan.fs;
 
 program::void main() {
-    val::int[] = {2};
+    print("File to cat: ");
 
-    print((string)val[0]);
+    file::string = read_file_source(readln());    
+
+    println(file);
 
     return;
 }
