@@ -379,11 +379,14 @@ char* generate_ir(ASTNode* node) {
 					return NULL;
 			}
 
-			Type left_type = node->children[0] ? node->children[0]->annotated_type : TYPE_UNKNOWN;
-			Type right_type = node->children[1] ? node->children[1]->annotated_type : TYPE_UNKNOWN;
+			CompleteType TypeUnkown;
+			TypeUnkown.type = TYPE_UNKNOWN;
 
-			if ((left_type == TYPE_STRING) || (right_type == TYPE_STRING)) {
-				if (left_type != TYPE_STRING) {
+			CompleteType left_type = node->children[0] ? node->children[0]->annotated_type : TypeUnkown;
+			CompleteType right_type = node->children[1] ? node->children[1]->annotated_type : TypeUnkown;
+
+			if ((left_type.type == TYPE_STRING) || (right_type.type == TYPE_STRING)) {
+				if (left_type.type != TYPE_STRING) {
 					char* tmp_cast = new_temporary();
 					IRInstruction* param = create_instruction(IR_PARAM, left, NULL, NULL);
 					IRInstruction* call = create_instruction(IR_CALL, "to_string", NULL, tmp_cast);
@@ -393,7 +396,7 @@ char* generate_ir(ASTNode* node) {
 					left = tmp_cast;
 				}
 
-				if (right_type != TYPE_STRING) {
+				if (right_type.type != TYPE_STRING) {
 					char* tmp_cast = new_temporary();
 					IRInstruction* param = create_instruction(IR_PARAM, right, NULL, NULL);
 					IRInstruction* call = create_instruction(IR_CALL, "to_string", NULL, tmp_cast);

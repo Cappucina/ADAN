@@ -225,7 +225,12 @@ ASTNode* create_ast_node(ASTNodeType type, Token token) {
 	}
 	node->child_count = 0;
 	node->children = NULL;
-	node->annotated_type = TYPE_UNKNOWN;
+
+	CompleteType TypeUnknown;
+
+	TypeUnknown.type = TYPE_UNKNOWN;
+
+	node->annotated_type = TypeUnknown;
 	return node;
 }
 

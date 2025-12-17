@@ -7,9 +7,9 @@
 
 typedef struct LibraryFunction {
     char* name;
-    Type return_type;
+    CompleteType return_type;
     int param_count;
-    Type* param_types;
+    CompleteType* param_types;
     char** param_names;
     struct LibraryFunction* next;
 } LibraryFunction;

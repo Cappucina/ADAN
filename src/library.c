@@ -19,17 +19,33 @@ static char* trim(char* s) {
 	return s;
 }
 
-static Type map_c_type(const char* t) {
-	if (!t) return TYPE_UNKNOWN;
-	if (strcmp(t, "int") == 0) return TYPE_INT;
-	if (strcmp(t, "float") == 0) return TYPE_FLOAT;
-	if (strcmp(t, "double") == 0) return TYPE_FLOAT;
-	if (strcmp(t, "char*") == 0 || strcmp(t, "char *") == 0) return TYPE_STRING;
-	if (strcmp(t, "const char*") == 0 || strcmp(t, "const char *") == 0) return TYPE_STRING;
-	if (strcmp(t, "void") == 0) return TYPE_VOID;
-	if (strcmp(t, "bool") == 0 || strcmp(t, "_Bool") == 0) return TYPE_BOOLEAN;
-	if (strcmp(t, "char") == 0) return TYPE_CHAR;
-	return TYPE_UNKNOWN;
+static CompleteType map_c_type(const char* t) {
+	CompleteType TypeUnkown;
+	CompleteType TypeInt;
+	CompleteType TypeFloat;
+	CompleteType TypeString;
+	CompleteType TypeVoid;
+	CompleteType TypeBoolean;
+	CompleteType TypeChar;
+
+	TypeUnkown.type = TYPE_UNKNOWN;
+	TypeInt.type = TYPE_INT;
+	TypeFloat.type = TYPE_FLOAT;
+	TypeString.type = TYPE_STRING;
+	TypeVoid.type = TYPE_VOID;
+	TypeBoolean.type = TYPE_BOOLEAN;
+	TypeChar.type = TYPE_CHAR;
+
+	if (!t) return TypeUnkown;
+	if (strcmp(t, "int") == 0) return TypeInt;
+	if (strcmp(t, "float") == 0) return TypeFloat;
+	if (strcmp(t, "double") == 0) return TypeFloat;
+	if (strcmp(t, "char*") == 0 || strcmp(t, "char *") == 0) return TypeString;
+	if (strcmp(t, "const char*") == 0 || strcmp(t, "const char *") == 0) return TypeString;
+	if (strcmp(t, "void") == 0) return TypeVoid;
+	if (strcmp(t, "bool") == 0 || strcmp(t, "_Bool") == 0) return TypeBoolean;
+	if (strcmp(t, "char") == 0) return TypeChar;
+	return TypeUnkown;
 }
 
 static LibraryFunction* parse_c_prototype(char* line) {
@@ -48,9 +64,9 @@ static LibraryFunction* parse_c_prototype(char* line) {
 	const char* name = trim(last_space + 1);
 	char saved = *last_space;
 	*last_space = '\0';
-	Type ret_type = map_c_type(trim(ret_and_name));
+	CompleteType ret_type = map_c_type(trim(ret_and_name));
 	*last_space = saved;
-	if (ret_type == TYPE_UNKNOWN) return NULL;
+	if (ret_type.type == TYPE_UNKNOWN) return NULL;
 	LibraryFunction* func = malloc(sizeof(LibraryFunction));
 	if (!func) return NULL;
 	func->name = strdup(name);
@@ -84,7 +100,7 @@ static LibraryFunction* parse_c_prototype(char* line) {
 			char* last = strrchr(part, ' ');
 			const char* pname = last ? trim(last + 1) : part;
 			if (last) *last = '\0';
-			Type pt = map_c_type(trim(part));
+			CompleteType pt = map_c_type(trim(part));
 			if (last) *last = ' ';
 			func->param_types[func->param_count] = pt;
 			func->param_names[func->param_count] = strdup(pname);
@@ -323,13 +339,13 @@ Library* load_library(LibraryRegistry* registry, const char* publisher, const ch
             
 			Token type_token = func_ast->children[0]->token;
 			switch (type_token.type) {
-				case TOKEN_INT: func->return_type = TYPE_INT; break;
-				case TOKEN_FLOAT: func->return_type = TYPE_FLOAT; break;
-				case TOKEN_STRING: func->return_type = TYPE_STRING; break;
-				case TOKEN_BOOLEAN: func->return_type = TYPE_BOOLEAN; break;
-				case TOKEN_CHAR: func->return_type = TYPE_CHAR; break;
-				case TOKEN_VOID: func->return_type = TYPE_VOID; break;
-				default: func->return_type = TYPE_UNKNOWN; break;
+				case TOKEN_INT: func->return_type.type = TYPE_INT; break;
+				case TOKEN_FLOAT: func->return_type.type = TYPE_FLOAT; break;
+				case TOKEN_STRING: func->return_type.type = TYPE_STRING; break;
+				case TOKEN_BOOLEAN: func->return_type.type = TYPE_BOOLEAN; break;
+				case TOKEN_CHAR: func->return_type.type = TYPE_CHAR; break;
+				case TOKEN_VOID: func->return_type.type = TYPE_VOID; break;
+				default: func->return_type.type = TYPE_UNKNOWN; break;
 			}
 
 			ASTNode* params = func_ast->children[2];
@@ -349,29 +365,29 @@ Library* load_library(LibraryRegistry* registry, const char* publisher, const ch
 				ASTNode* param = params->children[j];
 				if (!param || param->child_count < 2 || !param->children[0] || !param->children[1]) {
 					func->param_names[j] = NULL;
-					func->param_types[j] = TYPE_UNKNOWN;
+					func->param_types[j].type = TYPE_UNKNOWN;
 					continue;
 				}
 				if (!param->children[0]->token.text) {
 					func->param_names[j] = NULL;
-					func->param_types[j] = TYPE_UNKNOWN;
+					func->param_types[j].type = TYPE_UNKNOWN;
 					continue;
 				}
 				func->param_names[j] = strdup(param->children[0]->token.text);
 				if (!func->param_names[j]) {
-					func->param_types[j] = TYPE_UNKNOWN;
+					func->param_types[j].type = TYPE_UNKNOWN;
 					continue;
 				}
                 
 				Token param_type_token = param->children[1]->token;
 				switch (param_type_token.type) {
-					case TOKEN_INT: func->param_types[j] = TYPE_INT; break;
-					case TOKEN_FLOAT: func->param_types[j] = TYPE_FLOAT; break;
-					case TOKEN_STRING: func->param_types[j] = TYPE_STRING; break;
-					case TOKEN_BOOLEAN: func->param_types[j] = TYPE_BOOLEAN; break;
-					case TOKEN_CHAR: func->param_types[j] = TYPE_CHAR; break;
-					case TOKEN_VOID: func->param_types[j] = TYPE_VOID; break;
-					default: func->param_types[j] = TYPE_UNKNOWN; break;
+					case TOKEN_INT: func->param_types[j].type = TYPE_INT; break;
+					case TOKEN_FLOAT: func->param_types[j].type = TYPE_FLOAT; break;
+					case TOKEN_STRING: func->param_types[j].type = TYPE_STRING; break;
+					case TOKEN_BOOLEAN: func->param_types[j].type = TYPE_BOOLEAN; break;
+					case TOKEN_CHAR: func->param_types[j].type = TYPE_CHAR; break;
+					case TOKEN_VOID: func->param_types[j].type = TYPE_VOID; break;
+					default: func->param_types[j].type = TYPE_UNKNOWN; break;
 				}
 			}
 

@@ -6,16 +6,21 @@
 #include <stdlib.h>
 
 typedef enum {
-	TYPE_INT,
-	TYPE_FLOAT,
-	TYPE_STRING,
-	TYPE_BOOLEAN,
-	TYPE_CHAR,
-	TYPE_NULL,
-	TYPE_VOID,
-	TYPE_ARRAY,
-	TYPE_UNKNOWN
+    TYPE_INT,
+    TYPE_FLOAT,
+    TYPE_STRING,
+    TYPE_BOOLEAN,
+    TYPE_CHAR,
+    TYPE_NULL,
+    TYPE_VOID,
+    TYPE_ARRAY,
+    TYPE_UNKNOWN
 } Type;
+
+typedef struct CompleteType {
+    Type type;
+    struct CompleteType* pointsTo;
+} CompleteType;
 
 typedef enum { NODE_ACTUAL, NODE_EXPECTED } NodeKind;
 
@@ -87,7 +92,7 @@ struct ASTNode {
 	Token token;
 	ASTNode** children;
 	int child_count;
-	Type annotated_type;
+	CompleteType annotated_type;
 };
 
 typedef struct ExpectedNode {

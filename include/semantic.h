@@ -5,7 +5,7 @@
 
 typedef struct Symbol {
 	char* name;
-	Type type;
+	CompleteType type;
 	ASTNode* node;
 	int usage_count;
 	struct Symbol* next;
@@ -16,7 +16,7 @@ typedef struct SymbolTable {
 	int bucket_count;
 	struct SymbolTable* parent;
 	int loop_depth;
-	Type current_return_type;
+	CompleteType current_return_type;
 } SymbolTable;
 
 int semantic_get_error_count();
@@ -29,7 +29,7 @@ void enter_scope(SymbolTable* table);
 
 void exit_scope(SymbolTable* table);
 
-bool add_symbol(SymbolTable* table, const char* name, Type type, ASTNode* node);
+bool add_symbol(SymbolTable* table, const char* name, CompleteType type, ASTNode* node);
 
 Symbol* lookup_symbol(SymbolTable* table, const char* name);
 
@@ -74,30 +74,30 @@ bool validate_array_element_types(ASTNode* array_node, SymbolTable* table);
 
 void check_unreachable_code(ASTNode* block, SymbolTable* table);
 
-bool has_all_paths_return(ASTNode* block, Type return_type);
+bool has_all_paths_return(ASTNode* block, CompleteType return_type);
 
 void analyze_variable_usage(SymbolTable* table);
 
-void check_type_cast_validity(Type from, Type to, ASTNode* node);
+void check_type_cast_validity(CompleteType from, CompleteType to, ASTNode* node);
 
-Type analyze_array_access(ASTNode* node, SymbolTable* table);
+CompleteType analyze_array_access(ASTNode* node, SymbolTable* table);
 
-Type analyze_expression(ASTNode* expr_node, SymbolTable* table);
+CompleteType analyze_expression(ASTNode* expr_node, SymbolTable* table);
 
-Type analyze_binary_op(ASTNode* binary_node, SymbolTable* table);
+CompleteType analyze_binary_op(ASTNode* binary_node, SymbolTable* table);
 
-Type analyze_unary_op(ASTNode* unary_node, SymbolTable* table);
+CompleteType analyze_unary_op(ASTNode* unary_node, SymbolTable* table);
 
 // 
 //  Type System / Helper functions
 // 
-Type get_expression_type(ASTNode* expr_node, SymbolTable* table);
+CompleteType get_expression_type(ASTNode* expr_node, SymbolTable* table);
 
-bool check_type_compatibility(Type expected, Type actual);
+bool check_type_compatibility(CompleteType expected, CompleteType actual);
 
-bool is_numeric_type(Type type);
+bool is_numeric_type(CompleteType type);
 
-bool is_boolean_type(Type type);
+bool is_boolean_type(CompleteType type);
 
 //
 //  Error Handling (Errors, Warnings, Tips, etc.)
@@ -111,7 +111,7 @@ void semantic_tip(ASTNode* node, const char* fmt, ...);
 // 
 //  AST Annotation and Utilities
 // 
-void annotate_node_type(ASTNode* node, Type type);
+void annotate_node_type(ASTNode *node, CompleteType type);
 
 void free_symbol_table(SymbolTable* table);
 
