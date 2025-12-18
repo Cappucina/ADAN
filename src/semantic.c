@@ -1118,34 +1118,29 @@ void check_type_cast_validity(CompleteType completeFrom, CompleteType completeTo
 
 CompleteType analyze_array_access(ASTNode *node, SymbolTable *table)
 {
-	CompleteType TypeUnknown;
-	TypeUnknown.type = TYPE_UNKNOWN;
+	CompleteType TypeUnknown = {.type = TYPE_UNKNOWN};
 
 	if (!node || node->child_count < 2)
-	{
 		return TypeUnknown;
-	}
 
 	ASTNode *array_node = node->children[0];
 	ASTNode *index_node = node->children[1];
 
 	CompleteType array_type = get_expression_type(array_node, table);
-
 	if (array_type.type != TYPE_ARRAY)
 	{
-		semantic_error(node, SemanticErrorMessages[SEMANTIC_INVALID_ARRAY_ACCESS], array_node->token.text ? array_node->token.text : "unknown");
+		semantic_error(node, "Invalid array access on '%s'", array_node->token.text ? array_node->token.text : "unknown");
 		return TypeUnknown;
 	}
 
 	CompleteType index_type = get_expression_type(index_node, table);
-
 	if (index_type.type != TYPE_INT)
 	{
-		semantic_error(node, SemanticErrorMessages[SEMANTIC_ARRAY_INDEX_NOT_INTEGER], "non-integer");
+		semantic_error(node, "Array index must be an integer (got non-integer)");
 		return TypeUnknown;
 	}
 
-	return TypeUnknown;
+	return *array_type.pointsTo;
 }
 
 CompleteType analyze_increment_expr(ASTNode *node, SymbolTable *table)
