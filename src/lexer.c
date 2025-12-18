@@ -7,8 +7,6 @@
 
 const char* cast(const void* input);
 
-extern int VERBOSE;
-
 Lexer* create_lexer(const char *src) {
 	Lexer* new_lex = (Lexer*) malloc(sizeof(Lexer));
 	if (!new_lex) return NULL;
@@ -19,7 +17,8 @@ Lexer* create_lexer(const char *src) {
 }
 
 void free_lexer(Lexer* lexer) {
-	if (lexer) free(lexer);
+    if (!lexer) return;
+    free(lexer);
 }
 
 Token* make_token(Lexer* lexer, TokenType type, const char* texts[], int count) {

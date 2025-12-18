@@ -6,6 +6,7 @@
 #include "lexer_src.h"
 #include "lexer_tests.h"
 #include "logs.h"
+#include "flags.h"
 
 void run_lexer_test(LexerTest test) {
 	Lexer *lexer = create_lexer(test.input);
@@ -34,7 +35,7 @@ void run_lexer_test(LexerTest test) {
 	free(lexer);
 }
 
-void create_lexer_tests() {
+void create_lexer_tests(CompilorFlags* flags) {
 	LexerTest tests[] = {
 		{ "x::int;",
 			{ 
@@ -228,7 +229,7 @@ void create_lexer_tests() {
 		run_lexer_test(tests[i]);
 	}
 	
-	if (VERBOSE) {
+	if (flags->verbose) {
 		FILE* fp = fopen("examples/stack-overflow-test.adn", "r");
 		if (fp) {
 			fseek(fp, 0, SEEK_END);

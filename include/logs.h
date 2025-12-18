@@ -211,5 +211,3 @@ static inline void log_semantic_tip(ASTNode* node, const char* fmt, ...) {
 }
 
 #endif
-
-extern int VERBOSE;

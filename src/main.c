@@ -16,8 +16,7 @@
 #include "library.h"
 #include <signal.h>
 #include <unistd.h>
-
-int VERBOSE = 0;
+#include "flags.h"
 
 static char *escape_for_asm(const char *s)
 {
@@ -157,9 +156,43 @@ static char *compiler_read_file_source(const char *file_path)
 	return out;
 }
 
+bool handleSpecialFlags(CompilorFlags *flags)
+{
+	if (flags->help)
+	{
+		printf("Usage: adan-compile [options] <input_file>\n");
+		printf("Options:\n  -h, --help              Show this help message\n  -v, --verbose           Enable verbose output\n  -k, --keep-asm          Keep intermediate ASM\n  -w, --warnings-as-errors Treat warnings as errors\n  -o, --output <file>     Specify output file\n  -i, --input <file>      Specify input file\n  -c, --compile-time      Enable compile-time evaluation\n  -e, --execute-after-run  Run after compilation\n");
+
+		return true;
+	}
+
+out:
+	return false;
+}
+
 int main(int argc, char **argv)
 {
-	int EMIT_BINARY = 1;
+	int res = 0;
+
+	CompilorFlags *flags = NULL;
+	flags = flags_init();
+
+	if (flags == NULL)
+	{
+		fprintf(stderr, "Error: Failed to initialize compiler flags\n");
+		res = -1;
+		goto out;
+	}
+
+	if (parse_flags(argc, argv, flags) != 0)
+	{
+		res = -1;
+		goto out;
+	}
+
+	if (handleSpecialFlags(flags))
+		goto out;
+
 	global_library_registry = init_library_registry("lib");
 	if (!global_library_registry)
 	{
@@ -167,80 +200,51 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	for (int i = 1; i < argc; i++)
-	{
-		if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0)
-		{
-			VERBOSE = 1;
-		}
-		if (strcmp(argv[i], "--emit-assembly") == 0 || strcmp(argv[i], "--no-emit-binary") == 0)
-		{
-			EMIT_BINARY = 0;
-		}
-		if (strcmp(argv[i], "--emit-binary") == 0 || strcmp(argv[i], "-b") == 0)
-		{
-			EMIT_BINARY = 1;
-		}
-	}
-
-	create_lexer_tests();
+	create_lexer_tests(flags);
 	create_parser_tests();
 	create_codegen_tests();
 
 	signal(SIGALRM, handle_timeout);
-	{
-		struct sigaction sa;
-		memset(&sa, 0, sizeof(sa));
-		sa.sa_sigaction = runtime_signal_handler;
-		sa.sa_flags = SA_SIGINFO;
-		sigaction(SIGSEGV, &sa, NULL);
-		sigaction(SIGBUS, &sa, NULL);
-		sigaction(SIGFPE, &sa, NULL);
-	}
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_sigaction = runtime_signal_handler;
+	sa.sa_flags = SA_SIGINFO;
+	sigaction(SIGSEGV, &sa, NULL);
+	sigaction(SIGBUS, &sa, NULL);
+	sigaction(SIGFPE, &sa, NULL);
 	alarm(10);
 
-	int src_index = -1;
-	for (int i = 1; i < argc; i++)
-	{
-		if (argv[i][0] != '-')
-		{
-			src_index = i;
-			break;
-		}
-	}
-	if (src_index < 0)
+	if (!flags->input || flags->input[0] == '\0')
 	{
 		fprintf(stderr, "No input file provided\n");
-		return 1;
+		res = -1;
+		goto out;
 	}
 
-	char *file_source = compiler_read_file_source(argv[src_index]);
+	char *file_source = compiler_read_file_source(flags->input);
 	if (!file_source)
 	{
-		fprintf(stderr, "Failed to read source file: %s\n", argv[src_index]);
-		fprintf(stderr, "Please check that the file exists and is readable\n");
-		return 1;
+		fprintf(stderr, "Failed to read source file: %s\n", flags->input);
+		res = -1;
+		goto out;
 	}
 
 	Lexer *lexer = create_lexer(file_source);
 	if (!lexer)
 	{
-		free(file_source);
 		fprintf(stderr, "Failed to create lexer\n");
-		return 1;
+		res = -1;
+		goto out;
 	}
 
 	Parser parser;
 	init_parser(&parser, lexer);
-
 	if (parser.error)
 	{
 		if (parser.error_message)
 			fprintf(stderr, "%s\n", parser.error_message);
-		free_parser(&parser);
-		free(lexer);
-		free(file_source);
-		return 1;
+		res = -1;
+		goto out;
 	}
 
 	ASTNode *ast = parse_file(&parser);
@@ -248,21 +252,16 @@ int main(int argc, char **argv)
 	{
 		if (parser.error_message)
 			fprintf(stderr, "%s\n", parser.error_message);
-		free_parser(&parser);
-		free(lexer);
-		free(file_source);
-		return 1;
+		res = -1;
+		goto out;
 	}
 
 	SymbolTable *symbols = init_symbol_table();
 	if (!symbols)
 	{
-		free_ast(ast);
-		free_parser(&parser);
-		free(lexer);
-		free(file_source);
 		fprintf(stderr, "Failed to create symbol table\n");
-		return 1;
+		res = -1;
+		goto out;
 	}
 
 	analyze_file(ast, symbols);
@@ -271,30 +270,16 @@ int main(int argc, char **argv)
 
 	if (semantic_get_error_count() > 0)
 	{
-		fprintf(stderr, "Compilation failed: %d semantic errors found\n", semantic_get_error_count());
-		free_symbol_table(symbols);
-		free_ast(ast);
-		free_parser(&parser);
-		free(lexer);
-		free(file_source);
-		free_library_registry(global_library_registry);
-		return 1;
+		fprintf(stderr, "Compilation failed: %d semantic errors\n", semantic_get_error_count());
+		res = -1;
+		goto out;
 	}
 
 #ifdef __aarch64__
-#define ARCH_ARM64 1
-#elif defined(__x86_64__) || defined(_M_X64)
-#define ARCH_X86_64 1
-#else
-#define ARCH_X86_64 1 // Default to x86_64
-#endif
-
-#ifdef ARCH_ARM64
 	char *register_names[] = {"x19", "x20", "x21", "x22"};
 #else
 	char *register_names[] = {"rbx", "r10", "r11", "r12"};
 #endif
-
 	int caller_saved[] = {0, 1};
 	TargetConfig config;
 	init_target_config(&config, 4, register_names, 2, caller_saved, 8);
@@ -302,30 +287,19 @@ int main(int argc, char **argv)
 	FILE *asm_file = fopen("compiled/assembled.s", "w");
 	if (!asm_file)
 	{
-		free_symbol_table(symbols);
-		free_ast(ast);
-		free_parser(&parser);
-		free(lexer);
-		free(file_source);
-		return 1;
+		fprintf(stderr, "Failed to open ASM output\n");
+		res = -1;
+		goto out;
 	}
 
 	init_ir_full();
-
 	for (int i = 0; i < ast->child_count; i++)
 	{
 		ASTNode *child = ast->children[i];
-		if (child)
-		{
-			if (child->type == AST_DECLARATION)
-			{
-				generate_ir(child);
-			}
-			else if (child->type == AST_PROGRAM && child->child_count > 3)
-			{
-				generate_ir(child);
-			}
-		}
+		if (!child)
+			continue;
+		if (child->type == AST_DECLARATION || (child->type == AST_PROGRAM && child->child_count > 3))
+			generate_ir(child);
 	}
 
 	if (global_library_registry)
@@ -339,9 +313,7 @@ int main(int argc, char **argv)
 				{
 					ASTNode *func_node = lib->ast->children[i];
 					if (func_node && func_node->type == AST_PROGRAM && func_node->child_count > 3)
-					{
 						generate_ir(func_node);
-					}
 				}
 			}
 			lib = lib->next;
@@ -356,22 +328,17 @@ int main(int argc, char **argv)
 #else
 		fprintf(asm_file, ".section .rodata\n");
 #endif
-		StringLiteral *current = strings;
-		while (current)
+		for (StringLiteral *cur = strings; cur; cur = cur->next)
 		{
-			if (current->value && current->label)
+			if (!cur->value || !cur->label)
+				continue;
+			char *esc = escape_for_asm(cur->value);
+			if (esc)
 			{
-				char *esc = escape_for_asm(current->value);
-				if (esc)
-				{
-					fprintf(asm_file, "%s:\n", current->label);
-					fprintf(asm_file, "  .string \"%s\"\n", esc);
-					free(esc);
-				}
+				fprintf(asm_file, "%s:\n  .string \"%s\"\n", cur->label, esc);
+				free(esc);
 			}
-			current = current->next;
 		}
-		fprintf(asm_file, "\n");
 	}
 
 	fprintf(asm_file, ".text\n");
@@ -384,23 +351,18 @@ int main(int argc, char **argv)
 #else
 		fprintf(asm_file, ".section .data\n");
 #endif
-		GlobalVariable *cur = gvars;
-		while (cur)
+		for (GlobalVariable *cur = gvars; cur; cur = cur->next)
 		{
+			const char *val = cur->initial ? cur->initial : "0";
 			if (cur->is_string && cur->initial)
 			{
-				fprintf(asm_file, "%s: \n", cur->label);
-				fprintf(asm_file, "    .quad %s\n", cur->initial);
+				fprintf(asm_file, "%s:\n    .quad %s\n", cur->label, cur->initial);
 			}
 			else
 			{
-				const char *val = cur->initial ? cur->initial : "0";
-				fprintf(asm_file, "%s: \n", cur->label);
-				fprintf(asm_file, "    .quad %s\n", val);
+				fprintf(asm_file, "%s:\n    .quad %s\n", cur->label, val);
 			}
-			cur = cur->next;
 		}
-		fprintf(asm_file, "\n");
 	}
 
 	IRInstruction *all_ir = get_ir_head();
@@ -409,92 +371,93 @@ int main(int argc, char **argv)
 		number_instructions(all_ir);
 		LiveInterval *intervals = compute_liveness(all_ir);
 		assign_stack_offsets(intervals, &config);
-
-		if (VERBOSE)
-		{
-			print_ir();
-			print_liveness(intervals);
-			LiveInterval *it = intervals;
-			fprintf(stderr, "Stack layout:\n");
-			while (it)
-			{
-				fprintf(stderr, "  %s -> reg=%d spilled=%d offset=%d\n", it->variable_name, it->registry, it->spilled, it->stack_offset);
-				it = it->next;
-			}
-		}
-
 		int frame_size = compute_spill_frame_size(intervals, &config);
+		frame_size = (frame_size + 15) & ~15;
 #ifdef __APPLE__
 		fprintf(asm_file, ".globl _main\n");
 #else
 		fprintf(asm_file, ".globl main\n");
 #endif
-		int stack_bytes = frame_size;
-		if (stack_bytes < 0)
-			stack_bytes = 0;
-		stack_bytes = (stack_bytes + 15) & ~15;
-		generate_asm(all_ir, intervals, &config, asm_file, stack_bytes);
+		generate_asm(all_ir, intervals, &config, asm_file, frame_size);
 	}
 
 	fclose(asm_file);
 	fprintf(stderr, "Assembly written to compiled/assembled.s\n");
-	free_symbol_table(symbols);
-	if (VERBOSE)
-	{
-		print_ast(ast, NODE_ACTUAL, 0);
-	}
 
-	free_ast(ast);
-	free_parser(&parser);
-	free(lexer);
-	free(file_source);
-	free_library_registry(global_library_registry);
-
-	if (EMIT_BINARY)
+	fprintf(stderr, "Assembling and linking...\n");
+	int status = 1;
+	char arch[64] = "";
 	{
-		fprintf(stderr, "Assembling and linking...\n");
-		int status = 1;
-		char arch[64] = "";
-		{
 #include <sys/utsname.h>
-			struct utsname u;
-			if (uname(&u) == 0)
-				strncpy(arch, u.machine, sizeof(arch) - 1);
-		}
+		struct utsname u;
+		if (uname(&u) == 0)
+			strncpy(arch, u.machine, sizeof(arch) - 1);
+	}
+	char cmd[512];
 
-		if (strstr(arch, "arm64") || strstr(arch, "aarch64"))
-		{
-			status = system(
-				"clang -I include -arch x86_64 compiled/assembled.s lib/adan/*.c -lm -o compiled/program 2>&1");
-			if (status != 0)
-			{
-				status = system(
-					"gcc -I include -m64 -no-pie compiled/assembled.s lib/adan/*.c -lm -o compiled/program 2>&1");
-			}
-		}
-		else
-		{
-			status = system(
-				"gcc -I include -no-pie compiled/assembled.s lib/adan/*.c -lm -o compiled/program 2>&1");
-			if (status != 0)
-			{
-				status = system(
-					"clang -I include compiled/assembled.s lib/adan/*.c -lm -o compiled/program 2>&1");
-			}
-		}
-
+	if (strstr(arch, "arm64") || strstr(arch, "aarch64"))
+	{
+		snprintf(cmd, sizeof(cmd),
+				 "clang -I include -arch x86_64 compiled/assembled.s lib/adan/*.c -lm -o %s 2>&1",
+				 flags->output);
+		status = system(cmd);
 		if (status != 0)
 		{
-			fprintf(stderr, "error: failed to assemble/link compiled/assembled.s into compiled/program\n");
-			return 1;
+			snprintf(cmd, sizeof(cmd),
+					 "gcc -I include -m64 -no-pie compiled/assembled.s lib/adan/*.c -lm -o %s 2>&1",
+					 flags->output);
+			status = system(cmd);
 		}
-
-		fprintf(stderr, "Compilation successful: compiled/program\n");
 	}
 	else
 	{
-		fprintf(stderr, "Assembly-only mode: compiled/assembled.s (not linking to binary)\n");
+		snprintf(cmd, sizeof(cmd),
+				 "gcc -I include -no-pie compiled/assembled.s lib/adan/*.c -lm -o %s 2>&1",
+				 flags->output);
+		status = system(cmd);
+		if (status != 0)
+		{
+			snprintf(cmd, sizeof(cmd),
+					 "clang -I include compiled/assembled.s lib/adan/*.c -lm -o %s 2>&1",
+					 flags->output);
+			status = system(cmd);
+		}
 	}
 
-	return 0;
+	if (status != 0)
+	{
+		fprintf(stderr, "error: failed to assemble/link compiled/assembled.s into %s\n", flags->output);
+		return 1;
+	}
+
+	fprintf(stderr, "Compilation successful: %s\n", flags->output);
+
+out:
+	if (file_source)
+		free(file_source);
+	if (lexer)
+		free_lexer(lexer);
+	if (ast)
+		free_ast(ast);
+	if (symbols)
+		free_symbol_table(symbols);
+	if (global_library_registry)
+		free_library_registry(global_library_registry);
+
+	if (flags)
+	{
+		if (flags->input)
+		{
+			free(flags->input);
+			flags->input = NULL;
+		}
+		if (flags->output)
+		{
+			free(flags->output);
+			flags->output = NULL;
+		}
+		free(flags);
+	}
+
+	return res;
 }

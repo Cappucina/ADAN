@@ -2,6 +2,7 @@
 #define LEXER_TEST_H
 
 #include "lexer.h"
+#include "flags.h"
 
 typedef struct {
 	const char *input;
@@ -12,6 +13,6 @@ typedef struct {
 
 void run_lexer_test(LexerTest test);
 
-void create_lexer_tests();
+void create_lexer_tests(CompilorFlags* flags);
 
 #endif
