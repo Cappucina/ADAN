@@ -243,6 +243,7 @@ int main(int argc, char** argv) {
 	#else
 		char* register_names[] = {"rbx", "r10", "r11", "r12"};
 	#endif
+
 	int caller_saved[] = {0, 1};
 	TargetConfig config;
 	init_target_config(&config, 4, register_names, 2, caller_saved, 8);
@@ -405,6 +406,5 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "Assembly-only mode: compiled/assembled.s (not linking to binary)\n");
 	}
 
-	system("clear");
 	return 0;
 }

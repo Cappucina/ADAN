@@ -7,7 +7,6 @@ MISSING FEATURES
     - Enums
 
 ISSUES
-    - Arrays allow for defining arrays with types separate from the expected type
     - Unsafe with memory (memory leaks)
     - Possible over-allocation for stack memory (stack calculated globally, not per-function)
     - No real registry allocation causing inefficient code generation

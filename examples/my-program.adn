@@ -1,9 +1,16 @@
 include adan.io;
 
 program::void main() {
-    val::int[][] = [{3, 5}, {32, 532}];
+    // val::int[][] = [{3, 5}, {32, 532}];
 
-    println((string)val[1][0]);
+    // println((string)val[1][0]);
+
+    i::int = 0;
     
+    while (true) {
+        i--;
+        println((string)i);
+    }
+
     return;
 }
