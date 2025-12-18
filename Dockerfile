@@ -1,4 +1,4 @@
-FROM alpine:3.21
+FROM --platform=linux/amd64 alpine:3.21
 
 RUN apk add --no-cache \
 	build-base \
@@ -9,7 +9,8 @@ RUN apk add --no-cache \
 	git \
 	bash \
 	sudo \
-	python3
+	python3 \
+	lldb
 
 ENV CC=clang
 ENV CXX=clang++

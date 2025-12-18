@@ -243,6 +243,7 @@ void generate_asm(IRInstruction *ir_head, LiveInterval *intervals, const TargetC
 			break;
 
 		case IR_POW:
+		{
 			if (loc1[0] == '$')
 			{
 				fprintf(out, "movq %s, %%rax\n", loc1);
@@ -252,6 +253,7 @@ void generate_asm(IRInstruction *ir_head, LiveInterval *intervals, const TargetC
 			{
 				fprintf(out, "cvtsi2sdq %s, %%xmm0\n", loc1);
 			}
+
 			if (loc2[0] == '$')
 			{
 				fprintf(out, "movq %s, %%rax\n", loc2);
@@ -261,10 +263,20 @@ void generate_asm(IRInstruction *ir_head, LiveInterval *intervals, const TargetC
 			{
 				fprintf(out, "cvtsi2sdq %s, %%xmm1\n", loc2);
 			}
-			fprintf(out, "call pow\n");
+
+#ifdef __APPLE__
+			fprintf(out, "call _pow\n");
+#else
+			fprintf(out, "subq $8, %%rsp\n");
+			fprintf(out, "call pow@PLT\n");
+			fprintf(out, "addq $8, %%rsp\n");
+#endif
+
 			fprintf(out, "cvttsd2siq %%xmm0, %%r11\n");
 			fprintf(out, "movq %%r11, %s\n", result_loc);
+
 			break;
+		}
 
 		case IR_AND:
 			if (strchr(result_loc, '(') != NULL)

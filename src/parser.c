@@ -1042,9 +1042,6 @@ int get_node_precedence(ASTNode *node)
 		return 7;
 
 	case TOKEN_EXPONENT: // **
-		return 5;
-
-	case TOKEN_CAROT: // ^
 		return 6;
 
 	case TOKEN_ASTERISK: // *
@@ -1093,7 +1090,7 @@ static int precedence_of(TokenType t)
 	case TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT:
 	case TOKEN_BITWISE_SIGNED_RIGHT_SHIFT:
 		return 7;
-	case TOKEN_CAROT:
+	case TOKEN_EXPONENT:
 		return 6;
 	case TOKEN_ASTERISK:
 	case TOKEN_SLASH:

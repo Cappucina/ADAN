@@ -4,13 +4,17 @@ program::void main() {
     // val::int[][] = [{3, 5}, {32, 532}];
 
     // println((string)val[1][0]);
-
-    i::int = 0;
     
+    i::int = 2**(40-1)-1;
+
     while (true) {
-        i--;
+        i++;
         println((string)i);
     }
+
+    // for (i::int = 0; (bool)(i < 256); i++) {
+    //     println((string)(char)i);
+    // }
 
     return;
 }
