@@ -1564,9 +1564,27 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 		if (expr_node->child_count > 0)
 		{
 			CompleteType first_elem_type = get_expression_type(expr_node->children[0], table);
+
 			arr.pointsTo = malloc(sizeof(CompleteType));
 			*arr.pointsTo = first_elem_type;
+
+			for (int i = 1; i < expr_node->child_count; i++)
+			{
+				CompleteType elem_type = get_expression_type(expr_node->children[i], table);
+
+				if (first_elem_type.type != elem_type.type)
+				{
+					semantic_error(expr_node->children[i],
+                       SemanticErrorMessages[SEMANTIC_MISMATCHED_ARRAY_ELEMENT_TYPE],
+                       i,
+                       type_to_string(elem_type),
+                       type_to_string(first_elem_type));
+					
+					exit(1);
+				}
+			}
 		}
+
 		annotate_node_type(expr_node, arr);
 		return arr;
 	}

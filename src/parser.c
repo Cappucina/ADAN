@@ -720,17 +720,25 @@ ASTNode *parse_params(Parser *parser)
 }
 
 ASTNode *parse_array_literal(Parser *parser) {
-    if (!expect(parser, TOKEN_LBRACE, PARSER_EXPECTED, "'{'", parser->current_token.text))
+    TokenType open_token = parser->current_token.type;
+
+    if (open_token != TOKEN_LBRACE && open_token != TOKEN_LBRACKET) {
+        set_error(parser, PARSER_EXPECTED, "'{' or '['", parser->current_token.text);
         return NULL;
+    }
+
+    match(parser, open_token);
 
     ASTNode *array_node = create_ast_node(AST_ARRAY_LITERAL, parser->current_token);
     array_node->child_count = 0;
     array_node->children = NULL;
 
-    while (parser->current_token.type != TOKEN_RBRACE && parser->current_token.type != TOKEN_EOF) {
+    while (parser->current_token.type != TOKEN_EOF &&
+           parser->current_token.type != (open_token == TOKEN_LBRACE ? TOKEN_RBRACE : TOKEN_RBRACKET)) {
+
         ASTNode *element = NULL;
 
-        if (parser->current_token.type == TOKEN_LBRACE) {
+        if (parser->current_token.type == TOKEN_LBRACE || parser->current_token.type == TOKEN_LBRACKET) {
             element = parse_array_literal(parser);
         } else {
             element = parse_expression(parser);
@@ -752,7 +760,8 @@ ASTNode *parse_array_literal(Parser *parser) {
             break;
     }
 
-    if (!expect(parser, TOKEN_RBRACE, PARSER_EXPECTED, "'}'", parser->current_token.text)) {
+    TokenType expected_close = (open_token == TOKEN_LBRACE) ? TOKEN_RBRACE : TOKEN_RBRACKET;
+    if (!expect(parser, expected_close, PARSER_EXPECTED, expected_close == TOKEN_RBRACE ? "'}'" : "']'", parser->current_token.text)) {
         free_ast(array_node);
         return NULL;
     }
@@ -831,7 +840,7 @@ ASTNode *parse_declaration(Parser *parser) {
     if (parser->current_token.type == TOKEN_ASSIGN) {
         match(parser, TOKEN_ASSIGN);
 
-        if (array_depth > 0 && parser->current_token.type == TOKEN_LBRACE) {
+        if (array_depth > 0 && (parser->current_token.type == TOKEN_LBRACE || parser->current_token.type == TOKEN_LBRACKET)) {
             expression = parse_array_literal(parser);
         } else {
             expression = parse_expression(parser);
