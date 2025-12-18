@@ -196,7 +196,7 @@ char* replace_all(char* str, char* old, char* new) {
 static const char* cast_internal(const void* input) {
     static char buf[64];
     intptr_t ip = (intptr_t)input;
-    if (ip > -4096 && ip < 4096) {
+    if (ip > INTPTR_MIN && ip < INTPTR_MAX) {
         snprintf(buf, sizeof(buf), "%ld", (long)ip);
         return buf;
     }
@@ -209,14 +209,14 @@ const char* to_string(const void* input) {
 
 intptr_t to_int(const void* input) {
     intptr_t ip = (intptr_t)input;
-    if (ip > -4096 && ip < 4096) return ip;
+    if (ip > INTPTR_MIN && ip < INTPTR_MAX) return ip;
     if (!input) return 0;
     return (intptr_t)strtol((const char*)input, NULL, 10);
 }
 
 int to_bool(const void* input) {
     intptr_t ip = (intptr_t)input;
-    if (ip > -4096 && ip < 4096) return ip != 0;
+    if (ip > INTPTR_MIN && ip < INTPTR_MAX) return ip != 0;
     if (!input) return 0;
     if (strcmp((const char*)input, "true") == 0) return 1;
     return atoi((const char*)input) != 0;
@@ -224,21 +224,21 @@ int to_bool(const void* input) {
 
 int to_char(const void* input) {
     intptr_t ip = (intptr_t)input;
-    if (ip > -4096 && ip < 4096) return (int)((char)ip);
+    if (ip > INTPTR_MIN && ip < INTPTR_MAX) return (int)((char)ip);
     if (!input) return 0;
     return (int)(*(const char*)input);
 }
 
 double to_float(const void* input) {
     intptr_t ip = (intptr_t)input;
-    if (ip > -4096 && ip < 4096) return (double)ip;
+    if (ip > INTPTR_MIN && ip < INTPTR_MAX) return (double)ip;
     if (!input) return 0.0;
     return atof((const char*)input);
 }
 
 const void* cast_to(int to_type, const void* input) {
     intptr_t ip = (intptr_t)input;
-    int is_small_int = (ip > -4096 && ip < 4096);
+    int is_small_int = (ip > INTPTR_MIN && ip < INTPTR_MAX);
 
     switch (to_type) {
         case TYPE_STRING:
