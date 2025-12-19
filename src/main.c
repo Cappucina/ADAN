@@ -156,7 +156,7 @@ static char *compiler_read_file_source(const char *file_path)
 	return out;
 }
 
-bool handleSpecialFlags(compiler_flags *flags)
+bool handleSpecialFlags(compilerFlags *flags)
 {
 	if (flags->help)
 	{
@@ -173,12 +173,11 @@ out:
 int main(int argc, char **argv)
 {
 	int res = 0;
-	CompilorFlags *flags = NULL;
+	compilerFlags *flags = NULL;
 	char *file_source = NULL;
 	Lexer *lexer = NULL;
 	ASTNode *ast = NULL;
 	SymbolTable *symbols = NULL;
-	compiler_flags *flags = NULL;
 
 	flags = flags_init();
 
@@ -198,7 +197,7 @@ int main(int argc, char **argv)
 	if (handleSpecialFlags(flags))
 		goto out;
 
-	global_library_registry = init_library_registry("lib");
+	global_library_registry = init_library_registry(flags);
 	if (!global_library_registry)
 	{
 		fprintf(stderr, "Failed to initialize library registry\n");
@@ -230,6 +229,14 @@ int main(int argc, char **argv)
 	if (!file_source)
 	{
 		fprintf(stderr, "Failed to read source file: %s\n", flags->input);
+		res = -1;
+		goto out;
+	}
+
+
+	if (!flags->output || flags->output[0] == '\0')
+	{
+		fprintf(stderr, "No output file provided\n");
 		res = -1;
 		goto out;
 	}

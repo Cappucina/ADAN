@@ -4,6 +4,7 @@
 #include "ast.h"
 #include "semantic.h"
 #include "parser.h"
+#include "flags.h"
 
 typedef struct LibraryFunction {
     char* name;
@@ -24,10 +25,10 @@ typedef struct Library {
 
 typedef struct LibraryRegistry {
 	Library* libraries;
-	char* search_path;
+	char** search_paths;
 } LibraryRegistry;
 
-LibraryRegistry* init_library_registry(const char* search_path);
+LibraryRegistry* init_library_registry(compilerFlags* flags);
 
 void free_library_function(LibraryFunction* func);
 

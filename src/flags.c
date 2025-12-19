@@ -9,18 +9,18 @@ static bool parse_bool(const char *val, bool defaultVal) {
     return (strcmp(val, "true") == 0 || strcmp(val, "1") == 0);
 }
 
-void set_help(compiler_flags *f, void* extra) { f->help = parse_bool((char*)extra, true); }
-void set_verbose(compiler_flags *f, void* extra) { f->verbose = parse_bool((char*)extra, true); }
-void set_keepASM(compiler_flags *f, void* extra) { f->keep_asm = parse_bool((char*)extra, true); }
-void set_warningsAsErrors(compiler_flags *f, void* extra) { f->warnings_as_errors = parse_bool((char*)extra, true); }
-void set_runAfterCompile(compiler_flags *f, void* extra) { f->run_after_compile = parse_bool((char*)extra, true); }
-void set_compileTime(compiler_flags *f, void* extra) { f->compile_time = parse_bool((char*)extra, true); }
-void set_input(compiler_flags *f, void* extra) {
+void set_help(compilerFlags *f, void* extra) { f->help = parse_bool((char*)extra, true); }
+void set_verbose(compilerFlags *f, void* extra) { f->verbose = parse_bool((char*)extra, true); }
+void set_keepASM(compilerFlags *f, void* extra) { f->keep_asm = parse_bool((char*)extra, true); }
+void set_warningsAsErrors(compilerFlags *f, void* extra) { f->warnings_as_errors = parse_bool((char*)extra, true); }
+void set_runAfterCompile(compilerFlags *f, void* extra) { f->run_after_compile = parse_bool((char*)extra, true); }
+void set_compileTime(compilerFlags *f, void* extra) { f->compile_time = parse_bool((char*)extra, true); }
+void set_input(compilerFlags *f, void* extra) {
     if (f->input) free(f->input);
     if (extra) f->input = strdup((char*)extra);
     else f->input = strdup("");
 }
-void set_lib(compiler_flags *f, void* extra) {
+void set_lib(compilerFlags *f, void* extra) {
     if (!extra) return;
     char** newLibs = realloc(f->libs, sizeof(char*) * (f->lib_count + 1));
     if (!newLibs) return; // handle allocation failure
@@ -28,15 +28,15 @@ void set_lib(compiler_flags *f, void* extra) {
     f->libs[f->lib_count] = strdup((char*)extra);
     f->lib_count++;
 }
-void set_output(compiler_flags *f, void* extra) {
+void set_output(compilerFlags *f, void* extra) {
     if (f->output) free(f->output);
     if (extra) f->output = strdup((char*)extra);
     else f->output = strdup("");
 }
-void set_unknownFlag(compiler_flags *f, void* extra) { f->unknown_flag = true; }
+void set_unknownFlag(compilerFlags *f, void* extra) { f->unknown_flag = true; }
 
-compiler_flags* flags_init() {
-    compiler_flags *flags = malloc(sizeof(compiler_flags));
+compilerFlags* flags_init() {
+    compilerFlags *flags = malloc(sizeof(compilerFlags));
     if (!flags) return NULL;
 
 #ifdef __APPLE__
@@ -45,8 +45,6 @@ compiler_flags* flags_init() {
     flags->target.os = LINUX;
 #endif
 
-    flags->libs = "./libs";
-    flags->lib_count = 1;
     flags->target.arch = X86_64;
     flags->help = false;
     flags->verbose = false;
@@ -57,6 +55,20 @@ compiler_flags* flags_init() {
     flags->run_after_compile = false;
     flags->compile_time = true;
     flags->unknown_flag = false;
+    
+    flags->lib_count = 1;
+    flags->libs = malloc(sizeof(char*) * 1);
+    if (!flags->libs) {
+        free(flags);
+        return NULL;
+    }
+    flags->libs[0] = strdup("./lib");
+    if (!flags->libs[0]) {
+        free(flags->libs);
+        free(flags);
+        return NULL;
+    }
+
     return flags;
 }
 
@@ -84,7 +96,7 @@ FlagEntry flagRegistry[] = {
 
 const int flagCount = sizeof(flagRegistry) / sizeof(flagRegistry[0]);
 
-int parse_flags(int argc, char **argv, compiler_flags *flags) {
+int parse_flags(int argc, char **argv, compilerFlags *flags) {
     int argIndex = 1;
     if (argc > 1 && argv[1][0] != '-') {
         set_input(flags, argv[1]);
@@ -128,7 +140,7 @@ int parse_flags(int argc, char **argv, compiler_flags *flags) {
                 matched = true;
                 break;
             }
-            for (int k = 0; k < entry->aliasCount; k++) {
+            for (int k = 0; k < entry->alias_count; k++) {
                 if (strcmp(flagName, entry->aliases[k]) == 0) {
                     entry->setter(flags, extraValue);
                     matched = true;

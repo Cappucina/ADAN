@@ -1,19 +1,19 @@
 include adan.io;
 
-program::void main() {
-    // val::int[][] = [{3, 5}, {32, 532}];
+program::int main() {
+    print("Enter your name: ");
 
-    // println((string)val[1][0]);
+    claimedName::string = readln();
     
-    i::int = 2**(63-1)-1;
+    equals::bool = (bool)(claimedName == get_current_user());
 
-    while (true) {
-        i++;
+    if (equals) {
+        println("Hello my beautiful " + claimedName + "!");
+    } else {
+        println("Hello my beautiful " + claimedName + "? I thoght you went by ${get_current_user()}?");
     }
 
-    // for (i::int = 0; (bool)(i < 256); i++) {
-    //     println((string)(char)i);
-    // }
+    return 0;
 
-    return;
+    return 0;
 }

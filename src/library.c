@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <ctype.h>
+#include "flags.h"
 
 static char* trim(char* s) {
 	if (!s) return s;
@@ -121,18 +122,34 @@ static LibraryFunction* parse_c_prototype(char* line) {
 	return func;
 }
 
-LibraryRegistry* init_library_registry(const char* search_path) {
-	LibraryRegistry* registry = malloc(sizeof(LibraryRegistry));
-	if (!registry) return NULL;
+LibraryRegistry* init_library_registry(compilerFlags* flags) {
+    LibraryRegistry* registry = malloc(sizeof(LibraryRegistry));
+    if (!registry) return NULL;
 
-	registry->libraries = NULL;
-	registry->search_path = strdup(search_path ? search_path : "../lib");
-	if (!registry->search_path) {
-		free(registry);
-		return NULL;
-	}
+    registry->libraries = NULL;
 
-	return registry;
+    if (flags->lib_count > 0) {
+        registry->search_paths = malloc((flags->lib_count + 1) * sizeof(char *));
+        if (!registry->search_paths) {
+            free(registry);
+            return NULL;
+        }
+
+        for (int i = 0; i < flags->lib_count; i++) {
+            registry->search_paths[i] = strdup(flags->libs[i]);
+        }
+        registry->search_paths[flags->lib_count] = NULL;
+    } else {
+        registry->search_paths = malloc(2 * sizeof(char *));
+        if (!registry->search_paths) {
+            free(registry);
+            return NULL;
+        }
+        registry->search_paths[0] = strdup("../lib");
+        registry->search_paths[1] = NULL;
+    }
+
+    return registry;
 }
 
 void free_library_function(LibraryFunction* func) {
@@ -175,30 +192,28 @@ void free_library_registry(LibraryRegistry* registry) {
 		lib = next;
 	}
 
-	free(registry->search_path);
+	free(registry->search_paths);
 	free(registry);
 }
 
 char* resolve_library_path(LibraryRegistry* registry, const char* publisher, const char* package) {
-	if (!registry || !publisher || !package) return NULL;
-	if (!registry->search_path) return NULL;
+    if (!registry || !publisher || !package || !registry->search_paths) return NULL;
 
-	size_t path_length = strlen(registry->search_path) + strlen(publisher) + strlen(package) + 20;
-	char* adn_path = malloc(path_length);
-	if (!adn_path) return NULL;
-	
-	snprintf(adn_path, path_length, "%s/%s/%s.adn", registry->search_path, publisher, package);
-	if (access(adn_path, F_OK) == 0) {
-		return adn_path;
-	}
-	
-	snprintf(adn_path, path_length, "%s/%s/%s.c", registry->search_path, publisher, package);
-	if (access(adn_path, F_OK) == 0) {
-		return adn_path;
-	}
-	
-	free(adn_path);
-	return NULL;
+    for (int i = 0; registry->search_paths[i]; i++) {
+        size_t path_length = strlen(registry->search_paths[i]) + strlen(publisher) + strlen(package) + 20;
+        char* lib_path = malloc(path_length);
+        if (!lib_path) continue;
+
+        snprintf(lib_path, path_length, "%s/%s/%s.adn", registry->search_paths[i], publisher, package);
+        if (access(lib_path, F_OK) == 0) return lib_path;
+
+        snprintf(lib_path, path_length, "%s/%s/%s.c", registry->search_paths[i], publisher, package);
+        if (access(lib_path, F_OK) == 0) return lib_path;
+
+        free(lib_path);
+    }
+
+    return NULL;
 }
 
 Library* load_library(LibraryRegistry* registry, const char* publisher, const char* package) {

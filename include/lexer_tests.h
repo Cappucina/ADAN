@@ -13,6 +13,6 @@ typedef struct {
 
 void run_lexer_test(LexerTest test);
 
-void create_lexer_tests(compiler_flags* flags);
+void create_lexer_tests(compilerFlags* flags);
 
 #endif
