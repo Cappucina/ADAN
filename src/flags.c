@@ -9,27 +9,27 @@ static bool parse_bool(const char *val, bool defaultVal) {
     return (strcmp(val, "true") == 0 || strcmp(val, "1") == 0);
 }
 
-void set_help(CompilorFlags *f, void* extra) { f->help = parse_bool((char*)extra, true); }
-void set_verbose(CompilorFlags *f, void* extra) { f->verbose = parse_bool((char*)extra, true); }
-void set_keepASM(CompilorFlags *f, void* extra) { f->keepASM = parse_bool((char*)extra, true); }
-void set_warningsAsErrors(CompilorFlags *f, void* extra) { f->warningsAsErrors = parse_bool((char*)extra, true); }
-void set_runAfterCompile(CompilorFlags *f, void* extra) { f->runAfterCompile = parse_bool((char*)extra, true); }
-void set_compileTime(CompilorFlags *f, void* extra) { f->compileTime = parse_bool((char*)extra, true); }
-void set_input(CompilorFlags *f, void* extra) {
+void set_help(compiler_flags *f, void* extra) { f->help = parse_bool((char*)extra, true); }
+void set_verbose(compiler_flags *f, void* extra) { f->verbose = parse_bool((char*)extra, true); }
+void set_keepASM(compiler_flags *f, void* extra) { f->keepASM = parse_bool((char*)extra, true); }
+void set_warningsAsErrors(compiler_flags *f, void* extra) { f->warningsAsErrors = parse_bool((char*)extra, true); }
+void set_runAfterCompile(compiler_flags *f, void* extra) { f->runAfterCompile = parse_bool((char*)extra, true); }
+void set_compileTime(compiler_flags *f, void* extra) { f->compileTime = parse_bool((char*)extra, true); }
+void set_input(compiler_flags *f, void* extra) {
     if (f->input) free(f->input);
     if (extra) f->input = strdup((char*)extra);
     else f->input = strdup("");
 }
 
-void set_output(CompilorFlags *f, void* extra) {
+void set_output(compiler_flags *f, void* extra) {
     if (f->output) free(f->output);
     if (extra) f->output = strdup((char*)extra);
     else f->output = strdup("");
 }
-void set_unknownFlag(CompilorFlags *f, void* extra) { f->unknownFlag = true; }
+void set_unknownFlag(compiler_flags *f, void* extra) { f->unknownFlag = true; }
 
-CompilorFlags* flags_init() {
-    CompilorFlags *flags = malloc(sizeof(CompilorFlags));
+compiler_flags* flags_init() {
+    compiler_flags *flags = malloc(sizeof(compiler_flags));
     if (!flags) return NULL;
 
 #ifdef __APPLE__
@@ -73,10 +73,8 @@ FlagEntry flagRegistry[] = {
 
 const int flagCount = sizeof(flagRegistry) / sizeof(flagRegistry[0]);
 
-int parse_flags(int argc, char **argv, CompilorFlags *flags) {
+int parse_flags(int argc, char **argv, compiler_flags *flags) {
     int argIndex = 1;
-
-    // Use setter to safely assign input
     if (argc > 1 && argv[1][0] != '-') {
         set_input(flags, argv[1]);
         argIndex = 2;

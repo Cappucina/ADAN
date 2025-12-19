@@ -47,19 +47,19 @@ typedef struct {
     bool runAfterCompile;
     bool compileTime;
     bool unknownFlag;
-} CompilorFlags;
+} compiler_flags;
 
-typedef void (*FlagSetter)(CompilorFlags*, void* value);
+typedef void (*flag_setter)(compiler_flags*, void* value);
 
 typedef struct {
     const char* name;
     const char** aliases;
     int aliasCount;
-    FlagSetter setter;
+    flag_setter setter;
     void* value;
 } FlagEntry;
 
-CompilorFlags* flags_init();
-int parse_flags(int argc, char **argv, CompilorFlags *flags);
+compiler_flags* flags_init();
+int parse_flags(int argc, char **argv, compiler_flags *flags);
 
 #endif // FLAGS_H
