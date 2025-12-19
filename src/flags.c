@@ -11,22 +11,29 @@ static bool parse_bool(const char *val, bool defaultVal) {
 
 void set_help(compiler_flags *f, void* extra) { f->help = parse_bool((char*)extra, true); }
 void set_verbose(compiler_flags *f, void* extra) { f->verbose = parse_bool((char*)extra, true); }
-void set_keepASM(compiler_flags *f, void* extra) { f->keepASM = parse_bool((char*)extra, true); }
-void set_warningsAsErrors(compiler_flags *f, void* extra) { f->warningsAsErrors = parse_bool((char*)extra, true); }
-void set_runAfterCompile(compiler_flags *f, void* extra) { f->runAfterCompile = parse_bool((char*)extra, true); }
-void set_compileTime(compiler_flags *f, void* extra) { f->compileTime = parse_bool((char*)extra, true); }
+void set_keepASM(compiler_flags *f, void* extra) { f->keep_asm = parse_bool((char*)extra, true); }
+void set_warningsAsErrors(compiler_flags *f, void* extra) { f->warnings_as_errors = parse_bool((char*)extra, true); }
+void set_runAfterCompile(compiler_flags *f, void* extra) { f->run_after_compile = parse_bool((char*)extra, true); }
+void set_compileTime(compiler_flags *f, void* extra) { f->compile_time = parse_bool((char*)extra, true); }
 void set_input(compiler_flags *f, void* extra) {
     if (f->input) free(f->input);
     if (extra) f->input = strdup((char*)extra);
     else f->input = strdup("");
 }
-
+void set_lib(compiler_flags *f, void* extra) {
+    if (!extra) return;
+    char** newLibs = realloc(f->libs, sizeof(char*) * (f->lib_count + 1));
+    if (!newLibs) return; // handle allocation failure
+    f->libs = newLibs;
+    f->libs[f->lib_count] = strdup((char*)extra);
+    f->lib_count++;
+}
 void set_output(compiler_flags *f, void* extra) {
     if (f->output) free(f->output);
     if (extra) f->output = strdup((char*)extra);
     else f->output = strdup("");
 }
-void set_unknownFlag(compiler_flags *f, void* extra) { f->unknownFlag = true; }
+void set_unknownFlag(compiler_flags *f, void* extra) { f->unknown_flag = true; }
 
 compiler_flags* flags_init() {
     compiler_flags *flags = malloc(sizeof(compiler_flags));
@@ -38,16 +45,18 @@ compiler_flags* flags_init() {
     flags->target.os = LINUX;
 #endif
 
+    flags->libs = "./libs";
+    flags->lib_count = 1;
     flags->target.arch = X86_64;
     flags->help = false;
     flags->verbose = false;
-    flags->keepASM = false;
+    flags->keep_asm = false;
     flags->input = NULL;
     flags->output = NULL;
-    flags->warningsAsErrors = false;
-    flags->runAfterCompile = false;
-    flags->compileTime = true;
-    flags->unknownFlag = false;
+    flags->warnings_as_errors = false;
+    flags->run_after_compile = false;
+    flags->compile_time = true;
+    flags->unknown_flag = false;
     return flags;
 }
 
@@ -59,6 +68,7 @@ const char* outputAliases[] = {"o"};
 const char* inputAliases[] = {"i"};
 const char* compileTimeAliases[] = {"c"};
 const char* executeAfterRunAliases[] = {"e"};
+const char* includeAliases[] = {"l", "i"};
 
 FlagEntry flagRegistry[] = {
     {"help", helpAliases, 1, set_help, NULL},
@@ -69,6 +79,7 @@ FlagEntry flagRegistry[] = {
     {"input", inputAliases, 1, set_input, NULL},
     {"compile-time", compileTimeAliases, 1, set_compileTime, NULL},
     {"execute-after-run", executeAfterRunAliases, 1, set_runAfterCompile, NULL},
+    {"include", includeAliases, 2, set_lib, NULL},
 };
 
 const int flagCount = sizeof(flagRegistry) / sizeof(flagRegistry[0]);

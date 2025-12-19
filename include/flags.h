@@ -40,13 +40,15 @@ typedef struct {
     Target target;
     bool help;
     bool verbose;
-    bool keepASM;
+    bool keep_asm;
     char* input;
     char* output;
-    bool warningsAsErrors;
-    bool runAfterCompile;
-    bool compileTime;
-    bool unknownFlag;
+    bool warnings_as_errors;
+    bool run_after_compile;
+    bool compile_time;
+    char** libs;
+    int lib_count;
+    bool unknown_flag;
 } compiler_flags;
 
 typedef void (*flag_setter)(compiler_flags*, void* value);
