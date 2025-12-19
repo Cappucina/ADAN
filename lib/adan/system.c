@@ -46,6 +46,7 @@ char *get_current_user(void) {
     }
 
     char *username = strdup(pwd.pw_name);
+
     free(buf);
 
     return username;

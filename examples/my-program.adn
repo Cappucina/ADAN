@@ -4,16 +4,16 @@ program::int main() {
     print("Enter your name: ");
 
     claimedName::string = readln();
+
+    println(get_current_user());
     
     equals::bool = (bool)(claimedName == get_current_user());
 
     if (equals) {
         println("Hello my beautiful " + claimedName + "!");
     } else {
-        println("Hello my beautiful " + claimedName + "? I thoght you went by ${get_current_user()}?");
+        println("Hello my beautiful " + claimedName + "; I thoght you went by ${get_current_user()}?");
     }
-
-    return 0;
 
     return 0;
 }

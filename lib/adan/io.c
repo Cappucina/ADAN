@@ -13,7 +13,7 @@ void println(const char* str) {
 	print("\n");
 }
 
-char* readln() {
+const char* readln() {
     char *buff = malloc(1024);
     if (buff != NULL && fgets(buff, 1024, stdin)) {
         size_t len = strlen(buff);
