@@ -1,7 +1,19 @@
 include adan.io;
 
 program::void main() {
-    println("Hello, world!");
+    // val::int[][] = [{3, 5}, {32, 532}];
+
+    // println((string)val[1][0]);
+    
+    i::int = 2**(63-1)-1;
+
+    while (true) {
+        i++;
+    }
+
+    // for (i::int = 0; (bool)(i < 256); i++) {
+    //     println((string)(char)i);
+    // }
 
     return;
 }

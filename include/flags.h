@@ -13,7 +13,7 @@ typedef enum {
     SOLARIS,
     AIX,
     CLASSIC_MAC // pre-OS X, non-Unix
-} os;
+} OS;
 
 typedef enum {
     X86_64,
@@ -29,24 +29,24 @@ typedef enum {
     RISCV32,
     SPARC64,
     SPARC32
-} arch;
+} Arch;
 
 typedef struct {
-    arch arch;
-    os os;
-} target;
+    Arch arch;
+    OS os;
+} Target;
 
 typedef struct {
-    target target;
+    Target target;
     bool help;
     bool verbose;
-    bool keep_asm;
+    bool keepASM;
     char* input;
     char* output;
-    bool warnings_as_errors;
-    bool run_post_compile;
-    bool compile_time;
-    bool unknown_flag;
+    bool warningsAsErrors;
+    bool runAfterCompile;
+    bool compileTime;
+    bool unknownFlag;
 } compiler_flags;
 
 typedef void (*flag_setter)(compiler_flags*, void* value);
@@ -54,12 +54,12 @@ typedef void (*flag_setter)(compiler_flags*, void* value);
 typedef struct {
     const char* name;
     const char** aliases;
-    int alias_count;
+    int aliasCount;
     flag_setter setter;
     void* value;
-} flag_entry;
+} FlagEntry;
 
 compiler_flags* flags_init();
 int parse_flags(int argc, char **argv, compiler_flags *flags);
 
-#endif
+#endif // FLAGS_H

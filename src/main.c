@@ -173,12 +173,8 @@ out:
 int main(int argc, char **argv)
 {
 	int res = 0;
-	compiler_flags *flags = NULL;
-	char *file_source = NULL;
-	Lexer *lexer = NULL;
-	ASTNode *ast = NULL;
-	SymbolTable *symbols = NULL;
 
+	compiler_flags *flags = NULL;
 	flags = flags_init();
 
 	if (flags == NULL)
@@ -225,7 +221,7 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
-	file_source = compiler_read_file_source(flags->input);
+	char *file_source = compiler_read_file_source(flags->input);
 	if (!file_source)
 	{
 		fprintf(stderr, "Failed to read source file: %s\n", flags->input);
@@ -233,7 +229,7 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
-	lexer = create_lexer(file_source);
+	Lexer *lexer = create_lexer(file_source);
 	if (!lexer)
 	{
 		fprintf(stderr, "Failed to create lexer\n");
@@ -251,7 +247,7 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
-	ast = parse_file(&parser);
+	ASTNode *ast = parse_file(&parser);
 	if (!ast || parser.error)
 	{
 		if (parser.error_message)
@@ -260,7 +256,7 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
-	symbols = init_symbol_table();
+	SymbolTable *symbols = init_symbol_table();
 	if (!symbols)
 	{
 		fprintf(stderr, "Failed to create symbol table\n");
@@ -435,9 +431,35 @@ int main(int argc, char **argv)
 	}
 
 	fprintf(stderr, "Compilation successful: %s\n", flags->output);
+
+out:
+	if (file_source)
+		free(file_source);
+	if (lexer)
+		free_lexer(lexer);
+	if (ast)
+		free_ast(ast);
+	if (symbols)
+		free_symbol_table(symbols);
+	if (global_library_registry)
+		free_library_registry(global_library_registry);
+
+	if (flags)
+	{
+		if (flags->input)
+		{
+			free(flags->input);
+			flags->input = NULL;
+		}
+		if (flags->output)
+		{
+			free(flags->output);
+			flags->output = NULL;
+		}
+		free(flags);
+	}
+
 	system("cls || clear");
 
-	out:
-
-    return res;
+	return res;
 }

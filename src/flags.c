@@ -11,10 +11,10 @@ static bool parse_bool(const char *val, bool defaultVal) {
 
 void set_help(compiler_flags *f, void* extra) { f->help = parse_bool((char*)extra, true); }
 void set_verbose(compiler_flags *f, void* extra) { f->verbose = parse_bool((char*)extra, true); }
-void set_keep_asm(compiler_flags *f, void* extra) { f->keep_asm = parse_bool((char*)extra, true); }
-void set_warnings_as_errors(compiler_flags *f, void* extra) { f->warnings_as_errors = parse_bool((char*)extra, true); }
-void set_run_post_compile(compiler_flags *f, void* extra) { f->run_post_compile = parse_bool((char*)extra, true); }
-void set_compile_time(compiler_flags *f, void* extra) { f->compile_time = parse_bool((char*)extra, true); }
+void set_keepASM(compiler_flags *f, void* extra) { f->keepASM = parse_bool((char*)extra, true); }
+void set_warningsAsErrors(compiler_flags *f, void* extra) { f->warningsAsErrors = parse_bool((char*)extra, true); }
+void set_runAfterCompile(compiler_flags *f, void* extra) { f->runAfterCompile = parse_bool((char*)extra, true); }
+void set_compileTime(compiler_flags *f, void* extra) { f->compileTime = parse_bool((char*)extra, true); }
 void set_input(compiler_flags *f, void* extra) {
     if (f->input) free(f->input);
     if (extra) f->input = strdup((char*)extra);
@@ -26,7 +26,7 @@ void set_output(compiler_flags *f, void* extra) {
     if (extra) f->output = strdup((char*)extra);
     else f->output = strdup("");
 }
-void set_unknown_flag(compiler_flags *f, void* extra) { f->unknown_flag = true; }
+void set_unknownFlag(compiler_flags *f, void* extra) { f->unknownFlag = true; }
 
 compiler_flags* flags_init() {
     compiler_flags *flags = malloc(sizeof(compiler_flags));
@@ -41,85 +41,85 @@ compiler_flags* flags_init() {
     flags->target.arch = X86_64;
     flags->help = false;
     flags->verbose = false;
-    flags->keep_asm = false;
+    flags->keepASM = false;
     flags->input = NULL;
     flags->output = NULL;
-    flags->warnings_as_errors = false;
-    flags->run_post_compile = false;
-    flags->compile_time = true;
-    flags->unknown_flag = false;
+    flags->warningsAsErrors = false;
+    flags->runAfterCompile = false;
+    flags->compileTime = true;
+    flags->unknownFlag = false;
     return flags;
 }
 
-const char* help_aliases[] = {"h"};
-const char* verbose_aliases[] = {"v"};
-const char* keep_asm_aliases[] = {"k"};
-const char* warnings_aliases[] = {"w"};
-const char* output_aliases[] = {"o"};
-const char* input_aliases[] = {"i"};
-const char* compile_time_aliases[] = {"c"};
-const char* execute_after_run_aliases[] = {"e"};
+const char* helpAliases[] = {"h"};
+const char* verboseAliases[] = {"v"};
+const char* keepASMAliases[] = {"k"};
+const char* warningsAliases[] = {"w"};
+const char* outputAliases[] = {"o"};
+const char* inputAliases[] = {"i"};
+const char* compileTimeAliases[] = {"c"};
+const char* executeAfterRunAliases[] = {"e"};
 
-flag_entry flag_registry[] = {
-    {"help", help_aliases, 1, set_help, NULL},
-    {"verbose", verbose_aliases, 1, set_verbose, NULL},
-    {"keep-asm", keep_asm_aliases, 1, set_keep_asm, NULL},
-    {"warnings-as-errors", warnings_aliases, 1, set_warnings_as_errors, NULL},
-    {"output", output_aliases, 1, set_output, NULL},
-    {"input", input_aliases, 1, set_input, NULL},
-    {"compile-time", compile_time_aliases, 1, set_compile_time, NULL},
-    {"execute-after-run", execute_after_run_aliases, 1, set_run_post_compile, NULL},
+FlagEntry flagRegistry[] = {
+    {"help", helpAliases, 1, set_help, NULL},
+    {"verbose", verboseAliases, 1, set_verbose, NULL},
+    {"keep-asm", keepASMAliases, 1, set_keepASM, NULL},
+    {"warnings-as-errors", warningsAliases, 1, set_warningsAsErrors, NULL},
+    {"output", outputAliases, 1, set_output, NULL},
+    {"input", inputAliases, 1, set_input, NULL},
+    {"compile-time", compileTimeAliases, 1, set_compileTime, NULL},
+    {"execute-after-run", executeAfterRunAliases, 1, set_runAfterCompile, NULL},
 };
 
-const int flag_count = sizeof(flag_registry) / sizeof(flag_registry[0]);
+const int flagCount = sizeof(flagRegistry) / sizeof(flagRegistry[0]);
 
 int parse_flags(int argc, char **argv, compiler_flags *flags) {
-    int arg_index = 1;
+    int argIndex = 1;
     if (argc > 1 && argv[1][0] != '-') {
         set_input(flags, argv[1]);
-        arg_index = 2;
+        argIndex = 2;
     }
 
-    for (int i = arg_index; i < argc; i++) {
+    for (int i = argIndex; i < argc; i++) {
         char* arg = argv[i];
         if (arg[0] != '-') continue;
 
-        char* flag_name = NULL;
-        char* extra_value = NULL;
+        char* flagName = NULL;
+        char* extraValue = NULL;
 
         if (arg[1] == '-') {
             char* eq = strchr(arg + 2, '=');
             if (eq) {
                 *eq = '\0';
-                flag_name = arg + 2;
-                extra_value = eq + 1;
+                flagName = arg + 2;
+                extraValue = eq + 1;
             } else {
-                flag_name = arg + 2;
+                flagName = arg + 2;
                 if (i + 1 < argc && argv[i+1][0] != '-') {
-                    extra_value = argv[i+1];
+                    extraValue = argv[i+1];
                     i++;
                 }
             }
         } else {
-            flag_name = arg + 1;
+            flagName = arg + 1;
             if (i + 1 < argc && argv[i+1][0] != '-') {
-                extra_value = argv[i+1];
+                extraValue = argv[i+1];
                 i++;
             }
         }
 
         bool matched = false;
-        for (int j = 0; j < flag_count; j++) {
-            flag_entry *entry = &flag_registry[j];
+        for (int j = 0; j < flagCount; j++) {
+            FlagEntry *entry = &flagRegistry[j];
 
-            if (strcmp(flag_name, entry->name) == 0) {
-                entry->setter(flags, extra_value);
+            if (strcmp(flagName, entry->name) == 0) {
+                entry->setter(flags, extraValue);
                 matched = true;
                 break;
             }
-            for (int k = 0; k < entry->alias_count; k++) {
-                if (strcmp(flag_name, entry->aliases[k]) == 0) {
-                    entry->setter(flags, extra_value);
+            for (int k = 0; k < entry->aliasCount; k++) {
+                if (strcmp(flagName, entry->aliases[k]) == 0) {
+                    entry->setter(flags, extraValue);
                     matched = true;
                     break;
                 }
@@ -128,7 +128,7 @@ int parse_flags(int argc, char **argv, compiler_flags *flags) {
         }
 
         if (!matched) {
-            set_unknown_flag(flags, NULL);
+            set_unknownFlag(flags, NULL);
         }
     }
 
