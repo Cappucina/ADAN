@@ -173,17 +173,13 @@ out:
 int main(int argc, char **argv)
 {
 	int res = 0;
-<<<<<<< HEAD
 	CompilorFlags *flags = NULL;
 	char *file_source = NULL;
 	Lexer *lexer = NULL;
 	ASTNode *ast = NULL;
 	SymbolTable *symbols = NULL;
-
-=======
-
 	compiler_flags *flags = NULL;
->>>>>>> 94de8fc71a648c2111a7a66a5523ab411e9eb67d
+
 	flags = flags_init();
 
 	if (flags == NULL)
