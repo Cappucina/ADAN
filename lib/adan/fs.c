@@ -117,7 +117,6 @@ bool delete_file(const char* file_path) {
 bool create_directory(const char* dir_path) {
 	if (is_directory(dir_path)) return true;
 
-	// reciursively create parent directories
 	const char* last_slash = strrchr(dir_path, '/');
 	if (last_slash) {
 		const char* parent_dir = strndup(dir_path, last_slash - dir_path);

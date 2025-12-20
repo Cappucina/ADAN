@@ -399,7 +399,7 @@ char *generate_ir(ASTNode *node)
 			opcode = IR_POW;
 			break;
 
-		case TOKEN_CAROT:
+		case TOKEN_CARET:
 			opcode = IR_BIT_XOR;
 			break;
 

@@ -1150,7 +1150,7 @@ static int precedence_of(TokenType t)
 
 static int is_right_assoc(TokenType t)
 {
-	return t == TOKEN_CAROT;
+	return t == TOKEN_CARET;
 }
 
 static ASTNode *parse_binary_prec(Parser *parser, int min_prec)

@@ -1281,7 +1281,7 @@ CompleteType analyze_binary_op(ASTNode *binary_node, SymbolTable *table)
 	//  Bitwise operators: |, ^, &, <<, >>, >>>, ~
 	//
 	if (op_type == TOKEN_PLUS || op_type == TOKEN_MINUS || op_type == TOKEN_ASTERISK ||
-		op_type == TOKEN_SLASH || op_type == TOKEN_PERCENT || op_type == TOKEN_CAROT ||
+		op_type == TOKEN_SLASH || op_type == TOKEN_PERCENT || op_type == TOKEN_CARET ||
 		op_type == TOKEN_EXPONENT || op_type == TOKEN_AMPERSAND || op_type == TOKEN_EXPONENT ||
 		op_type == TOKEN_LEFT_SHIFT || op_type == TOKEN_RIGHT_SHIFT || op_type == TOKEN_BITWISE_OR ||
 		op_type == TOKEN_BITWISE_AND || op_type == TOKEN_BITWISE_XOR || op_type == TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT ||

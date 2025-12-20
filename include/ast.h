@@ -25,64 +25,64 @@ typedef struct CompleteType {
 typedef enum { NODE_ACTUAL, NODE_EXPECTED } NodeKind;
 
 typedef enum {
-	// 
-	//  Keywords
-	// 
-	AST_FILE,
-	AST_PROGRAM,
-	AST_IF,
-	AST_WHILE,
-	AST_INCLUDE,
-	AST_BREAK,
-	AST_CONTINUE,
-	AST_RETURN,
-	AST_FOR,
-	AST_ELSE,
-	
-	// 
-	//  Uncategorized
-	// 
-	AST_DECLARATION,
-	AST_ASSIGNMENT,
-	AST_STATEMENT,
-	AST_IDENTIFIER,
-	AST_FUNCTION_CALL,
-	AST_BLOCK,
-	AST_COMPARISON,
-	AST_ARRAY_ACCESS,
-	AST_MEMBER_ACCESS,
-	AST_TYPE,
-	AST_PARAMS,
-	AST_VARIADIC_PARAM,
-	
-	// 
-	//  Expressions
-	// 
-	AST_EXPRESSION,
-	AST_BINARY_EXPR,
-	AST_UNARY_EXPR,
-	AST_INCREMENT_EXPR,
-	AST_GROUPED_EXPR,
-	AST_TERNARY_EXPR,
-	AST_CAST_EXPR,
-	AST_ADDRESS_OF,
-	AST_DEREFERENCE,
-	AST_ARRAY_INDEX,
-	
-	// 
-	//  Types of Operators
-	// 
-	AST_BINARY_OP,
-	AST_UNARY_OP,
-	AST_LOGICAL_OP,
-	AST_OPERATORS,
-	
-	// 
-	//  Literals
-	// 
-	AST_LITERAL,
-	AST_ARRAY_LITERAL,
-	AST_SINGLE_COMMENT
+    // 
+    // Keywords
+    // 
+    AST_FILE,
+    AST_PROGRAM,
+    AST_IF,
+    AST_WHILE,
+    AST_INCLUDE,
+    AST_BREAK,
+    AST_CONTINUE,
+    AST_RETURN,
+    AST_FOR,
+    AST_ELSE,
+
+    // 
+    // Declarations & Statements
+    // 
+    AST_DECLARATION,
+    AST_ASSIGNMENT,
+    AST_STATEMENT,
+    AST_IDENTIFIER,
+    AST_FUNCTION_CALL,
+    AST_BLOCK,
+    AST_COMPARISON,
+    AST_ARRAY_ACCESS,
+    AST_MEMBER_ACCESS,
+    AST_TYPE,
+    AST_PARAMS,
+    AST_VARIADIC_PARAM,
+
+    // 
+    // Expressions
+    // 
+    AST_EXPRESSION,
+    AST_BINARY_EXPR,
+    AST_UNARY_EXPR,
+    AST_INCREMENT_EXPR,
+    AST_GROUPED_EXPR,
+    AST_TERNARY_EXPR,
+    AST_CAST_EXPR,
+    AST_ADDRESS_OF,
+    AST_DEREFERENCE,
+    AST_ARRAY_INDEX,
+
+    // 
+    // Operators
+    // 
+    AST_BINARY_OP,
+    AST_UNARY_OP,
+    AST_LOGICAL_OP,
+    AST_OPERATORS,
+
+    // 
+    // Literals & Comments
+    // 
+    AST_LITERAL,
+    AST_ARRAY_LITERAL,
+    AST_SINGLE_COMMENT
 } ASTNodeType;
 
 typedef struct ASTNode ASTNode;

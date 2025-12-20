@@ -1,5 +1,6 @@
 __pycache__/
-.vscode/
+# allow setting to not have pesky spelling errors
+.vscode/scp.json 
 .DS_Store
 .cache
 compile_commands.json
