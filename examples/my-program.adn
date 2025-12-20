@@ -1,18 +1,17 @@
 include adan.io;
+include adan.system;
 
 program::int main() {
     print("Enter your name: ");
 
     claimedName::string = readln();
-
-    println(get_current_user());
     
-    equals::bool = (bool)(claimedName == get_current_user());
+    equals::bool = (bool)(claimedName > get_current_user()); // docker env seems to always equate to true; MacOS works haven't tested my arch machine with a more proper GNU Linux environment
 
     if (equals) {
         println("Hello my beautiful " + claimedName + "!");
     } else {
-        println("Hello my beautiful " + claimedName + "; I thoght you went by ${get_current_user()}?");
+        println("Hello my beautiful " + claimedName + "; I thought you went by ${get_current_user()}?");
     }
 
     return 0;

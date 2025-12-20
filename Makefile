@@ -27,13 +27,25 @@ execute: compile
 	docker exec -i adan-dev-container sh -c "./compiled/program"
 	
 	make format -silent
+
+compile-native: clean
+	gcc -DBUILDING_COMPILER_MAIN src/*.c tests/*.c lib/adan/*.c -I include -I lib/adan/include -o compiled/main
+	chown -R $$(id -u):$$(id -g) compiled
+
+
+execute-native: compile-native
+	compiled/main examples/my-program.adn -o ./compiled/program
+
+	./compiled/program
+	
+	make format -silent
 	
 debug: compile
 	make execute -silent
 
-clean: docker
-	docker exec -i adan-dev-container sh -c "rm -rf compiled"
-	docker exec -i adan-dev-container sh -c "mkdir -p compiled"
+clean:
+	rm -rf compiled
+	mkdir -p compiled
 
 # 
 #  CODESPACES EXCLUSIVE

@@ -828,6 +828,7 @@ char *generate_ir(ASTNode *node)
 	{
 		if (node->child_count < 2)
 			return NULL;
+
 		char *left = generate_ir(node->children[0]);
 		char *right = generate_ir(node->children[1]);
 		if (!left || !right)
@@ -844,20 +845,13 @@ char *generate_ir(ASTNode *node)
 		if (node->token.type == TOKEN_AND)
 		{
 			char *l_false = new_temporary();
-			IRInstruction *check_left = create_instruction(IR_JEQ, left, "0", l_false);
-			emit(check_left);
-			IRInstruction *check_right = create_instruction(IR_JEQ, right, "0", l_false);
-			emit(check_right);
-			IRInstruction *assign_true = create_instruction(IR_ASSIGN, "1", NULL, result);
-			emit(assign_true);
-			IRInstruction *jump_end = create_instruction(IR_JMP, l_end, NULL, NULL);
-			emit(jump_end);
-			IRInstruction *false_label = create_instruction(IR_LABEL, l_false, NULL, NULL);
-			emit(false_label);
-			IRInstruction *assign_false = create_instruction(IR_ASSIGN, "0", NULL, result);
-			emit(assign_false);
-			IRInstruction *end_label = create_instruction(IR_LABEL, l_end, NULL, NULL);
-			emit(end_label);
+			emit(create_instruction(IR_JEQ, left, "0", l_false));
+			emit(create_instruction(IR_JEQ, right, "0", l_false));
+			emit(create_instruction(IR_ASSIGN, "1", NULL, result));
+			emit(create_instruction(IR_JMP, l_end, NULL, NULL));
+			emit(create_instruction(IR_LABEL, l_false, NULL, NULL));
+			emit(create_instruction(IR_ASSIGN, "0", NULL, result));
+			emit(create_instruction(IR_LABEL, l_end, NULL, NULL));
 			free(left);
 			free(right);
 			free(l_true);
@@ -868,22 +862,46 @@ char *generate_ir(ASTNode *node)
 
 		if (node->token.type == TOKEN_OR)
 		{
-			IRInstruction *check_left = create_instruction(IR_JNE, left, "0", l_true);
-			emit(check_left);
-			IRInstruction *check_right = create_instruction(IR_JNE, right, "0", l_true);
-			emit(check_right);
-			IRInstruction *assign_false = create_instruction(IR_ASSIGN, "0", NULL, result);
-			emit(assign_false);
-			IRInstruction *jump_end = create_instruction(IR_JMP, l_end, NULL, NULL);
-			emit(jump_end);
-			IRInstruction *true_label = create_instruction(IR_LABEL, l_true, NULL, NULL);
-			emit(true_label);
-			IRInstruction *assign_true = create_instruction(IR_ASSIGN, "1", NULL, result);
-			emit(assign_true);
-			IRInstruction *end_label = create_instruction(IR_LABEL, l_end, NULL, NULL);
-			emit(end_label);
+			emit(create_instruction(IR_JNE, left, "0", l_true));
+			emit(create_instruction(IR_JNE, right, "0", l_true));
+			emit(create_instruction(IR_ASSIGN, "0", NULL, result));
+			emit(create_instruction(IR_JMP, l_end, NULL, NULL));
+			emit(create_instruction(IR_LABEL, l_true, NULL, NULL));
+			emit(create_instruction(IR_ASSIGN, "1", NULL, result));
+			emit(create_instruction(IR_LABEL, l_end, NULL, NULL));
 			free(left);
 			free(right);
+			free(l_true);
+			free(l_end);
+			return result;
+		}
+
+		if (node->children[0]->annotated_type.type == TYPE_STRING &&
+			node->children[1]->annotated_type.type == TYPE_STRING)
+		{
+			if (node->token.type != TOKEN_EQUALS && node->token.type != TOKEN_NOT_EQUALS)
+			{
+				fprintf(stderr, "Only == and != allowed for strings\n");
+				exit(1);
+			}
+
+			char *cmp = new_temporary();
+			IRInstruction *call = create_instruction(IR_CALL, "__string_eq", left, right);
+			call->result = cmp;
+			emit(call);
+
+			IROp branch = (node->token.type == TOKEN_EQUALS) ? IR_JEQ : IR_JNE;
+
+			emit(create_instruction(branch, cmp, "1", l_true));
+			emit(create_instruction(IR_ASSIGN, "0", NULL, result));
+			emit(create_instruction(IR_JMP, l_end, NULL, NULL));
+			emit(create_instruction(IR_LABEL, l_true, NULL, NULL));
+			emit(create_instruction(IR_ASSIGN, "1", NULL, result));
+			emit(create_instruction(IR_LABEL, l_end, NULL, NULL));
+
+			free(left);
+			free(right);
+			free(cmp);
 			free(l_true);
 			free(l_end);
 			return result;
@@ -915,35 +933,22 @@ char *generate_ir(ASTNode *node)
 			break;
 		}
 
-		IRInstruction *jump_true = create_instruction(opcode, left, right, l_true);
-		emit(jump_true);
-
-		IRInstruction *assign_false = create_instruction(IR_ASSIGN, "0", NULL, result);
-		emit(assign_false);
-
-		IRInstruction *jump_end = create_instruction(IR_JMP, l_end, NULL, NULL);
-		emit(jump_end);
-
-		IRInstruction *true_label = create_instruction(IR_LABEL, l_true, NULL, NULL);
-		emit(true_label);
-
-		IRInstruction *assign_true = create_instruction(IR_ASSIGN, "1", NULL, result);
-		emit(assign_true);
-
-		IRInstruction *end_label = create_instruction(IR_LABEL, l_end, NULL, NULL);
-		emit(end_label);
+		emit(create_instruction(opcode, left, right, l_true));
+		emit(create_instruction(IR_ASSIGN, "0", NULL, result));
+		emit(create_instruction(IR_JMP, l_end, NULL, NULL));
+		emit(create_instruction(IR_LABEL, l_true, NULL, NULL));
+		emit(create_instruction(IR_ASSIGN, "1", NULL, result));
+		emit(create_instruction(IR_LABEL, l_end, NULL, NULL));
 
 		free(left);
 		free(right);
 		free(l_true);
 		free(l_end);
-
 		return result;
 	}
 
 	case AST_LOGICAL_OP:
 	{
-		// Logical operators: short-circuit style (current implementation evaluates both sides)
 		if (node->child_count < 2)
 			return NULL;
 		char *left = generate_ir(node->children[0]);

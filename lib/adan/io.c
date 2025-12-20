@@ -21,5 +21,5 @@ const char* readln() {
         return buff;
     }
     free(buff);
-    return NULL;
+    return "";
 }

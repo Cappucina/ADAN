@@ -62,13 +62,21 @@ char* lower(char* str) {
 }
 
 char* trim(char* str) {
+    if (!str) return NULL;
     size_t len = strlen(str);
+    if (len == 0) {
+        char* empty = malloc(1);
+        if (!empty) return NULL;
+        empty[0] = '\0';
+        return empty;
+    }
+
     size_t start = 0;
     size_t end = len - 1;
-    while (start < len && isspace(str[start])) {
+    while (start < len && isspace((unsigned char)str[start])) {
         start++;
     }
-    while (end > start && isspace(str[end])) {
+    while (end > start && isspace((unsigned char)str[end])) {
         end--;
     }
     char* result = malloc(end - start + 2);
@@ -204,7 +212,18 @@ static const char* cast_internal(const void* input) {
 }
 
 const char* to_string(const void* input) {
-    return cast_internal(input);
+    if (!input) return "(null)";
+
+    // Heuristic: if the pointer points to printable characters, treat it as a string
+    const char* str = (const char*)input;
+    if (str[0] != '\0' && str[0] >= 32 && str[0] <= 126) {
+        return str; // treat as actual string
+    }
+
+    // Otherwise treat as integer/pointer
+    static char buf[64];
+    snprintf(buf, sizeof(buf), "%ld", (long)(intptr_t)input);
+    return buf;
 }
 
 intptr_t to_int(const void* input) {
@@ -236,6 +255,11 @@ double to_float(const void* input) {
     return atof((const char*)input);
 }
 
+int _string_eq(const char* a, const char* b) {
+    if (!a || !b) return 0;
+    return strcmp(a, b) == 0;
+}
+
 const void* cast_to(int to_type, const void* input) {
     intptr_t ip = (intptr_t)input;
     int is_small_int = (ip > INTPTR_MIN && ip < INTPTR_MAX);
@@ -259,6 +283,10 @@ const void* cast_to(int to_type, const void* input) {
         default:
             return input;
     }
+}
+
+bool compare(const char* a, const char* b) {
+    return strcmp(a, b) == 0;
 }
 
 #endif
