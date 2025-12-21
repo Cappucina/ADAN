@@ -20,7 +20,7 @@ typedef enum {
 
 typedef struct CompleteType {
     Type type;
-    struct CompleteType* pointsTo;
+    struct CompleteType* points_to;
 } CompleteType;
 
 typedef enum { NODE_ACTUAL, NODE_EXPECTED } NodeKind;

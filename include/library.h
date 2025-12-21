@@ -28,7 +28,7 @@ typedef struct LibraryRegistry {
 	char** search_paths;
 } LibraryRegistry;
 
-LibraryRegistry* init_library_registry(compilerFlags* flags);
+LibraryRegistry* init_library_registry(CompilerFlags* flags);
 
 void free_library_function(LibraryFunction* func);
 

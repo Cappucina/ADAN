@@ -35,7 +35,7 @@ void run_lexer_test(LexerTest test) {
 	free(lexer);
 }
 
-void create_lexer_tests(compilerFlags* flags) {
+void create_lexer_tests(CompilerFlags* flags) {
 	LexerTest tests[] = {
 		{ "x::int;",
 			{ 

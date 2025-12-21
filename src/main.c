@@ -156,7 +156,7 @@ static char *compiler_read_file_source(const char *file_path)
 	return out;
 }
 
-bool handleSpecialFlags(compilerFlags *flags)
+bool handle_special_flags(CompilerFlags *flags)
 {
 	if (flags->help)
 	{
@@ -173,7 +173,7 @@ out:
 int main(int argc, char **argv)
 {
 	int res = 0;
-	compilerFlags *flags = NULL;
+	CompilerFlags *flags = NULL;
 	char *file_source = NULL;
 	Lexer *lexer = NULL;
 	ASTNode *ast = NULL;
@@ -194,7 +194,7 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
-	if (handleSpecialFlags(flags))
+	if (handle_special_flags(flags))
 		goto out;
 
 	global_library_registry = init_library_registry(flags);

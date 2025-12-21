@@ -26,9 +26,9 @@ static char *trim(char *s)
 
 static CompleteType map_c_type(const char *t)
 {
-    CompleteType TypeUnknown = { TYPE_UNKNOWN, NULL };
+    CompleteType type_unknown = { TYPE_UNKNOWN, NULL };
 
-    if (!t) return TypeUnknown;
+    if (!t) return type_unknown;
 
     char buf[128];
     int j = 0;
@@ -64,40 +64,40 @@ static CompleteType map_c_type(const char *t)
 
         for (int i = 1; i < depth; i++) {
             CompleteType wrap = { TYPE_ARRAY, malloc(sizeof(CompleteType)) };
-            if (!wrap.pointsTo) return TypeUnknown;
-            *wrap.pointsTo = t;
+            if (!wrap.points_to) return type_unknown;
+            *wrap.points_to = t;
             t = wrap;
         }
 
         return t;
     }
 
-    CompleteType baseType;
+    CompleteType base_type;
 
     if (!strcmp(base, "int") ||
         !strcmp(base, "long") ||
         !strcmp(base, "size_t") ||
         !strcmp(base, "uid_t")) {
-        baseType = (CompleteType){ TYPE_INT, NULL };
+        base_type = (CompleteType){ TYPE_INT, NULL };
     }
     else if (!strcmp(base, "float") || !strcmp(base, "double")) {
-        baseType = (CompleteType){ TYPE_FLOAT, NULL };
+        base_type = (CompleteType){ TYPE_FLOAT, NULL };
     }
     else if (!strcmp(base, "bool") || !strcmp(base, "_Bool")) {
-        baseType = (CompleteType){ TYPE_BOOLEAN, NULL };
+        base_type = (CompleteType){ TYPE_BOOLEAN, NULL };
     }
     else if (!strcmp(base, "void")) {
-        baseType = (CompleteType){ TYPE_VOID, NULL };
+        base_type = (CompleteType){ TYPE_VOID, NULL };
     }
     else {
-        return TypeUnknown;
+        return type_unknown;
     }
 
-    CompleteType tcur = baseType;
+    CompleteType tcur = base_type;
     for (int i = 0; i < depth; i++) {
         CompleteType wrap = { TYPE_POINTER, malloc(sizeof(CompleteType)) };
-        if (!wrap.pointsTo) return TypeUnknown;
-        *wrap.pointsTo = tcur;
+        if (!wrap.points_to) return type_unknown;
+        *wrap.points_to = tcur;
         tcur = wrap;
     }
 
@@ -194,7 +194,7 @@ static LibraryFunction *parse_c_prototype(char *line)
     return func;
 }
 
-LibraryRegistry *init_library_registry(compilerFlags *flags)
+LibraryRegistry *init_library_registry(CompilerFlags *flags)
 {
 	LibraryRegistry *registry = malloc(sizeof(LibraryRegistry));
 	if (!registry)

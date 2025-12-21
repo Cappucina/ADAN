@@ -49,9 +49,9 @@ typedef struct {
     char** libs;
     int lib_count;
     bool unknown_flag;
-} compilerFlags;
+} CompilerFlags;
 
-typedef void (*flag_setter)(compilerFlags*, void* value);
+typedef void (*flag_setter)(CompilerFlags*, void* value);
 
 typedef struct {
     const char* name;
@@ -61,7 +61,7 @@ typedef struct {
     void* value;
 } FlagEntry;
 
-compilerFlags* flags_init();
-int parse_flags(int argc, char **argv, compilerFlags *flags);
+CompilerFlags* flags_init();
+int parse_flags(int argc, char **argv, CompilerFlags *flags);
 
 #endif // FLAGS_H

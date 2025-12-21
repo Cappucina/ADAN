@@ -4,23 +4,23 @@
 #include <stdbool.h>
 #include "flags.h"
 
-static bool parse_bool(const char *val, bool defaultVal) {
-    if (!val) return defaultVal;
+static bool parse_bool(const char *val, bool default_LVal) {
+    if (!val) return default_LVal;
     return (strcmp(val, "true") == 0 || strcmp(val, "1") == 0);
 }
 
-void set_help(compilerFlags *f, void* extra) { f->help = parse_bool((char*)extra, true); }
-void set_verbose(compilerFlags *f, void* extra) { f->verbose = parse_bool((char*)extra, true); }
-void set_keepASM(compilerFlags *f, void* extra) { f->keep_asm = parse_bool((char*)extra, true); }
-void set_warningsAsErrors(compilerFlags *f, void* extra) { f->warnings_as_errors = parse_bool((char*)extra, true); }
-void set_runAfterCompile(compilerFlags *f, void* extra) { f->run_after_compile = parse_bool((char*)extra, true); }
-void set_compileTime(compilerFlags *f, void* extra) { f->compile_time = parse_bool((char*)extra, true); }
-void set_input(compilerFlags *f, void* extra) {
+void set_help(CompilerFlags *f, void* extra) { f->help = parse_bool((char*)extra, true); }
+void set_verbose(CompilerFlags *f, void* extra) { f->verbose = parse_bool((char*)extra, true); }
+void set_keepASM(CompilerFlags *f, void* extra) { f->keep_asm = parse_bool((char*)extra, true); }
+void set_warningsAsErrors(CompilerFlags *f, void* extra) { f->warnings_as_errors = parse_bool((char*)extra, true); }
+void set_runAfterCompile(CompilerFlags *f, void* extra) { f->run_after_compile = parse_bool((char*)extra, true); }
+void set_compileTime(CompilerFlags *f, void* extra) { f->compile_time = parse_bool((char*)extra, true); }
+void set_input(CompilerFlags *f, void* extra) {
     if (f->input) free(f->input);
     if (extra) f->input = strdup((char*)extra);
     else f->input = strdup("");
 }
-void set_lib(compilerFlags *f, void* extra) {
+void set_lib(CompilerFlags *f, void* extra) {
     if (!extra) return;
     char** newLibs = realloc(f->libs, sizeof(char*) * (f->lib_count + 1));
     if (!newLibs) return; // handle allocation failure
@@ -28,15 +28,15 @@ void set_lib(compilerFlags *f, void* extra) {
     f->libs[f->lib_count] = strdup((char*)extra);
     f->lib_count++;
 }
-void set_output(compilerFlags *f, void* extra) {
+void set_output(CompilerFlags *f, void* extra) {
     if (f->output) free(f->output);
     if (extra) f->output = strdup((char*)extra);
     else f->output = strdup("");
 }
-void set_unknownFlag(compilerFlags *f, void* extra) { f->unknown_flag = true; }
+void set_unknownFlag(CompilerFlags *f, void* extra) { f->unknown_flag = true; }
 
-compilerFlags* flags_init() {
-    compilerFlags *flags = malloc(sizeof(compilerFlags));
+CompilerFlags* flags_init() {
+    CompilerFlags *flags = malloc(sizeof(CompilerFlags));
     if (!flags) return NULL;
 
 #ifdef __APPLE__
@@ -96,7 +96,7 @@ FlagEntry flagRegistry[] = {
 
 const int flagCount = sizeof(flagRegistry) / sizeof(flagRegistry[0]);
 
-int parse_flags(int argc, char **argv, compilerFlags *flags) {
+int parse_flags(int argc, char **argv, CompilerFlags *flags) {
     int argIndex = 1;
     if (argc > 1 && argv[1][0] != '-') {
         set_input(flags, argv[1]);
