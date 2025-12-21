@@ -1234,8 +1234,8 @@ CompleteType analyze_binary_op(ASTNode *binary_node, SymbolTable *table)
 	CompleteType String_type;
 	String_type.type = TYPE_STRING;
 
-	CompleteType Boolean_type;
-	Boolean_type.type = TYPE_BOOLEAN;
+	CompleteType boolean_type;
+	boolean_type.type = TYPE_BOOLEAN;
 
 	if (!binary_node || binary_node->child_count < 2)
 	{
@@ -1376,7 +1376,7 @@ CompleteType analyze_binary_op(ASTNode *binary_node, SymbolTable *table)
 			return Unknown_type;
 		}
 
-		return Boolean_type;
+		return boolean_type;
 	}
 
 	//
@@ -1393,7 +1393,7 @@ CompleteType analyze_binary_op(ASTNode *binary_node, SymbolTable *table)
 						   type_to_string(left_type), type_to_string(right_type), binary_node->token.text);
 			return Unknown_type;
 		}
-		return Boolean_type;
+		return boolean_type;
 	}
 
 	return Unknown_type;
@@ -1404,8 +1404,8 @@ CompleteType analyze_unary_op(ASTNode *unary_node, SymbolTable *table)
 	CompleteType Unknown_type;
 	Unknown_type.type = TYPE_UNKNOWN;
 
-	CompleteType Boolean_type;
-	Boolean_type.type = TYPE_BOOLEAN;
+	CompleteType boolean_type;
+	boolean_type.type = TYPE_BOOLEAN;
 
 	if (!unary_node || unary_node->child_count < 1)
 	{
@@ -1428,7 +1428,7 @@ CompleteType analyze_unary_op(ASTNode *unary_node, SymbolTable *table)
 			semantic_error(unary_node, SemanticErrorMessages[SEMANTIC_UNARY_OP_INVALID_TYPE], unary_node->token.text, "boolean");
 			return Unknown_type;
 		}
-		return Boolean_type;
+		return boolean_type;
 	}
 
 	if (op_type == TOKEN_MINUS)
@@ -1464,7 +1464,7 @@ CompleteType parse_type_recursive(const char *type_str)
 	CompleteType Float_type = {.type = TYPE_FLOAT};
 	CompleteType String_type = {.type = TYPE_STRING};
 	CompleteType Char_type = {.type = TYPE_CHAR};
-	CompleteType Boolean_type = {.type = TYPE_BOOLEAN};
+	CompleteType boolean_type = {.type = TYPE_BOOLEAN};
 	CompleteType Null_type = {.type = TYPE_NULL};
 	CompleteType Unknown_type = {.type = TYPE_UNKNOWN};
 	CompleteType Void_type = {.type = TYPE_VOID};
@@ -1488,7 +1488,7 @@ CompleteType parse_type_recursive(const char *type_str)
 	if (strcmp(type_str, "float") == 0)
 		return Float_type;
 	if (strcmp(type_str, "bool") == 0)
-		return Boolean_type;
+		return boolean_type;
 	if (strcmp(type_str, "char") == 0)
 		return Char_type;
 	if (strcmp(type_str, "string") == 0)
@@ -1503,7 +1503,7 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 	CompleteType Float_type = {.type = TYPE_FLOAT};
 	CompleteType String_type = {.type = TYPE_STRING};
 	CompleteType Char_type = {.type = TYPE_CHAR};
-	CompleteType Boolean_type = {.type = TYPE_BOOLEAN};
+	CompleteType boolean_type = {.type = TYPE_BOOLEAN};
 	CompleteType Null_type = {.type = TYPE_NULL};
 	CompleteType Unknown_type = {.type = TYPE_UNKNOWN};
 	CompleteType Void_type = {.type = TYPE_VOID};
@@ -1540,8 +1540,8 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 			annotate_node_type(expr_node, String_type);
 			return String_type;
 		case TOKEN_BOOLEAN:
-			annotate_node_type(expr_node, Boolean_type);
-			return Boolean_type;
+			annotate_node_type(expr_node, boolean_type);
+			return boolean_type;
 		case TOKEN_CHAR:
 			annotate_node_type(expr_node, Char_type);
 			return Char_type;
@@ -1611,7 +1611,7 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 		case TOKEN_TRUE:
 		case TOKEN_FALSE:
 		case TOKEN_BOOLEAN:
-			inferred = Boolean_type;
+			inferred = boolean_type;
 			break;
 
 		case TOKEN_CHAR:
@@ -1651,11 +1651,9 @@ CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 
 bool check_type_compatibility(CompleteType expected, CompleteType actual)
 {
-	/* Unknown propagates: do not hard-fail, but incompatible */
 	if (expected.type == TYPE_UNKNOWN || actual.type == TYPE_UNKNOWN)
 		return false;
 
-	/* Array handling: structural comparison */
 	if (expected.type == TYPE_ARRAY || actual.type == TYPE_ARRAY)
 	{
 		if (expected.type != TYPE_ARRAY || actual.type != TYPE_ARRAY)
@@ -1667,19 +1665,15 @@ bool check_type_compatibility(CompleteType expected, CompleteType actual)
 		return check_type_compatibility(*expected.points_to, *actual.points_to);
 	}
 
-	/* Exact match */
 	if (expected.type == actual.type)
 		return true;
 
-	/* Numeric widening */
 	if (is_numeric_type(expected) && is_numeric_type(actual))
 		return true;
 
-	/* char → numeric */
 	if (is_numeric_type(expected) && actual.type == TYPE_CHAR)
 		return true;
-
-	/* null compatibility */
+		
 	if (actual.type == TYPE_NULL &&
 		(expected.type == TYPE_STRING ||
 		 expected.type == TYPE_ARRAY ||

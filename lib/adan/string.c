@@ -214,8 +214,9 @@ static const char* cast_internal(const void* input) {
 
 const char* to_string(const void* input) {
     if (!input) return "";
-
-    return (const char*)input;
+    static char buffer[64];
+    snprintf(buffer, sizeof(buffer), "%ld", (long)input);
+    return buffer;
 }
 
 intptr_t to_int(const void* input) {
@@ -229,13 +230,20 @@ int to_bool(const void* input) {
     if (!input) return 0;
 
     uintptr_t val = (uintptr_t)input;
-    if (val == 0) return 0;
-    if (val == 1) return 1;
+
+    if (val == 0 || val == 1) return val;
 
     const char* s = (const char*)input;
+    if (!s) return 0;
+
     if (strcmp(s, "true") == 0) return 1;
     if (strcmp(s, "false") == 0) return 0;
-    return atoi(s) != 0;
+
+    char* endptr;
+    long parsed = strtol(s, &endptr, 10);
+    if (endptr != s) return parsed != 0;
+
+    return 1;
 }
 
 int to_char(const void* input) {

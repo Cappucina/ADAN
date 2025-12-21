@@ -2,19 +2,27 @@ include adan.io;
 include adan.system;
 
 program::int main() {
-    print("Enter your name: ");
+    // print("Enter your name: ");
 
-    claimedName::string = readln();
+    // claimedName::string = readln();
     
-    user::string = get_current_user();
+    // user::string = get_current_user();
 
-    equate::bool = (bool)(user == claimedName);
+    // equate::bool = (bool)(user == claimedName);
 
-    if (equate) {
-        println("Hello my beautiful " + user + "!");
-    } else {
-        println("Hello my beautiful " + claimedName + "; I thought you went by ${user}?");
+    // if (equate) {
+    //     println("Hello, my beautiful " + user + "!");
+    // } else {
+    //     println("Hello, my beautiful " + claimedName + "; I thought you went by ${user}?");
+    // }
+
+    unused::bool = false;
+    
+    for (i::int = -4; i < 5; i++) {
+        println("${(string)i}");
     }
-    
+
     return 0;
+
+    println("unreachable");
 }

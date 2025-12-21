@@ -9,7 +9,7 @@ void print(const char* str) {
 }
 
 void println(const char* str) {
-    if (!str) str = "";
+    if (!str || str[0] == '\0') return;
 	print(str);
 	print("\n");
 }

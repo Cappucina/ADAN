@@ -1102,8 +1102,14 @@ char *generate_ir(ASTNode *node)
 
 	case AST_FOR:
 	{
-		if (node->child_count < 3)
-			return NULL;
+		if (node->child_count > 3 && node->children[3])
+			generate_ir(node->children[3]);
+
+		if (node->children[2])
+		{
+			char *incr_result = generate_ir(node->children[2]);
+			free(incr_result);
+		}
 
 		char *outer_start = loop_start_label;
 		char *outer_end = loop_end_label;
@@ -1121,14 +1127,12 @@ char *generate_ir(ASTNode *node)
 		IRInstruction *label_inst = create_instruction(IR_LABEL, loop_label, NULL, NULL);
 		emit(label_inst);
 
+		if (!node->children[1]) {
+			return NULL;
+		}
+
 		char *condition = generate_ir(node->children[1]);
-		if (!condition)
-		{
-			loop_start_label = outer_start;
-			loop_end_label = outer_end;
-			free(loop_label);
-			free(end_label);
-			free(continue_label);
+		if (!condition) {
 			return NULL;
 		}
 

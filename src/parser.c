@@ -1498,8 +1498,18 @@ ASTNode *parse_for_statement(Parser *parser)
 	increment_node->children[0] = inc_var_node;
 	increment_node->children[1] = inc_op_node;
 
-	if (!expect(parser, TOKEN_RPAREN, PARSER_EXPECTED, "')'", parser->current_token.text))
-	{
+	if (parser->current_token.type == TOKEN_SEMICOLON) {
+		match(parser, TOKEN_SEMICOLON);
+		if (!expect(parser, TOKEN_RPAREN, PARSER_EXPECTED, "')'", parser->current_token.text)) {
+			free_ast(assignment_node);
+			free_ast(condition_node);
+			free_ast(increment_node);
+			return NULL;
+		}
+	} else if (parser->current_token.type == TOKEN_RPAREN) {
+		match(parser, TOKEN_RPAREN);
+	} else {
+		set_error(parser, PARSER_EXPECTED, "'; or )'", parser->current_token.text);
 		free_ast(assignment_node);
 		free_ast(condition_node);
 		free_ast(increment_node);

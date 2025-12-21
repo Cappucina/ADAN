@@ -5,11 +5,14 @@ TODO
 MISSING FEATURES
     - Structs
     - Enums
+    - Proper exiting
 
 ISSUES
     - Unsafe with memory (memory leaks)
     - Possible over-allocation for stack memory (stack calculated globally, not per-function)
     - No real registry allocation causing inefficient code generation
+    - Returning on the main function doesn't return and code underneath will execute.
+    - For loop is not accepting of a expression line i < 5. Instead of bool it equates to type of i.
 
 IDEAS
     - Either types, for example: `my_var::int || string = 1;`, where it can be either a number or a string
