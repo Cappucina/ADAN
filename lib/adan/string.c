@@ -7,6 +7,7 @@
 #include <math.h>
 #include "ast.h"
 
+
 char* concat(char* str1, char* str2) {
 	size_t len1 = strlen(str1);
 	size_t len2 = strlen(str2);
@@ -212,18 +213,9 @@ static const char* cast_internal(const void* input) {
 }
 
 const char* to_string(const void* input) {
-    if (!input) return "(null)";
+    if (!input) return "";
 
-    // Heuristic: if the pointer points to printable characters, treat it as a string
-    const char* str = (const char*)input;
-    if (str[0] != '\0' && str[0] >= 32 && str[0] <= 126) {
-        return str; // treat as actual string
-    }
-
-    // Otherwise treat as integer/pointer
-    static char buf[64];
-    snprintf(buf, sizeof(buf), "%ld", (long)(intptr_t)input);
-    return buf;
+    return (const char*)input;
 }
 
 intptr_t to_int(const void* input) {
@@ -234,11 +226,16 @@ intptr_t to_int(const void* input) {
 }
 
 int to_bool(const void* input) {
-    intptr_t ip = (intptr_t)input;
-    if (ip > INTPTR_MIN && ip < INTPTR_MAX) return ip != 0;
     if (!input) return 0;
-    if (strcmp((const char*)input, "true") == 0) return 1;
-    return atoi((const char*)input) != 0;
+
+    uintptr_t val = (uintptr_t)input;
+    if (val == 0) return 0;
+    if (val == 1) return 1;
+
+    const char* s = (const char*)input;
+    if (strcmp(s, "true") == 0) return 1;
+    if (strcmp(s, "false") == 0) return 0;
+    return atoi(s) != 0;
 }
 
 int to_char(const void* input) {
@@ -253,11 +250,6 @@ double to_float(const void* input) {
     if (ip > INTPTR_MIN && ip < INTPTR_MAX) return (double)ip;
     if (!input) return 0.0;
     return atof((const char*)input);
-}
-
-int _string_eq(const char* a, const char* b) {
-    if (!a || !b) return 0;
-    return strcmp(a, b) == 0;
 }
 
 const void* cast_to(int to_type, const void* input) {
@@ -285,8 +277,9 @@ const void* cast_to(int to_type, const void* input) {
     }
 }
 
-bool compare(const char* a, const char* b) {
-    return strcmp(a, b) == 0;
+int string_eq(const void* a, const void* b) {
+    if (!a || !b) return 0;
+    return strcmp((const char*)a, (const char*)b) == 0;
 }
 
 #endif

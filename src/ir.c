@@ -87,6 +87,14 @@ void print_ir()
 	{
 		switch (current->op)
 		{
+		case IR_STRING_EQ:
+			printf("%s = STRING_EQ(%s, %s)\n", current->result, current->arg1, current->arg2);
+			break;
+
+		case IR_STRING_NEQ:
+			printf("%s = STRING_NEQ(%s, %s)\n", current->result, current->arg1, current->arg2);
+    		break;
+		
 		case IR_BIT_ZERO_FILL_LEFT_SHIFT:
 			printf("%s = %s << %s\n", current->result, current->arg1, current->arg2);
 			break;
@@ -511,7 +519,6 @@ char *generate_ir(ASTNode *node)
 
 		if (strcmp(func, "cast_to") == 0)
 		{
-			// pass the type id as the first param, then the value
 			char type_id_buf[16];
 			snprintf(type_id_buf, sizeof(type_id_buf), "%d", type_node->token.type == TOKEN_INT ? TYPE_INT : (type_node->token.type == TOKEN_FLOAT ? TYPE_FLOAT : TYPE_UNKNOWN));
 			IRInstruction *p1 = create_instruction(IR_PARAM, strdup(type_id_buf), NULL, NULL);
@@ -876,7 +883,7 @@ char *generate_ir(ASTNode *node)
 			return result;
 		}
 
-		if (node->children[0]->annotated_type.type == TYPE_STRING &&
+		if (node->children[0]->annotated_type.type == TYPE_STRING ||
 			node->children[1]->annotated_type.type == TYPE_STRING)
 		{
 			if (node->token.type != TOKEN_EQUALS && node->token.type != TOKEN_NOT_EQUALS)
@@ -885,23 +892,12 @@ char *generate_ir(ASTNode *node)
 				exit(1);
 			}
 
-			char *cmp = new_temporary();
-			IRInstruction *call = create_instruction(IR_CALL, "__string_eq", left, right);
-			call->result = cmp;
-			emit(call);
+			IROp string_op = (node->token.type == TOKEN_EQUALS) ? IR_STRING_EQ : IR_STRING_NEQ;
 
-			IROp branch = (node->token.type == TOKEN_EQUALS) ? IR_JEQ : IR_JNE;
-
-			emit(create_instruction(branch, cmp, "1", l_true));
-			emit(create_instruction(IR_ASSIGN, "0", NULL, result));
-			emit(create_instruction(IR_JMP, l_end, NULL, NULL));
-			emit(create_instruction(IR_LABEL, l_true, NULL, NULL));
-			emit(create_instruction(IR_ASSIGN, "1", NULL, result));
-			emit(create_instruction(IR_LABEL, l_end, NULL, NULL));
+			emit(create_instruction(string_op, left, right, result));
 
 			free(left);
 			free(right);
-			free(cmp);
 			free(l_true);
 			free(l_end);
 			return result;

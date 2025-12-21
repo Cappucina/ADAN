@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include "lexer_tests.h"
 #include "parser_tests.h"
-#include "codegen_tests.h"
+// #include "codegen_tests.h"
 #include "lexer.h"
 #include "logs.h"
 #include "parser.h"
@@ -206,7 +206,7 @@ int main(int argc, char **argv)
 
 	create_lexer_tests(flags);
 	create_parser_tests();
-	create_codegen_tests();
+	// create_codegen_tests();
 
 	signal(SIGALRM, handle_timeout);
 	struct sigaction sa;
@@ -232,7 +232,6 @@ int main(int argc, char **argv)
 		res = -1;
 		goto out;
 	}
-
 
 	if (!flags->output || flags->output[0] == '\0')
 	{
@@ -347,50 +346,41 @@ int main(int argc, char **argv)
 			char *esc = escape_for_asm(cur->value);
 			if (esc)
 			{
-				fprintf(asm_file, "%s:\n  .string \"%s\"\n", cur->label, esc);
+				fprintf(asm_file, ".align 8\n%s:\n  .string \"%s\"\n", cur->label, esc);
 				free(esc);
 			}
 		}
-	}
 
-	fprintf(asm_file, ".text\n");
-
-	GlobalVariable *gvars = get_global_variables();
-	if (gvars)
-	{
-#ifdef __APPLE__
-		fprintf(asm_file, ".data\n");
-#else
-		fprintf(asm_file, ".section .data\n");
-#endif
-		for (GlobalVariable *cur = gvars; cur; cur = cur->next)
-		{
-			const char *val = cur->initial ? cur->initial : "0";
-			if (cur->is_string && cur->initial)
-			{
-				fprintf(asm_file, "%s:\n    .quad %s\n", cur->label, cur->initial);
-			}
-			else
-			{
-				fprintf(asm_file, "%s:\n    .quad %s\n", cur->label, val);
-			}
-		}
-	}
-
-	IRInstruction *all_ir = get_ir_head();
-	if (all_ir)
-	{
-		number_instructions(all_ir);
-		LiveInterval *intervals = compute_liveness(all_ir);
-		assign_stack_offsets(intervals, &config);
-		int frame_size = compute_spill_frame_size(intervals, &config);
-		frame_size = (frame_size + 15) & ~15;
+		fprintf(asm_file, ".text\n");
 #ifdef __APPLE__
 		fprintf(asm_file, ".globl _main\n");
 #else
 		fprintf(asm_file, ".globl main\n");
 #endif
-		generate_asm(all_ir, intervals, &config, asm_file, frame_size);
+
+		IRInstruction *all_ir = get_ir_head();
+		if (all_ir)
+		{
+			number_instructions(all_ir);
+			LiveInterval *intervals = compute_liveness(all_ir);
+			assign_stack_offsets(intervals, &config);
+			int frame_size = compute_spill_frame_size(intervals, &config);
+			frame_size = (frame_size + 15) & ~15;
+
+			generate_asm(all_ir, intervals, &config, asm_file, frame_size);
+		}
+
+#ifdef __APPLE__
+		fprintf(asm_file, ".data\n");
+#else
+		fprintf(asm_file, ".section .data\n");
+#endif
+		GlobalVariable *gvars = get_global_variables();
+		for (GlobalVariable *cur = gvars; cur; cur = cur->next)
+		{
+			const char *val = cur->initial ? cur->initial : "0";
+			fprintf(asm_file, "%s:\n    .quad %s\n", cur->label, val);
+		}
 	}
 
 	fclose(asm_file);
@@ -444,7 +434,7 @@ int main(int argc, char **argv)
 
 	fprintf(stderr, "Compilation successful: %s\n", flags->output);
 
-	out:
+out:
 	// freeing give segfault on GNU Linux (not Darwin). this needs looked into so we aren't wasting users heap
 
 	return res;

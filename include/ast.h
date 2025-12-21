@@ -14,7 +14,8 @@ typedef enum {
     TYPE_NULL,
     TYPE_VOID,
     TYPE_ARRAY,
-    TYPE_UNKNOWN
+    TYPE_UNKNOWN,
+    TYPE_POINTER
 } Type;
 
 typedef struct CompleteType {

@@ -2033,7 +2033,6 @@ ASTNode *parse_primary(Parser *parser)
 		{
 			if (s[i] == '$' && i + 1 < len && s[i + 1] == '{')
 			{
-				// Capture literal before interpolation
 				int start = 0;
 				while (start < i)
 					start++;
@@ -2049,7 +2048,6 @@ ASTNode *parse_primary(Parser *parser)
 					parts[parts_count++] = lit_node;
 				}
 
-				// Parse interpolation
 				int j = i + 2;
 				while (j < len && s[j] != '}')
 					j++;
@@ -2069,7 +2067,6 @@ ASTNode *parse_primary(Parser *parser)
 
 				if (!expr_node)
 				{
-					// Treat failed expression as literal
 					int part_len = j - i + 1;
 					char *lit = malloc(part_len + 1);
 					strncpy(lit, s + i, part_len);
@@ -2085,11 +2082,10 @@ ASTNode *parse_primary(Parser *parser)
 					parts[parts_count++] = expr_node;
 				}
 
-				i = j + 1; // Move past the '}'
+				i = j + 1;
 				continue;
 			}
 
-			// Capture literal segment
 			int start = i;
 			while (i < len && !(s[i] == '$' && i + 1 < len && s[i + 1] == '{'))
 				i++;
@@ -2164,7 +2160,6 @@ ASTNode *parse_primary(Parser *parser)
 			break;
 		}
 
-		// Otherwise, normal parenthesized expression
 		ASTNode *expr = parse_binary(parser);
 		if (!expr)
 		{

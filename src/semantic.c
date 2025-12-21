@@ -697,7 +697,9 @@ void print_type(CompleteType t)
 			break;
 		case TYPE_ARRAY:
 			printf("array[]");
-			break; // fallback
+			break;
+		default:
+			break;
 		}
 	}
 	else

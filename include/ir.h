@@ -43,17 +43,19 @@ typedef enum {
 	IR_BIT_NOT,   // invert all bits
 	IR_SHL,       // a << b (left shift)
 	IR_SHR,       // a >> b (right shift)
+	IR_STRING_EQ,  // string equality
+	IR_STRING_NEQ, // string inequality
 } IROp;
 
 // 
 //  Instructions; everything will fit inside this container.
 // 
 typedef struct IRInstruction {
-	IROp op;                       // The verb (ADD, SUB, etc.)
-	char* arg1;                    // Input 1 (variable or number)
-	char* arg2;                    // Input 2 (can be NULL)
-	char* result;                  // Where the answer goes (can be NULL)
-	struct IRInstruction* next;    // Linked List pointer
+	IROp op;
+	char* arg1;
+	char* arg2;
+	char* result;
+	struct IRInstruction* next;
 	int index;
 } IRInstruction;
 
@@ -64,10 +66,10 @@ typedef struct StringLiteral {
 } StringLiteral;
 
 typedef struct GlobalVariable {
-	char* label;       // Assembly label (e.g. G_name)
-	char* name;        // original variable name
-	char* initial;     // initial value (immediate or .STR label)
-	int is_string;     // 1 if the initial value is a string pointer
+	char* label;
+	char* name;
+	char* initial;
+	int is_string;
 	struct GlobalVariable* next;
 } GlobalVariable;
 

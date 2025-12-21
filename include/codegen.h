@@ -45,7 +45,7 @@ void generate_asm(IRInstruction* ir_head, LiveInterval* intervals, const TargetC
 //  Emit function prologue/epilogue helpers (useful when assembling functions).
 // 
 void emit_prologue(FILE* out, const TargetConfig* cfg, int stack_bytes);
-void emit_epilogue(FILE* out, const TargetConfig* cfg);
+void emit_epilogue(FILE *out, const TargetConfig *cfg, int stack_bytes);
 
 // 
 //  Assign stack offsets (in bytes) to spilled intervals; uses cfg->spill_slot_size.
