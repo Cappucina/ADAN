@@ -13,9 +13,18 @@ static int semantic_error_count = 0;
 static int semantic_warning_count = 0;
 static int semantic_tip_count = 0;
 
-int semantic_get_error_count() { return semantic_error_count; }
-int semantic_get_warning_count() { return semantic_warning_count; }
-int semantic_get_tip_count() { return semantic_tip_count; }
+int semantic_get_error_count() {
+	return semantic_error_count;
+}
+
+int semantic_get_warning_count() {
+	return semantic_warning_count;
+}
+
+int semantic_get_tip_count() {
+	return semantic_tip_count;
+}
+
 bool array_element_types_match(CompleteType array_type, ASTNode *array_literal, SymbolTable *table);
 
 const char *type_to_string(CompleteType c_type);
@@ -366,7 +375,6 @@ void analyze_program(ASTNode *func_node, SymbolTable *table)
 
 	enter_scope(table);
 
-	/* Parameters */
 	if (params_node && params_node->type == AST_PARAMS)
 	{
 		for (int i = 0; i < params_node->child_count; i++)
@@ -385,11 +393,9 @@ void analyze_program(ASTNode *func_node, SymbolTable *table)
 		}
 	}
 
-	/* Analyze body */
 	if (block_node && block_node->type == AST_BLOCK)
 		analyze_block(block_node, table);
 
-	/* Return checking */
 	if (return_type.type != TYPE_VOID)
 	{
 		bool has_return = false;
@@ -444,7 +450,7 @@ void analyze_for(ASTNode *for_node, SymbolTable *table)
 	CompleteType type_boolean;
 	type_boolean.type = TYPE_BOOLEAN;
 
-	CompleteType cond_type = get_expression_type(condition_node, table);
+	CompleteType cond_type = get_expression_type(condition_node, table); // LILY: THIS IS WHERE WE NEED TO BE
 	if (cond_type.type != TYPE_BOOLEAN)
 	{
 		semantic_error(for_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], type_to_string(cond_type), type_to_string(type_boolean));

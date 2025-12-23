@@ -1163,9 +1163,9 @@ static ASTNode *parse_binary_prec(Parser *parser, int min_prec)
 	{
 		TokenType op_type = parser->current_token.type;
 		int prec = precedence_of(op_type);
-		if (prec < min_prec)
+		if (prec < min_prec) 
 			break;
-
+					
 		Token op_token = parser->current_token;
 		char *op_text_copy = NULL;
 		if (op_token.text)
@@ -1188,21 +1188,21 @@ static ASTNode *parse_binary_prec(Parser *parser, int min_prec)
 		ASTNodeType node_type = AST_BINARY_OP;
 		switch (op_type)
 		{
-		case TOKEN_GREATER:
-		case TOKEN_LESS:
-		case TOKEN_GREATER_EQUALS:
-		case TOKEN_LESS_EQUALS:
-		case TOKEN_EQUALS:
-		case TOKEN_NOT_EQUALS:
-			node_type = AST_COMPARISON;
-			break;
-		case TOKEN_AND:
-		case TOKEN_OR:
-			node_type = AST_LOGICAL_OP;
-			break;
-		default:
-			node_type = AST_BINARY_OP;
-			break;
+			case TOKEN_GREATER:
+			case TOKEN_LESS:
+			case TOKEN_GREATER_EQUALS:
+			case TOKEN_LESS_EQUALS:
+			case TOKEN_EQUALS:
+			case TOKEN_NOT_EQUALS:
+				node_type = AST_COMPARISON;
+				break;
+			case TOKEN_AND:
+			case TOKEN_OR:
+				node_type = AST_LOGICAL_OP;
+				break;
+			default:
+				node_type = AST_BINARY_OP;
+				break;
 		}
 
 		ASTNode *node = create_ast_node(node_type, op_token);

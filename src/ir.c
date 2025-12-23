@@ -672,7 +672,6 @@ char *generate_ir(ASTNode *node)
 
 	case AST_BLOCK:
 	{
-		/* Emit IR for each statement in the block */
 		for (int i = 0; i < node->child_count; i++)
 		{
 			generate_ir(node->children[i]);
