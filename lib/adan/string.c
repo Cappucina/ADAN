@@ -213,11 +213,13 @@ static const char* cast_internal(const void* input) {
 }
 
 const char* to_string(const void* input) {
-    if (!input) return "";
+    if (!input) return "0";
+
     static char buffer[64];
-    snprintf(buffer, sizeof(buffer), "%ld", (long)input);
+    snprintf(buffer, sizeof(buffer), "%lld", (long long)(uintptr_t)input);
     return buffer;
 }
+
 
 intptr_t to_int(const void* input) {
     intptr_t ip = (intptr_t)input;

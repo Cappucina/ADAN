@@ -13,8 +13,6 @@ ISSUES
     - No real registry allocation causing inefficient code generation.
     
     - Returning on the main function doesn't return and code underneath will execute.
-    
-    - Statement is not accepting of a expression like `i < 5`. Instead of bool it claims to be of the type of i.
 
 IDEAS
     - Either types, for example: `my_var::int || string = 1;`, where it can be either a number or a string.

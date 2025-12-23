@@ -1504,155 +1504,153 @@ CompleteType parse_type_recursive(const char *type_str)
 
 CompleteType get_expression_type(ASTNode *expr_node, SymbolTable *table)
 {
-	CompleteType Array_type = {.type = TYPE_ARRAY, .points_to = NULL};
-	CompleteType Int_type = {.type = TYPE_INT};
-	CompleteType Float_type = {.type = TYPE_FLOAT};
-	CompleteType String_type = {.type = TYPE_STRING};
-	CompleteType Char_type = {.type = TYPE_CHAR};
-	CompleteType boolean_type = {.type = TYPE_BOOLEAN};
-	CompleteType Null_type = {.type = TYPE_NULL};
-	CompleteType Unknown_type = {.type = TYPE_UNKNOWN};
-	CompleteType Void_type = {.type = TYPE_VOID};
+    CompleteType Array_type = {.type = TYPE_ARRAY, .points_to = NULL};
+    CompleteType Int_type = {.type = TYPE_INT};
+    CompleteType Float_type = {.type = TYPE_FLOAT};
+    CompleteType String_type = {.type = TYPE_STRING};
+    CompleteType Char_type = {.type = TYPE_CHAR};
+    CompleteType boolean_type = {.type = TYPE_BOOLEAN};
+    CompleteType Null_type = {.type = TYPE_NULL};
+    CompleteType Unknown_type = {.type = TYPE_UNKNOWN};
+    CompleteType Void_type = {.type = TYPE_VOID};
 
-	if (!expr_node)
-		return Unknown_type;
+    if (!expr_node)
+        return Unknown_type;
 
-	if (expr_node->type == AST_TYPE)
-	{
-		const char *text = expr_node->token.text;
-		int len = text ? strlen(text) : 0;
+    if (expr_node->type == AST_TYPE)
+    {
+        const char *text = expr_node->token.text;
+        int len = text ? strlen(text) : 0;
 
-		if (len >= 2 && text[len - 2] == '[' && text[len - 1] == ']')
-		{
-			CompleteType elem = Unknown_type;
-			char base[64];
-			strncpy(base, text, len - 2);
-			base[len - 2] = '\0';
+        if (len >= 2 && text[len - 2] == '[' && text[len - 1] == ']')
+        {
+            CompleteType arr_type = parse_type_recursive(text);
+            annotate_node_type(expr_node, arr_type);
+            return arr_type;
+        }
 
-			CompleteType arr_type = parse_type_recursive(text);
-			annotate_node_type(expr_node, arr_type);
-			return arr_type;
-		}
-
-		switch (expr_node->token.type)
-		{
-		case TOKEN_INT:
-			annotate_node_type(expr_node, Int_type);
-			return Int_type;
-		case TOKEN_FLOAT:
-			annotate_node_type(expr_node, Float_type);
-			return Float_type;
-		case TOKEN_STRING:
-			annotate_node_type(expr_node, String_type);
-			return String_type;
-		case TOKEN_BOOLEAN:
-			annotate_node_type(expr_node, boolean_type);
-			return boolean_type;
-		case TOKEN_CHAR:
-			annotate_node_type(expr_node, Char_type);
-			return Char_type;
-		case TOKEN_NULL:
-			annotate_node_type(expr_node, Null_type);
-			return Null_type;
-		case TOKEN_VOID:
-			annotate_node_type(expr_node, Void_type);
-			return Void_type;
-		default:
-			annotate_node_type(expr_node, Unknown_type);
-			return Unknown_type;
-		}
-	}
+        switch (expr_node->token.type)
+        {
+            case TOKEN_INT: annotate_node_type(expr_node, Int_type); return Int_type;
+            case TOKEN_FLOAT: annotate_node_type(expr_node, Float_type); return Float_type;
+            case TOKEN_STRING: annotate_node_type(expr_node, String_type); return String_type;
+            case TOKEN_BOOLEAN: annotate_node_type(expr_node, boolean_type); return boolean_type;
+            case TOKEN_CHAR: annotate_node_type(expr_node, Char_type); return Char_type;
+            case TOKEN_NULL: annotate_node_type(expr_node, Null_type); return Null_type;
+            case TOKEN_VOID: annotate_node_type(expr_node, Void_type); return Void_type;
+            default: annotate_node_type(expr_node, Unknown_type); return Unknown_type;
+        }
+    }
 
 	if (expr_node->type == AST_ARRAY_LITERAL)
-	{
-		CompleteType arr;
-		arr.type = TYPE_ARRAY;
-		arr.points_to = NULL;
+    {
+        CompleteType arr;
+        arr.type = TYPE_ARRAY;
+        arr.points_to = NULL;
 
-		if (expr_node->child_count > 0)
-		{
-			CompleteType first_elem_type = get_expression_type(expr_node->children[0], table);
+        if (expr_node->child_count > 0)
+        {
+            CompleteType first_elem_type = get_expression_type(expr_node->children[0], table);
+            arr.points_to = malloc(sizeof(CompleteType));
+            *arr.points_to = first_elem_type;
 
-			arr.points_to = malloc(sizeof(CompleteType));
-			*arr.points_to = first_elem_type;
+            for (int i = 1; i < expr_node->child_count; i++)
+            {
+                CompleteType elem_type = get_expression_type(expr_node->children[i], table);
+                if (first_elem_type.type != elem_type.type)
+                {
+                    semantic_error(expr_node->children[i],
+                                   SemanticErrorMessages[SEMANTIC_MISMATCHED_ARRAY_ELEMENT_TYPE],
+                                   i,
+                                   type_to_string(elem_type),
+                                   type_to_string(first_elem_type));
+                    exit(1);
+                }
+            }
+        }
 
-			for (int i = 1; i < expr_node->child_count; i++)
-			{
-				CompleteType elem_type = get_expression_type(expr_node->children[i], table);
+        annotate_node_type(expr_node, arr);
+        return arr;
+    }
 
-				if (first_elem_type.type != elem_type.type)
-				{
-					semantic_error(expr_node->children[i],
-                       SemanticErrorMessages[SEMANTIC_MISMATCHED_ARRAY_ELEMENT_TYPE],
-                       i,
-                       type_to_string(elem_type),
-                       type_to_string(first_elem_type));
-					
-					exit(1);
-				}
-			}
-		}
-
-		annotate_node_type(expr_node, arr);
-		return arr;
-	}
-
-	if (expr_node->type == AST_LITERAL)
-	{
-		CompleteType inferred = Unknown_type;
-		switch (expr_node->token.type)
-		{
-		case TOKEN_INT_LITERAL:
-			inferred = Int_type;
-			break;
-
-		case TOKEN_FLOAT_LITERAL:
-			inferred = Float_type;
-			break;
-
-		case TOKEN_STRING:
-			inferred = String_type;
-			break;
-
-		case TOKEN_TRUE:
-		case TOKEN_FALSE:
-		case TOKEN_BOOLEAN:
-			inferred = boolean_type;
-			break;
-
-		case TOKEN_CHAR:
-			inferred = Char_type;
-			break;
-
-		case TOKEN_NULL:
-			inferred = Null_type;
-			break;
-
-		default:
-			inferred = Unknown_type;
-			break;
-		}
-		annotate_node_type(expr_node, inferred);
-		return inferred;
-	}
+    if (expr_node->type == AST_LITERAL)
+    {
+        CompleteType inferred = Unknown_type;
+        switch (expr_node->token.type)
+        {
+            case TOKEN_INT_LITERAL: inferred = Int_type; break;
+            case TOKEN_FLOAT_LITERAL: inferred = Float_type; break;
+            case TOKEN_STRING: inferred = String_type; break;
+            case TOKEN_TRUE:
+            case TOKEN_FALSE:
+            case TOKEN_BOOLEAN: inferred = boolean_type; break;
+            case TOKEN_CHAR: inferred = Char_type; break;
+            case TOKEN_NULL: inferred = Null_type; break;
+            default: inferred = Unknown_type; break;
+        }
+        annotate_node_type(expr_node, inferred);
+        return inferred;
+    }
 
 	if (expr_node->type == AST_IDENTIFIER && table)
-	{
-		Symbol *s = lookup_symbol(table, expr_node->token.text);
-		CompleteType t = s ? s->type : Unknown_type;
-		annotate_node_type(expr_node, t);
-		return t;
-	}
+    {
+        Symbol *s = lookup_symbol(table, expr_node->token.text);
+        CompleteType t = s ? s->type : Unknown_type;
+        annotate_node_type(expr_node, t);
+        return t;
+    }
 
-	if (expr_node->child_count > 0)
-	{
-		CompleteType t = get_expression_type(expr_node->children[0], table);
-		annotate_node_type(expr_node, t);
-		return t;
-	}
+    if (expr_node->type == AST_COMPARISON)
+    {
+        if (expr_node->child_count >= 2)
+        {
+            get_expression_type(expr_node->children[0], table);
+            get_expression_type(expr_node->children[1], table);
+        }
+        annotate_node_type(expr_node, boolean_type);
+        return boolean_type;
+    }
 
-	annotate_node_type(expr_node, Unknown_type);
-	return Unknown_type;
+    if (expr_node->type == AST_LOGICAL_OP)
+    {
+        if (expr_node->child_count >= 2)
+        {
+            get_expression_type(expr_node->children[0], table);
+            get_expression_type(expr_node->children[1], table);
+        }
+        annotate_node_type(expr_node, boolean_type);
+        return boolean_type;
+    }
+
+	if (expr_node->type == AST_BINARY_EXPR)
+    {
+        if (expr_node->child_count >= 2)
+        {
+            CompleteType lhs_type = get_expression_type(expr_node->children[0], table);
+            CompleteType rhs_type = get_expression_type(expr_node->children[1], table);
+
+            if (lhs_type.type == TYPE_FLOAT || rhs_type.type == TYPE_FLOAT)
+            {
+                annotate_node_type(expr_node, Float_type);
+                return Float_type;
+            }
+            else
+            {
+                annotate_node_type(expr_node, Int_type);
+                return Int_type;
+            }
+        }
+    }
+
+    if (expr_node->child_count > 0)
+    {
+        CompleteType t = get_expression_type(expr_node->children[0], table);
+        annotate_node_type(expr_node, t);
+        return t;
+    }
+
+    annotate_node_type(expr_node, Unknown_type);
+    return Unknown_type;
 }
 
 bool check_type_compatibility(CompleteType expected, CompleteType actual)

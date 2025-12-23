@@ -63,7 +63,7 @@ static inline bool has_error(Parser* parser) {
 //  Allocates and initializes an AST node of a given type using token
 //   metadata.
 //
-ASTNode* create_ast_node(ASTNodeType type, Token token);
+ASTNode *create_ast_node(ASTNodeType type, Token token);
 
 //
 //  Appends a child node to a parent AST node.
@@ -127,13 +127,13 @@ ASTNode* parse_expression(Parser* parser);
 // 
 //  Fetch the precedence value of a binary operator. (E.g.: "4" for ^)
 // 
-int get_node_precedence(ASTNode* node);
+int get_node_precedence(TokenType type);
 
 //
 //  Handles binary operations based on precedence and associativity,
 //   examples: *, +, -, /, %, etc.
 //
-ASTNode* parse_binary(Parser* parser);
+ASTNode *parse_binary(Parser *parser, int min_precedence);
 
 //
 //  Handles prefix operators such as negation or logical NOT.

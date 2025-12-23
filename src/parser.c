@@ -269,11 +269,7 @@ ASTNode *create_ast_node(ASTNodeType type, Token token)
 	node->child_count = 0;
 	node->children = NULL;
 
-	CompleteType TypeUnknown;
-
-	TypeUnknown.type = TYPE_UNKNOWN;
-
-	node->annotated_type = TypeUnknown;
+    node->annotated_type = (CompleteType){ .type = TYPE_UNKNOWN };
 	return node;
 }
 
@@ -1055,15 +1051,15 @@ ASTNode *parse_assignment(Parser *parser)
 
 ASTNode *parse_expression(Parser *parser)
 {
-	return parse_binary(parser);
+	return parse_binary(parser, 0);
 }
 
-int get_node_precedence(ASTNode *node)
+int get_node_precedence(TokenType type)
 {
-	if (!node)
+	if (!type)
 		return -1;
 
-	switch (node->token.type)
+	switch (type)
 	{
 	case TOKEN_BITWISE_AND:
 	case TOKEN_BITWISE_OR:
@@ -1148,79 +1144,50 @@ static int precedence_of(TokenType t)
 	}
 }
 
-static int is_right_assoc(TokenType t)
+static bool is_right_assoc(TokenType t)
 {
 	return t == TOKEN_CARET;
 }
 
-static ASTNode *parse_binary_prec(Parser *parser, int min_prec)
+ASTNode *parse_binary(Parser *parser, int min_precedence)
 {
-	ASTNode *left = parse_unary(parser);
-	if (!left)
-		return NULL;
+    ASTNode *lhs = parse_unary(parser);
 
-	while (1)
-	{
-		TokenType op_type = parser->current_token.type;
-		int prec = precedence_of(op_type);
-		if (prec < min_prec) 
-			break;
-					
+    while (1)
+    {
+        int prec = get_node_precedence(parser->current_token.type);
+        if (prec < 0 || prec < min_precedence)
+            break;
+
 		Token op_token = parser->current_token;
-		char *op_text_copy = NULL;
-		if (op_token.text)
-		{
-			op_text_copy = strdup(op_token.text);
-			op_token.text = op_text_copy;
-		}
-		match(parser, op_type);
+        if (op_token.text)
+            op_token.text = strdup(op_token.text);
 
-		int next_min = is_right_assoc(op_type) ? prec : prec + 1;
-		ASTNode *right = parse_binary_prec(parser, next_min);
-		if (!right)
-		{
-			set_error(parser, PARSER_EXPECTED, "expression after '%s'", op_token.text);
-			if (op_text_copy)
-				free(op_text_copy);
-			return left;
-		}
+        match(parser, op_token.type);
+		
+		ASTNode *rhs = parse_binary(parser, prec + 1);
 
-		ASTNodeType node_type = AST_BINARY_OP;
-		switch (op_type)
-		{
-			case TOKEN_GREATER:
-			case TOKEN_LESS:
-			case TOKEN_GREATER_EQUALS:
-			case TOKEN_LESS_EQUALS:
-			case TOKEN_EQUALS:
-			case TOKEN_NOT_EQUALS:
-				node_type = AST_COMPARISON;
-				break;
-			case TOKEN_AND:
-			case TOKEN_OR:
-				node_type = AST_LOGICAL_OP;
-				break;
-			default:
-				node_type = AST_BINARY_OP;
-				break;
-		}
+        ASTNodeType node_type;
+        if (op_token.type == TOKEN_AND || op_token.type == TOKEN_OR) {
+            node_type = AST_LOGICAL_OP;
+        } else if (op_token.type == TOKEN_EQUALS || op_token.type == TOKEN_NOT_EQUALS ||
+                   op_token.type == TOKEN_LESS || op_token.type == TOKEN_LESS_EQUALS ||
+                   op_token.type == TOKEN_GREATER || op_token.type == TOKEN_GREATER_EQUALS) {
+            node_type = AST_COMPARISON;
+        } else {
+            node_type = AST_BINARY_EXPR;
+        }
 
-		ASTNode *node = create_ast_node(node_type, op_token);
-		if (op_text_copy)
-			free(op_text_copy);
-		node->child_count = 2;
-		node->children = malloc(sizeof(ASTNode *) * 2);
-		node->children[0] = left;
-		node->children[1] = right;
-		left = node;
-	}
+        ASTNode *bin_node = create_ast_node(node_type, op_token);
+        bin_node->child_count = 2;
+        bin_node->children = malloc(sizeof(ASTNode *) * 2);
+        bin_node->children[0] = lhs;
+        bin_node->children[1] = rhs;
 
-	return left;
-}
+        lhs = bin_node;
+    }
 
-ASTNode *parse_binary(Parser *parser)
-{
-	return parse_binary_prec(parser, 1);
+    return lhs;
 }
 
 ASTNode *parse_unary(Parser *parser)
@@ -2170,7 +2137,7 @@ ASTNode *parse_primary(Parser *parser)
 			break;
 		}
 
-		ASTNode *expr = parse_binary(parser);
+		ASTNode *expr = parse_binary(parser, 0);
 		if (!expr)
 		{
 			set_error(parser, PARSER_EXPECTED, "expression inside parentheses", parser->current_token.text);
@@ -2195,7 +2162,7 @@ ASTNode *parse_primary(Parser *parser)
 
 		while (parser->current_token.type != TOKEN_RBRACE)
 		{
-			ASTNode *element = parse_binary(parser);
+			ASTNode *element = parse_binary(parser, 0);
 			if (!element)
 			{
 				set_error(parser, PARSER_EXPECTED, "array element", parser->current_token.text);
