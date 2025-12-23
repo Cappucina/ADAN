@@ -1099,72 +1099,53 @@ char *generate_ir(ASTNode *node)
 		return NULL;
 	}
 
-	case AST_FOR:
-	{
-		if (node->child_count > 3 && node->children[3])
-			generate_ir(node->children[3]);
+case AST_FOR:
+{
+    char *outer_start = loop_start_label;
+    char *outer_end = loop_end_label;
 
-		if (node->children[2])
-		{
-			char *incr_result = generate_ir(node->children[2]);
-			free(incr_result);
-		}
+    if (node->children[0]) {
+        char *init_result = generate_ir(node->children[0]);
+        free(init_result);
+    }
 
-		char *outer_start = loop_start_label;
-		char *outer_end = loop_end_label;
+	char *loop_label = new_temporary();
+    char *end_label = new_temporary();
+    char *continue_label = new_temporary();
 
-		char *init_result = generate_ir(node->children[0]);
-		free(init_result);
+    loop_start_label = continue_label;
+    loop_end_label = end_label;
 
-		char *loop_label = new_temporary();
-		char *end_label = new_temporary();
-		char *continue_label = new_temporary();
+    emit(create_instruction(IR_LABEL, loop_label, NULL, NULL));
 
-		loop_start_label = continue_label;
-		loop_end_label = end_label;
+    if (!node->children[1]) return NULL;
+    char *condition = generate_ir(node->children[1]);
+    emit(create_instruction(IR_JEQ, condition, "0", end_label));
 
-		IRInstruction *label_inst = create_instruction(IR_LABEL, loop_label, NULL, NULL);
-		emit(label_inst);
+    if (node->child_count > 3 && node->children[3])
+        generate_ir(node->children[3]);
 
-		if (!node->children[1]) {
-			return NULL;
-		}
+    emit(create_instruction(IR_LABEL, continue_label, NULL, NULL));
 
-		char *condition = generate_ir(node->children[1]);
-		if (!condition) {
-			return NULL;
-		}
+    if (node->children[2]) {
+        char *incr_result = generate_ir(node->children[2]);
+        free(incr_result);
+    }
 
-		IRInstruction *jump_inst = create_instruction(IR_JEQ, condition, "0", end_label);
-		emit(jump_inst);
+    emit(create_instruction(IR_JMP, loop_label, NULL, NULL));
 
-		if (node->child_count > 3)
-		{
-			generate_ir(node->children[3]);
-		}
+    emit(create_instruction(IR_LABEL, end_label, NULL, NULL));
 
-		IRInstruction *cont_label_inst = create_instruction(IR_LABEL, continue_label, NULL, NULL);
-		emit(cont_label_inst);
+	loop_start_label = outer_start;
+    loop_end_label = outer_end;
+    
+    free(loop_label);
+    free(end_label);
+    free(continue_label);
+    free(condition);
 
-		char *incr_result = generate_ir(node->children[2]);
-		free(incr_result);
-
-		IRInstruction *loop_jump = create_instruction(IR_JMP, loop_label, NULL, NULL);
-		emit(loop_jump);
-
-		IRInstruction *end_label_inst = create_instruction(IR_LABEL, end_label, NULL, NULL);
-		emit(end_label_inst);
-
-		loop_start_label = outer_start;
-		loop_end_label = outer_end;
-
-		free(loop_label);
-		free(end_label);
-		free(continue_label);
-		free(condition);
-
-		return NULL;
-	}
+    return NULL;
+}
 
 	case AST_CONTINUE:
 	{

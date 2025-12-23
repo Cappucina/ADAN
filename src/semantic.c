@@ -450,7 +450,7 @@ void analyze_for(ASTNode *for_node, SymbolTable *table)
 	CompleteType type_boolean;
 	type_boolean.type = TYPE_BOOLEAN;
 
-	CompleteType cond_type = get_expression_type(condition_node, table); // LILY: THIS IS WHERE WE NEED TO BE
+	CompleteType cond_type = get_expression_type(condition_node, table);
 	if (cond_type.type != TYPE_BOOLEAN)
 	{
 		semantic_error(for_node, SemanticErrorMessages[SEMANTIC_TYPE_MISMATCH], type_to_string(cond_type), type_to_string(type_boolean));

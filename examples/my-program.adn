@@ -2,7 +2,7 @@ include adan.io;
 
 program::void main()
 {
-    for (i::int = -532; i < 10; i++)
+    for (i::int = 0; i < 10; i++)
     {
         println("Iteration ${i}");
     }
