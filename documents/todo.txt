@@ -13,6 +13,7 @@ ISSUES
     - No real registry allocation causing inefficient code generation.
     
     - Returning on the main function doesn't return and code underneath will execute.
+    - Fix function argument types.
 
 IDEAS
     - Either types, for example: `my_var::int || string = 1;`, where it can be either a number or a string.
