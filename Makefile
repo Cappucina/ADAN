@@ -17,8 +17,8 @@ format: docker
 	docker exec -i adan-dev-container sh -c "python3 ./scripts/beautifier.py --file ./compiled/assembled.s > assembled.tmp && mv assembled.tmp ./compiled/assembled.s"
 
 compile: docker clean
-	docker exec -i adan-dev-container sh -c "gcc -DBUILDING_COMPILER_MAIN src/*.c tests/*.c lib/adan/*.c -I include -I lib/adan/include -o compiled/main"
-	docker exec -i adan-dev-container sh -c "chown -R $$(id -u):$$(id -g) compiled"
+	docker exec -i adan-dev-container sh -c "cd /workspace && gcc -DBUILDING_COMPILER_MAIN src/*.c tests/*.c lib/adan/*.c -I include -I lib/adan/include -o compiled/main"
+	docker exec -i adan-dev-container sh -c "cd /workspace && chown -R $$(id -u):$$(id -g) compiled"
 
 execute: compile
 	docker exec -i adan-dev-container sh -c "cd /workspace && compiled/main examples/my-program.adn -o ./compiled/program"

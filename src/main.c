@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include "lexer_tests.h"
 #include "parser_tests.h"
-// #include "codegen_tests.h"
+#include "codegen_tests.h"
 #include "lexer.h"
 #include "logs.h"
 #include "parser.h"
@@ -206,7 +206,7 @@ int main(int argc, char **argv)
 
 	create_lexer_tests(flags);
 	create_parser_tests();
-	// create_codegen_tests();
+	create_codegen_tests();
 
 	signal(SIGALRM, handle_timeout);
 	struct sigaction sa;

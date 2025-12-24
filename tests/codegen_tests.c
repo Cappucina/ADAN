@@ -121,7 +121,7 @@ void test_emit_prologue_epilogue() {
 	TargetConfig cfg;
 	cfg.available_registers = 4;
 	
-	emit_prologue(temp_file, &cfg, 32);
+	emit_prologue(temp_file, &cfg, 24);
 	
 	rewind(temp_file);
 	char buffer[256];
@@ -130,10 +130,12 @@ void test_emit_prologue_epilogue() {
 	while (fgets(buffer, sizeof(buffer), temp_file)) {
 		strcat(output, buffer);
 	}
-	
-	assert(strstr(output, "pushq %%rbp") != NULL);
-	assert(strstr(output, "movq %%rsp, %%rbp") != NULL);
-	assert(strstr(output, "subq $32, %%rsp") != NULL);
+
+	printf("%s", output);
+
+	assert(strstr(output, "pushq %rbp") != NULL);
+	assert(strstr(output, "movq %rsp, %rbp") != NULL);
+	assert(strstr(output, "subq $32, %rsp") != NULL);
 	
 	rewind(temp_file);
 	ftruncate(fileno(temp_file), 0);
@@ -147,8 +149,8 @@ void test_emit_prologue_epilogue() {
 		strcat(output, buffer);
 	}
 	
-	assert(strstr(output, "addq $32, %%rsp") != NULL);
-	assert(strstr(output, "popq %%rbp") != NULL);
+	assert(strstr(output, "addq $32, %rsp") != NULL);
+	assert(strstr(output, "popq %rbp") != NULL);
 	assert(strstr(output, "ret") != NULL);
 	
 	fclose(temp_file);
@@ -159,8 +161,8 @@ void test_emit_prologue_epilogue() {
 void test_get_location() {
 	TargetConfig cfg;
 	char* reg_names[] = {"rbx", "r10", "r11", "r12"};
-	const char* expected_reg = "%%rbx";
-	const char* expected_stack = "-8(%%rbp)";
+	const char* expected_reg = "%rbx";
+	const char* expected_stack = "-8(%rbp)";
 	cfg.available_registers = 4;
 	cfg.register_names = reg_names;
 	
@@ -250,8 +252,8 @@ void test_generate_asm_add() {
 		strcat(output, buffer);
 	}
 	
-	assert(strstr(output, "movq %%rbx, %%rbx") != NULL);
-	assert(strstr(output, "addq %%r10, %%rbx") != NULL);
+	assert(strstr(output, "movq %rbx, %rbx") != NULL);
+	assert(strstr(output, "addq %r10, %rbx") != NULL);
 	
 	fclose(temp_file);
 	
