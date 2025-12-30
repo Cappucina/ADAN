@@ -1,55 +1,40 @@
-.SILENT:
+# .SILENT:
 
-docker:
-# 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
+EXE = adan
+SRC = ./source
+INC = ./include
+BUILD_DIR = ./build
 
-	python3 scripts/container.py || python scripts/container.py || python scripts/container.py
+SRCS = $(shell find $(SRC) -name '*.c')
 
-	if [ -z "$$(docker ps -a -q -f name=^/adan-dev-container$$)" ]; then \
-		docker run -dit --name adan-dev-container -u $$(id -u):$$(id -g) -v $$(pwd):/workspace adan-dev-container /bin/sh >/dev/null 2>&1; \
-	elif [ -z "$$(docker ps -q -f name=^/adan-dev-container$$)" ]; then \
-		docker start adan-dev-container >/dev/null 2>&1; \
-	fi
+CC = gcc
+CFLAGS = -g -Wall -Wextra -I./include -I../include
 
-# 	echo "<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>-<>>><<<>>><<<>>><<<>>><<<>"
+build:
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(SRCS) -o $(BUILD_DIR)/$(EXE)
 
-format: docker
-	docker exec -i adan-dev-container sh -c "python3 ./scripts/beautifier.py --file ./compiled/assembled.s > assembled.tmp && mv assembled.tmp ./compiled/assembled.s"
+compile: clean build
 
-compile: docker clean
-	docker exec -i adan-dev-container sh -c "cd /workspace && gcc -DBUILDING_COMPILER_MAIN src/*.c tests/*.c lib/adan/*.c -I include -I lib/adan/include -o compiled/main"
-	docker exec -i adan-dev-container sh -c "cd /workspace && chown -R $$(id -u):$$(id -g) compiled"
+run: build
+	./$(BUILD_DIR)/$(EXE)
 
-execute: compile
-	docker exec -i adan-dev-container sh -c "cd /workspace && compiled/main examples/my-program.adn -o ./compiled/program"
-
-	docker exec -i adan-dev-container sh -c "gcc -I include -I lib/adan/include -I lib/adan/include -no-pie compiled/assembled.s lib/adan/*.c -lm -o compiled/program 2>&1 || clang -I include -I lib/adan/include -I lib/adan/include compiled/assembled.s lib/adan/*.c -lm -o compiled/program 2>&1"
-	docker exec -i adan-dev-container sh -c "./compiled/program"
-	
-	make format -silent
-
-compile-native: clean
-	gcc -DBUILDING_COMPILER_MAIN src/*.c tests/*.c lib/adan/*.c -I include -I lib/adan/include -o compiled/main
-	chown -R $$(id -u):$$(id -g) compiled
-
-
-execute-native: compile-native
-	compiled/main examples/my-program.adn -o ./compiled/program
-
-	./compiled/program
-	
-	make format -silent
-	
-debug: compile
-	make execute -silent
+debug: clean
+	@clear
+	@mkdir -p $(BUILD_DIR)
+	@$(CC) $(CFLAGS) -DDEBUG $(SRCS) -o $(BUILD_DIR)/$(EXE)
+	@./$(BUILD_DIR)/$(EXE)
 
 clean:
-	rm -rf compiled
-	mkdir -p compiled
+	@rm -rf $(BUILD_DIR) $(EXE)
+
+format:
+	@find source include -type f \( -name '*.c' -o -name '*.h' \) -print0 | xargs -0 clang-format -i
 
 # 
-#  CODESPACES EXCLUSIVE
+#  Ignore the following lines UNLESS you are working in a
+#   GitHub Codespaces environment.
 # 
-codespace:
-	chmod +x ./scripts/codespaces.sh
-	./scripts/codespaces.sh setup
+codespaces:
+	@chmod +x ./scripts/codespaces.sh
+	@./scripts/codespaces.sh

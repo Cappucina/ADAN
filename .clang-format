@@ -1,0 +1,16 @@
+BasedOnStyle: Google
+IndentWidth: 4
+UseTab: Never
+PointerAlignment: Left
+ColumnLimit: 100
+AllowShortFunctionsOnASingleLine: None
+DerivePointerBinding: false
+AlignAfterOpenBracket: true
+AlignTrailingComments: true
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterEnum: true
+  AfterStruct: true
+  AfterFunction: true
+  BeforeElse: true
+BreakAdjacentStringLiterals: true
