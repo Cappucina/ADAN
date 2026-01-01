@@ -149,7 +149,7 @@ void free_lexer(Lexer* lex);
  *
  * Token-specific
  */
- Token create_token(Lexer* lex, const char* lexeme, size_t start, size_t length, TokenType type);
+Token create_token(Lexer* lex, const char* lexeme, size_t start, size_t length, TokenType type);
 
 Token next_token(Lexer* lex);
 

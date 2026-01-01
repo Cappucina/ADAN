@@ -87,7 +87,12 @@ Token create_token(Lexer* lex, const char* lexeme, size_t start, size_t length, 
 
 Token next_token(Lexer* lex)
 {
+    // STEPS:
+    // - Scan for whitespace or comments, then ignore it.
+    // - Create if statement and return TOKEN_EOF if found.
+    // ...
 
+    // God I'm so fucking lazy ... I wanna finish this whenever I take my fucking meds
 }
 
 /**
