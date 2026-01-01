@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "errors.h"
+#include "diagnostic.h"
 
 int main()
 {

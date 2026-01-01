@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include "errors.h"
+#include "diagnostic.h"
 
 typedef enum
 {
@@ -116,31 +116,41 @@ typedef enum
 
 typedef struct
 {
-    TokenType type;
-    size_t position;
+    const char* lexeme;
+    size_t start;
     size_t length;
     size_t line;
     size_t column;
-    char* literal;
+    TokenType type;
 } Token;
 
 typedef struct
 {
     const char* source;
-    int position;
+    size_t position;
     size_t length;
     size_t line;
     size_t column;
 } Lexer;
 
-Lexer* create_lexer(ErrorList* error_list);
+char peek_char(Lexer* lex);
 
-void free_lexer(Lexer* lx);
+char next_char(Lexer* lex);
 
-Token create_token();
+/**
+ *
+ * Lexer-specific
+ */
+Lexer* create_lexer(const char* source, ErrorList* error_list);
 
-void next_token(Lexer* lx);
+void free_lexer(Lexer* lex);
 
-char peek_char(Lexer* lx);
+/**
+ *
+ * Token-specific
+ */
+ Token create_token(Lexer* lex, const char* lexeme, size_t start, size_t length, TokenType type);
+
+Token next_token(Lexer* lex);
 
 #endif

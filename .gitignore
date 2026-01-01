@@ -9,3 +9,4 @@ compiled/
 *.o
 *.tmp
 *.xcworkspace/
+build/
