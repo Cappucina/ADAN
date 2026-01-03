@@ -39,3 +39,5 @@ String literals now support common escape sequences in source code, for example:
 
 - `"Hello\nWorld"` becomes a string with an actual newline between `Hello` and `World` at runtime.
 - Supported escapes: `\n`, `\t`, `\r`, `\\`, `\"`, `\'`, and `\0`.
+
+Esther was here

@@ -135,6 +135,8 @@ typedef struct
 
 char peek_char(Lexer* lex);
 
+char peek_next(Lexer* lex, size_t offset);
+
 char next_char(Lexer* lex);
 
 /**
@@ -151,6 +153,24 @@ void free_lexer(Lexer* lex);
  */
 Token create_token(Lexer* lex, const char* lexeme, size_t start, size_t length, TokenType type);
 
-Token next_token(Lexer* lex);
+Token lex(Lexer* lx);
+
+/**
+ * 
+ * Helper functions for lexical scanning
+ */
+Token lex_identifier(Lexer* lex);
+
+Token lex_number(Lexer* lex);
+
+Token lex_string(Lexer* lex);
+
+Token lex_operator(Lexer* lex);
+
+Token lex_char(Lexer* lex);
+
+void skip_whitespace(Lexer* lex);
+
+static Token match_operator(Lexer* lex, char expected, TokenType if_match, TokenType if_no_match, size_t start);
 
 #endif

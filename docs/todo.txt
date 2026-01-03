@@ -1,0 +1,5 @@
+           lex_operator() - Only handles :, missing all other operators, no default case, function can exit without return
+                    lex() - Empty function body
+               lex_char() - No validation that char literal contains exactly one character
+lex_string() / lex_char() - No escape sequence handling (\n, \", \\, etc.)
+        skip_whitespace() - No comment handling (// and /* */)
