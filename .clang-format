@@ -1,6 +1,7 @@
+Language: C
 BasedOnStyle: Google
 IndentWidth: 4
-UseTab: Never
+UseTab: Always
 PointerAlignment: Left
 ColumnLimit: 100
 AllowShortFunctionsOnASingleLine: None
@@ -9,6 +10,7 @@ AlignAfterOpenBracket: true
 AlignTrailingComments: true
 BreakBeforeBraces: Custom
 BraceWrapping:
+  AfterControlStatement: true
   AfterEnum: true
   AfterStruct: true
   AfterFunction: true
