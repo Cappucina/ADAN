@@ -76,4 +76,13 @@ int run_all_tests(void);
         }                             \
     } while (0)
 
+#define ASSERT_STREQ(actual, expected, message) \
+    do                                          \
+    {                                           \
+        if (strcmp((actual), (expected)) != 0)  \
+        {                                       \
+            return 1;                           \
+        }                                       \
+    } while (0)
+
 #endif

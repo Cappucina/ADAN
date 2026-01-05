@@ -42,7 +42,7 @@ typedef struct
     size_t capacity;
 } ErrorList;
 
-ErrorList* create_errors();
+ErrorList* create_errors(void);
 
 ErrorList* push_error(ErrorList* error_list, const char* file, const char* message, size_t line,
                       size_t column, Severity severity, Category category);

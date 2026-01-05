@@ -70,7 +70,7 @@ static int test_error_location(void)
 
     ASSERT_EQ(list->errors[0].line, 42, "Error line should be 42");
     ASSERT_EQ(list->errors[0].column, 15, "Error column should be 15");
-    ASSERT_EQ(list->errors[0].file, "main.adn", "Error file file should be main.adn");
+    ASSERT_STREQ(list->errors[0].file, "main.adn", "Error file file should be main.adn");
 
     free_errors(list);
     return 0;

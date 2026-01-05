@@ -65,8 +65,6 @@ int main(int argc, char* argv[])
         goto out;
     }
 
-    printf("%d", flags->target.kernel);
-    printf("%d", flags->target.arch);
     printf("I am compiling correctly\n");
 
 out:
