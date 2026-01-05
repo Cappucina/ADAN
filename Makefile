@@ -24,7 +24,7 @@ SRCS = ./source/main.c \
 CC = gcc
 CFLAGS = -g -Wall -Wextra -Werror -O2 -Wundef -Wconversion -pedantic -std=c17 -march=native -funroll-loops -I./include -I../include
 
-build: clean
+build: clean format
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(SRCS) -o $(BUILD_DIR)/$(EXE)
 
@@ -33,7 +33,7 @@ compile: build
 run: build
 	$(BUILD_DIR)/$(EXE)
 
-debug: clean
+debug: clean format
 	@clear
 	@mkdir -p $(BUILD_DIR)
 	@$(CC) $(CFLAGS) -DDEBUG $(SRCS) -o $(BUILD_DIR)/$(EXE)
@@ -43,7 +43,6 @@ clean:
 	@rm -rf $(BUILD_DIR)
 
 format:
-	@echo "Formating is not in a good style I (Hanna) Tied to fix it so it will keep indenting as you nest more than 1 level\nSadly it seems like it is something not handled by clang format.\nWe should probably just remember to set our neovim settings and stay consistant.\nI can share my neovim if you request."
 	@find source include -type f \( -name '*.c' -o -name '*.h' \) -print0 | xargs -0 clang-format -i
 
 # 
