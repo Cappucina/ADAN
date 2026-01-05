@@ -6,6 +6,9 @@
 
 static ErrorList* error_list;
 
+static Token match_operator(Lexer* lex, char expected, TokenType if_match, TokenType if_no_match,
+                            size_t start);
+
 struct
 {
     const char* name;

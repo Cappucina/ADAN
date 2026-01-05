@@ -171,7 +171,4 @@ Token lex_char(Lexer* lex);
 
 void skip_whitespace(Lexer* lex);
 
-static Token match_operator(Lexer* lex, char expected, TokenType if_match, TokenType if_no_match,
-                            size_t start);
-
 #endif
