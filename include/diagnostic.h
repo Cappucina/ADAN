@@ -39,6 +39,6 @@ typedef struct
 ErrorList* create_errors();
 
 ErrorList* push_error(ErrorList* error_list, const char* message, size_t line, size_t column,
-		      Severity severity, Category category);
+                      Severity severity, Category category);
 
 void free_errors(ErrorList* error_list);

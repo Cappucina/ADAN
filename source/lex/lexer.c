@@ -11,9 +11,9 @@ struct
     const char* name;
     TokenType type;
 } keywords[] = {
-    {"if", TOKEN_IF},		{"while", TOKEN_WHILE},	      {"for", TOKEN_FOR},
+    {"if", TOKEN_IF},           {"while", TOKEN_WHILE},       {"for", TOKEN_FOR},
     {"include", TOKEN_INCLUDE}, {"continue", TOKEN_CONTINUE}, {"program", TOKEN_PROGRAM},
-    {"return", TOKEN_RETURN},	{"else", TOKEN_ELSE},	      {"struct", TOKEN_STRUCT},
+    {"return", TOKEN_RETURN},   {"else", TOKEN_ELSE},         {"struct", TOKEN_STRUCT},
     {"break", TOKEN_BREAK}};
 
 /*
@@ -37,10 +37,10 @@ static TokenType is_keyword(const char* name, size_t length)
     if (!name) return TOKEN_IDENTIFIER;
     for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++)
     {
-	if (strlen(keywords[i].name) == length && strncmp(name, keywords[i].name, length) == 0)
-	{
-	    return keywords[i].type;
-	}
+        if (strlen(keywords[i].name) == length && strncmp(name, keywords[i].name, length) == 0)
+        {
+            return keywords[i].type;
+        }
     }
 
     return TOKEN_IDENTIFIER;
@@ -70,7 +70,7 @@ char peek_char(Lexer* lex)
 {
     if (lex->position >= lex->length)
     {
-	return '\0';
+        return '\0';
     }
     return lex->source[lex->position];
 }
@@ -85,12 +85,12 @@ char next_char(Lexer* lex)
     char current = lex->source[lex->position++];
     if (current == '\n')
     {
-	lex->line++;
-	lex->column = 1;
+        lex->line++;
+        lex->column = 1;
     }
     else
     {
-	lex->column++;
+        lex->column++;
     }
 
     return current;
@@ -99,11 +99,11 @@ char next_char(Lexer* lex)
 Token create_token(Lexer* lex, const char* lexeme, size_t start, size_t length, TokenType type)
 {
     Token tk = {.lexeme = lexeme,
-		.start = start,
-		.length = length,
-		.line = lex->line,
-		.column = lex->column,
-		.type = type};
+                .start = start,
+                .length = length,
+                .line = lex->line,
+                .column = lex->column,
+                .type = type};
     return tk;
 }
 
@@ -118,7 +118,7 @@ Token lex_identifier(Lexer* lex)
     next_char(lex);
     while (is_identifier_body(peek_char(lex)))
     {
-	next_char(lex);
+        next_char(lex);
     }
 
     size_t length = lex->position - start;
@@ -132,26 +132,26 @@ Token lex_number(Lexer* lex)
     size_t start = lex->position;
     while (isdigit(peek_char(lex)))
     {
-	next_char(lex);
+        next_char(lex);
     }
 
     if (peek_char(lex) == '.' && isdigit(peek_next(lex, 1)))
     {
-	next_char(lex);
-	while (isdigit(peek_char(lex)))
-	{
-	    next_char(lex);
-	}
+        next_char(lex);
+        while (isdigit(peek_char(lex)))
+        {
+            next_char(lex);
+        }
 
-	size_t length = lex->position - start;
-	const char* lexeme = &lex->source[start];
-	return create_token(lex, lexeme, start, length, TOKEN_FLOAT_LITERAL);
+        size_t length = lex->position - start;
+        const char* lexeme = &lex->source[start];
+        return create_token(lex, lexeme, start, length, TOKEN_FLOAT_LITERAL);
     }
     else
     {
-	size_t length = lex->position - start;
-	const char* lexeme = &lex->source[start];
-	return create_token(lex, lexeme, start, length, TOKEN_INT_LITERAL);
+        size_t length = lex->position - start;
+        const char* lexeme = &lex->source[start];
+        return create_token(lex, lexeme, start, length, TOKEN_INT_LITERAL);
     }
 }
 
@@ -161,12 +161,12 @@ Token lex_string(Lexer* lex)
     next_char(lex);
     while (peek_char(lex) != '"' && peek_char(lex) != '\0')
     {
-	next_char(lex);
+        next_char(lex);
     }
 
     if (peek_char(lex) == '\0')
     {
-	// do error shit later
+        // do error shit later
     }
 
     next_char(lex);
@@ -181,12 +181,12 @@ Token lex_operator(Lexer* lex)
     char c = next_char(lex);
     switch (c)
     {
-	case ':':
-	    return match_operator(lex, ':', TOKEN_TYPE_DECLARATOR, TOKEN_ERROR, start);
-	default: {
-	    size_t length = lex->position - start;
-	    return create_token(lex, &lex->source[start], start, length, TOKEN_ERROR);
-	}
+        case ':':
+            return match_operator(lex, ':', TOKEN_TYPE_DECLARATOR, TOKEN_ERROR, start);
+        default: {
+            size_t length = lex->position - start;
+            return create_token(lex, &lex->source[start], start, length, TOKEN_ERROR);
+        }
     }
 }
 
@@ -196,12 +196,12 @@ Token lex_char(Lexer* lex)
     next_char(lex);
     while (peek_char(lex) != '\'' && peek_char(lex) != '\0')
     {
-	next_char(lex);
+        next_char(lex);
     }
 
     if (peek_char(lex) == '\0')
     {
-	// do error shit later
+        // do error shit later
     }
 
     next_char(lex);
@@ -215,20 +215,20 @@ void skip_whitespace(Lexer* lex)
     char pc = peek_char(lex);
     while (pc == ' ' || pc == '\t' || pc == '\r' || pc == '\n')
     {
-	next_char(lex);
-	pc = peek_char(lex);
+        next_char(lex);
+        pc = peek_char(lex);
     }
 }
 
 static Token match_operator(Lexer* lex, char expected, TokenType if_match, TokenType if_no_match,
-			    size_t start)
+                            size_t start)
 {
     char pc = peek_char(lex);
     if (pc == expected)
     {
-	next_char(lex);
-	size_t length = lex->position - start;
-	return create_token(lex, &lex->source[start], start, length, if_match);
+        next_char(lex);
+        size_t length = lex->position - start;
+        return create_token(lex, &lex->source[start], start, length, if_match);
     }
 
     size_t length = lex->position - start;

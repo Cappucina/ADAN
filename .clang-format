@@ -1,7 +1,7 @@
 Language: C
 BasedOnStyle: Google
 IndentWidth: 4
-UseTab: Always
+UseTab: Never
 PointerAlignment: Left
 ColumnLimit: 100
 AllowShortFunctionsOnASingleLine: None
