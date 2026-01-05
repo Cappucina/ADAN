@@ -27,12 +27,12 @@ typedef struct
     bool suppress_warnings;
     char** include;
     char* error;
-} CompilorFlags;
+} CompilerFlags;
 
 // Function declarations
-CompilorFlags* flags_init(int argc, char* argv[]);
-void flags_free(CompilorFlags* flags);
-void set_default_flags(CompilorFlags* flags);
+CompilerFlags* flags_init(int argc, char* argv[]);
+void flags_free(CompilerFlags* flags);
+void set_default_flags(CompilerFlags* flags);
 const char* flags_get_error(void);
 
 #endif

@@ -6,7 +6,7 @@
 
 #define MAX_INCLUDES 256
 
-typedef int (*flag_setter)(CompilorFlags*, void*);
+typedef int (*flag_setter)(CompilerFlags*, void*);
 
 typedef enum
 {
@@ -32,7 +32,7 @@ static void set_error(FlagError err)
     last_error = err;
 }
 
-void set_default_flags(CompilorFlags* flags)
+void set_default_flags(CompilerFlags* flags)
 {
     if (!flags) return;
 
@@ -60,7 +60,7 @@ void set_default_flags(CompilorFlags* flags)
     last_error = FLAG_OK;
 }
 
-static int set_help(CompilorFlags* flags, void* value)
+static int set_help(CompilerFlags* flags, void* value)
 {
     (void)value;
     if (!flags)
@@ -72,7 +72,7 @@ static int set_help(CompilorFlags* flags, void* value)
     return 0;
 }
 
-static int set_verbose(CompilorFlags* flags, void* value)
+static int set_verbose(CompilerFlags* flags, void* value)
 {
     (void)value;
     if (!flags)
@@ -84,7 +84,7 @@ static int set_verbose(CompilorFlags* flags, void* value)
     return 0;
 }
 
-static int set_suppress_warnings(CompilorFlags* flags, void* value)
+static int set_suppress_warnings(CompilerFlags* flags, void* value)
 {
     (void)value;
     if (!flags)
@@ -96,7 +96,7 @@ static int set_suppress_warnings(CompilorFlags* flags, void* value)
     return 0;
 }
 
-static int set_warnings_as_errors(CompilorFlags* flags, void* value)
+static int set_warnings_as_errors(CompilerFlags* flags, void* value)
 {
     (void)value;
     if (!flags)
@@ -108,7 +108,7 @@ static int set_warnings_as_errors(CompilorFlags* flags, void* value)
     return 0;
 }
 
-static int set_tests(CompilorFlags* flags, void* value)
+static int set_tests(CompilerFlags* flags, void* value)
 {
     (void)value;
     if (!flags)
@@ -120,7 +120,7 @@ static int set_tests(CompilorFlags* flags, void* value)
     return 0;
 }
 
-static int set_output(CompilorFlags* flags, void* value)
+static int set_output(CompilerFlags* flags, void* value)
 {
     if (!flags || !value)
     {
@@ -131,7 +131,7 @@ static int set_output(CompilorFlags* flags, void* value)
     return 0;
 }
 
-static int set_input(CompilorFlags* flags, void* value)
+static int set_input(CompilerFlags* flags, void* value)
 {
     if (!flags || !value)
     {
@@ -142,7 +142,7 @@ static int set_input(CompilorFlags* flags, void* value)
     return 0;
 }
 
-static int set_include(CompilorFlags* flags, void* value)
+static int set_include(CompilerFlags* flags, void* value)
 {
     if (!flags || !value)
     {
@@ -176,7 +176,7 @@ static int set_include(CompilorFlags* flags, void* value)
     return 0;
 }
 
-static int set_optimazation(CompilorFlags* flags, void* value)
+static int set_optimazation(CompilerFlags* flags, void* value)
 {
     if (!flags)
     {
@@ -202,7 +202,7 @@ static int set_optimazation(CompilorFlags* flags, void* value)
     return -1;
 }
 
-static int set_compile_to_asm(CompilorFlags* flags, void* value)
+static int set_compile_to_asm(CompilerFlags* flags, void* value)
 {
     (void)value;
     if (!flags)
@@ -214,7 +214,7 @@ static int set_compile_to_asm(CompilorFlags* flags, void* value)
     return 0;
 }
 
-static int set_compile_to_object(CompilorFlags* flags, void* value)
+static int set_compile_to_object(CompilerFlags* flags, void* value)
 {
     (void)value;
     if (!flags)
@@ -226,7 +226,7 @@ static int set_compile_to_object(CompilorFlags* flags, void* value)
     return 0;
 }
 
-static int set_compile_to_executable(CompilorFlags* flags, void* value)
+static int set_compile_to_executable(CompilerFlags* flags, void* value)
 {
     (void)value;
     if (!flags)
@@ -331,9 +331,9 @@ static int parse_long_flag_with_value(const char* arg, char** flag_name, char** 
     return 0;
 }
 
-CompilorFlags* flags_init(int argc, char* argv[])
+CompilerFlags* flags_init(int argc, char* argv[])
 {
-    CompilorFlags* flags = (CompilorFlags*)malloc(sizeof(CompilorFlags));
+    CompilerFlags* flags = (CompilerFlags*)malloc(sizeof(CompilerFlags));
 
     if (!flags)
     {
@@ -486,7 +486,7 @@ CompilorFlags* flags_init(int argc, char* argv[])
     return flags;
 }
 
-void flags_free(CompilorFlags* flags)
+void flags_free(CompilerFlags* flags)
 {
     if (!flags) return;
 

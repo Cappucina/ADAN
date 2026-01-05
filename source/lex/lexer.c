@@ -19,16 +19,10 @@ struct
     {"return", TOKEN_RETURN},   {"else", TOKEN_ELSE},         {"struct", TOKEN_STRUCT},
     {"break", TOKEN_BREAK}};
 
-/*
- *
- * Warnings as errors
- *
- * static bool is_identifier_start(char c)
- * {
- *     return (isalpha(c) || c == '_');
- * }
- *
- */
+static bool is_identifier_start(char c)
+{
+    return (isalpha(c) || c == '_');
+}
 
 static bool is_identifier_body(char c)
 {
@@ -247,13 +241,7 @@ static Token match_operator(Lexer* lex, char expected, TokenType if_match, Token
  *  group them into an array to be handled by the parser.
  */
 
-/*
- *
- * Warnings as errors
- *
- * Token lex(Lexer* lx)
- * {
- *
- * }
- *
- */
+Token lex(Lexer* lx)
+{
+
+}
