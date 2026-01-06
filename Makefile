@@ -38,8 +38,10 @@ build: clean format
 
 compile: build
 
-run: build
+execute:
 	$(BUILD_DIR)/$(EXE) $(ARGS)
+
+run: build execute
 
 tests: build
 	$(BUILD_DIR)/$(EXE) --tests
