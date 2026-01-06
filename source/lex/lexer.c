@@ -180,6 +180,75 @@ Token lex_operator(Lexer* lex)
     {
         case ':':
             return match_operator(lex, ':', TOKEN_TYPE_DECLARATOR, TOKEN_ERROR, start);
+        case '&':
+            return match_operator(lex, '&', TOKEN_AND, TOKEN_BITWISE_AND, start);
+        case '=':
+            return match_operator(lex, '=', TOKEN_EQUALS, TOKEN_ASSIGN, start);
+        case '+':
+            return match_operator(lex, '+', TOKEN_INCREMENT, TOKEN_ADD, start);
+        case '-':
+            return match_operator(lex, '-', TOKEN_DECREMENT, TOKEN_SUBTRACT, start);
+        case '>':
+            if (peek_char(lex) == '>')
+            {
+                next_char(lex);
+                if (peek_char(lex) == '>')
+                {
+                    next_char(lex);
+                    return create_token(lex, &lex->source[start], start, lex->position - start,
+                                        TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT);
+                }
+                return create_token(lex, &lex->source[start], start, lex->position - start,
+                                    TOKEN_BITWISE_SIGNED_RIGHT_SHIFT);
+            }
+            else if (peek_char(lex) == '=')
+            {
+                next_char(lex);
+                return create_token(lex, &lex->source[start], start, lex->position - start,
+                                    TOKEN_GREATER_EQUALS);
+            }
+            return create_token(lex, &lex->source[start], start, 1, TOKEN_GREATER);
+        case '<':
+            if (peek_char(lex) == '<')
+            {
+                next_char(lex);
+                return create_token(lex, &lex->source[start], start, lex->position - start,
+                                    TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT);
+            }
+            else if (peek_char(lex) == '=')
+            {
+                next_char(lex);
+                return create_token(lex, &lex->source[start], start, lex->position - start,
+                                    TOKEN_LESS_EQUALS);
+            }
+            return create_token(lex, &lex->source[start], start, 1, TOKEN_LESS);
+        case '!':
+            return match_operator(lex, '=', TOKEN_NOT_EQUALS, TOKEN_NOT, start);
+        case '|':
+            return match_operator(lex, '|', TOKEN_OR, TOKEN_BITWISE_OR, start);
+        case '*':
+            return match_operator(lex, '*', TOKEN_EXPONENT, TOKEN_MULTIPLY, start);
+        case '/':
+            return create_token(lex, &lex->source[start], start, 1, TOKEN_DIVIDE);
+        case '%':
+            return create_token(lex, &lex->source[start], start, 1, TOKEN_MODULO);
+        case '^':
+            return create_token(lex, &lex->source[start], start, 1, TOKEN_CARET);
+        case '~':
+            return create_token(lex, &lex->source[start], start, 1, TOKEN_BITWISE_NOT);
+        case '.':
+            if (peek_char(lex) == '.')
+            {
+                next_char(lex);
+                if (peek_char(lex) == '.')
+                {
+                    next_char(lex);
+                    return create_token(lex, &lex->source[start], start, lex->position - start,
+                                        TOKEN_ELLIPSIS);
+                }
+            }
+            return create_token(lex, &lex->source[start], start, lex->position - start,
+                                TOKEN_PERIOD);
         default: {
             size_t length = lex->position - start;
             return create_token(lex, &lex->source[start], start, length, TOKEN_ERROR);
@@ -209,11 +278,46 @@ Token lex_char(Lexer* lex)
 
 void skip_whitespace(Lexer* lex)
 {
-    char pc = peek_char(lex);
-    while (pc == ' ' || pc == '\t' || pc == '\r' || pc == '\n')
+    while (true)
     {
-        next_char(lex);
-        pc = peek_char(lex);
+        while (true)
+        {
+            char pc = peek_char(lex);
+            if (pc != ' ' && pc != '\t' && pc != '\r' && pc != '\n')
+            {
+                break;
+            }
+            next_char(lex);
+        }
+        char pc = peek_char(lex);
+        if (pc == '/')
+        {
+            if (peek_next(lex, 1) == '/')
+            {
+                next_char(lex);
+                next_char(lex);
+                while (pc != '\n' && pc != '\0')
+                {
+                    next_char(lex);
+                    pc = peek_char(lex);
+                }
+                continue;
+            }
+            else if (peek_next(lex, 1) == '*')
+            {
+                next_char(lex);
+                next_char(lex);
+                while (!(pc == '*' && peek_next(lex, 1) == '/') && pc != '\0')
+                {
+                    next_char(lex);
+                    pc = peek_char(lex);
+                }
+                next_char(lex);
+                next_char(lex);
+                continue;
+            }
+        }
+        break;
     }
 }
 
@@ -232,6 +336,11 @@ static Token match_operator(Lexer* lex, char expected, TokenType if_match, Token
     return create_token(lex, &lex->source[start], start, length, if_no_match);
 }
 
+static bool is_operator_start(char c)
+{
+    return strchr(":&=+->!|*/%^~.<", c) != NULL;
+}
+
 /**
  *
  * Tokenize keywords ("include", "if", "program", etc.),
@@ -243,5 +352,47 @@ static Token match_operator(Lexer* lex, char expected, TokenType if_match, Token
 
 Token lex(Lexer* lx)
 {
-
+    skip_whitespace(lx);
+    size_t start = lx->position;
+    char c = peek_char(lx);
+    if (c == '\0') {
+        return create_token(lx, &lx->source[start], start, 0, TOKEN_EOF);
+    } else if (is_identifier_start(c)) {
+        return lex_identifier(lx);
+    } else if (isdigit(c)) {
+        return lex_number(lx);
+    } else if (c == '"') {
+        return lex_string(lx);
+    } else if (c == '\'') {
+        return lex_char(lx);
+    } else if (c == '(') {
+        next_char(lx);
+        return create_token(lx, &lx->source[start], start, 1, TOKEN_LEFT_PAREN);
+    } else if (c == ')') {
+        next_char(lx);
+        return create_token(lx, &lx->source[start], start, 1, TOKEN_RIGHT_PAREN);
+    } else if (c == '[') {
+        next_char(lx);
+        return create_token(lx, &lx->source[start], start, 1, TOKEN_LEFT_BRACKET);
+    } else if (c == ']') {
+        next_char(lx);
+        return create_token(lx, &lx->source[start], start, 1, TOKEN_RIGHT_BRACKET);
+    } else if (c == '{') {
+        next_char(lx);
+        return create_token(lx, &lx->source[start], start, 1, TOKEN_LEFT_BRACE);
+    } else if (c == '}') {
+        next_char(lx);
+        return create_token(lx, &lx->source[start], start, 1, TOKEN_RIGHT_BRACE);
+    } else if (c == ';') {
+        next_char(lx);
+        return create_token(lx, &lx->source[start], start, 1, TOKEN_SEMICOLON);
+    } else if (c == ',') {
+        next_char(lx);
+        return create_token(lx, &lx->source[start], start, 1, TOKEN_COMMA);
+    } else if (is_operator_start(c)) {
+        return lex_operator(lx);
+    } else {
+        next_char(lx);
+        return create_token(lx, &lx->source[start], start, 1, TOKEN_ERROR);
+    }
 }
