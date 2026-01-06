@@ -1,4 +1,4 @@
-#include "error.h"
+#include "../../include/error.h"
 
 const char* error_to_string(ErrorCode code)
 {

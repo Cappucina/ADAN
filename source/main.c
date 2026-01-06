@@ -3,15 +3,15 @@
 #include <stdio.h>
 
 #include "diagnostic.h"
+#include "driver/flags.h"
 #include "error.h"
-#include "flags.h"
-#include "test.h"
+#include "test/test.h"
 
 int main(int argc, char* argv[])
 {
     int res = 0;
     ErrorList* error_list = create_errors();
-    CompilorFlags* flags = flags_init(argc, argv);
+    CompilerFlags* flags = flags_init(argc, argv);
 
     if (!error_list)
     {
