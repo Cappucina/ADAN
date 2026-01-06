@@ -355,43 +355,72 @@ Token lex(Lexer* lx)
     skip_whitespace(lx);
     size_t start = lx->position;
     char c = peek_char(lx);
-    if (c == '\0') {
+    if (c == '\0')
+    {
         return create_token(lx, &lx->source[start], start, 0, TOKEN_EOF);
-    } else if (is_identifier_start(c)) {
+    }
+    else if (is_identifier_start(c))
+    {
         return lex_identifier(lx);
-    } else if (isdigit(c)) {
+    }
+    else if (isdigit(c))
+    {
         return lex_number(lx);
-    } else if (c == '"') {
+    }
+    else if (c == '"')
+    {
         return lex_string(lx);
-    } else if (c == '\'') {
+    }
+    else if (c == '\'')
+    {
         return lex_char(lx);
-    } else if (c == '(') {
+    }
+    else if (c == '(')
+    {
         next_char(lx);
         return create_token(lx, &lx->source[start], start, 1, TOKEN_LEFT_PAREN);
-    } else if (c == ')') {
+    }
+    else if (c == ')')
+    {
         next_char(lx);
         return create_token(lx, &lx->source[start], start, 1, TOKEN_RIGHT_PAREN);
-    } else if (c == '[') {
+    }
+    else if (c == '[')
+    {
         next_char(lx);
         return create_token(lx, &lx->source[start], start, 1, TOKEN_LEFT_BRACKET);
-    } else if (c == ']') {
+    }
+    else if (c == ']')
+    {
         next_char(lx);
         return create_token(lx, &lx->source[start], start, 1, TOKEN_RIGHT_BRACKET);
-    } else if (c == '{') {
+    }
+    else if (c == '{')
+    {
         next_char(lx);
         return create_token(lx, &lx->source[start], start, 1, TOKEN_LEFT_BRACE);
-    } else if (c == '}') {
+    }
+    else if (c == '}')
+    {
         next_char(lx);
         return create_token(lx, &lx->source[start], start, 1, TOKEN_RIGHT_BRACE);
-    } else if (c == ';') {
+    }
+    else if (c == ';')
+    {
         next_char(lx);
         return create_token(lx, &lx->source[start], start, 1, TOKEN_SEMICOLON);
-    } else if (c == ',') {
+    }
+    else if (c == ',')
+    {
         next_char(lx);
         return create_token(lx, &lx->source[start], start, 1, TOKEN_COMMA);
-    } else if (is_operator_start(c)) {
+    }
+    else if (is_operator_start(c))
+    {
         return lex_operator(lx);
-    } else {
+    }
+    else
+    {
         next_char(lx);
         return create_token(lx, &lx->source[start], start, 1, TOKEN_ERROR);
     }
