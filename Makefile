@@ -9,7 +9,7 @@ else ifeq ($(UNAME), Darwin)
 	NUM_JOBS := $(shell sysctl -n hw.ncpu)
 endif
 
-MAKEFLAGS += "-j $(NUM_JOBS)"
+MAKEFLAGS += "-j $(NUM_JOBS) -s"
 
 EXE = adan
 SRC = ./source
@@ -33,7 +33,7 @@ CFLAGS = -g -Wall -Wextra -Werror -O2 -Wundef -Wconversion -pedantic -std=c17 -m
 		 -I./source/driver -I./source/tests
 
 build: clean format
-	@mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(SRCS) -o $(BUILD_DIR)/$(EXE)
 
 compile: build
@@ -41,7 +41,9 @@ compile: build
 execute:
 	$(BUILD_DIR)/$(EXE) $(ARGS)
 
-run: build execute
+run:
+	$(MAKE) build
+	$(MAKE) execute
 
 tests: build
 	$(BUILD_DIR)/$(EXE) --tests
