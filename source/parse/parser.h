@@ -1,18 +1,12 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 
-#include "lexer.h"
+#include "ast.h"
 #include "diagnostic.h"
-
-/**
- * 
- * Forward declarations for AST nodes produced by the parser.
- * Define node types in the AST module.
- */
-typedef struct ASTNode ASTNode;
+#include "lexer.h"
 
 typedef struct Parser
 {
@@ -31,7 +25,7 @@ Parser* create_parser_from_source(const char* source, ErrorList* errors);
 void free_parser(Parser* parser);
 
 /**
- * 
+ *
  * Navigational helpers.
  */
 bool parser_at_end(Parser* parser);
@@ -49,7 +43,7 @@ bool parser_match(Parser* parser, TokenType type);
 Token parser_consume(Parser* parser, TokenType type, const char* error_message);
 
 /**
- * 
+ *
  * Error handling helpers.
  */
 void parser_error_at(Parser* parser, Token* token, const char* fmt, ...);
@@ -59,7 +53,7 @@ void parser_error_here(Parser* parser, const char* fmt, ...);
 void parser_synchronize(Parser* parser);
 
 /**
- * 
+ *
  * Expression parsing helpers. (Precedence climbing)
  */
 ASTNode* parse_expression(Parser* parser);
@@ -95,9 +89,9 @@ ASTNode* parse_call(Parser* parser);
 ASTNode* parse_primary(Parser* parser);
 
 /**
- * 
+ *
  * Statement and declaration helpers.
- * 
+ *
  * The difference between parameters and arguments is that
  * parameters are used in function declarations, while
  * arguments are used in function calls.
@@ -133,7 +127,7 @@ ASTNode* parse_break_statement(Parser* parser);
 ASTNode* parse_continue_statement(Parser* parser);
 
 /**
- * 
+ *
  * Type helpers.
  */
 ASTNode* parse_type(Parser* parser);
