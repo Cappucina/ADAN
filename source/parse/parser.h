@@ -97,10 +97,20 @@ ASTNode* parse_primary(Parser* parser);
 /**
  * 
  * Statement and declaration helpers.
+ * 
+ * The difference between parameters and arguments is that
+ * parameters are used in function declarations, while
+ * arguments are used in function calls.
  */
 ASTNode* parse_program(Parser* parser);
 
+ASTNode* parse_parameter_list(Parser* parser);
+
 ASTNode* parse_declaration(Parser* parser);
+
+ASTNode* parse_variable_declaration(Parser* parser);
+
+ASTNode* parse_argument_list(Parser* parser);
 
 ASTNode* parse_struct_declaration(Parser* parser);
 
