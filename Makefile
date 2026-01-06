@@ -16,20 +16,21 @@ SRC = ./source
 BUILD_DIR = ./build
 
 SRCS = ./source/main.c \
+	   ./source/common/fs.c \
        ./source/common/diagnostic.c \
        ./source/common/platform.c \
        ./source/common/error.c \
        ./source/driver/flags.c \
        ./source/lex/lexer.c \
-       ./source/test/test.c \
-       ./source/test/diagnostic_test.c \
-       ./source/test/flags_test.c \
-       ./source/test/lexer_test.c \
+       ./source/tests/test.c \
+       ./source/tests/diagnostic_test.c \
+       ./source/tests/flags_test.c \
+       ./source/tests/lexer_test.c \
 
 CC = gcc
 CFLAGS = -g -Wall -Wextra -Werror -O2 -Wundef -Wconversion -pedantic -std=c17 -march=native -funroll-loops -I./include \
 		 -I./source -I./source/common -I./source/lex -I./source/parse -I./source/ir -I./source/semantic -I./source/gen \
-		 -I./source/driver -I./source/test
+		 -I./source/driver -I./source/tests
 
 build: clean format
 	@mkdir -p $(BUILD_DIR)

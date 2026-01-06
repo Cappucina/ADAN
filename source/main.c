@@ -5,7 +5,8 @@
 #include "diagnostic.h"
 #include "driver/flags.h"
 #include "error.h"
-#include "test/test.h"
+#include "fs.h"
+#include "tests/test.h"
 
 int main(int argc, char* argv[])
 {
@@ -65,7 +66,10 @@ int main(int argc, char* argv[])
         goto out;
     }
 
-    printf("I am compiling correctly\n");
+    if (!file_exsists(flags->input))
+    {
+        error(error_list, "input", 0, 0, GENERIC, "Input file does not exsist");
+    }
 
 out:
     if (error_list) free_errors(error_list);

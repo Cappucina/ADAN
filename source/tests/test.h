@@ -85,4 +85,13 @@ int run_all_tests(void);
         }                                       \
     } while (0)
 
+#define ASSERT_ERROR_COUNT(error_list, expected, message) \
+    do                                                    \
+    {                                                     \
+        if ((error_list)->size != (expected))             \
+        {                                                 \
+            return 1;                                     \
+        }                                                 \
+    } while (0)
+
 #endif

@@ -249,6 +249,202 @@ static int test_lexer_empty_string(void)
     return 0;
 }
 
+static int test_lex_unclosed_string_error(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lex = create_lexer("\"unclosed string", errors);
+
+    Token tok = lex_string(lex);
+    ASSERT_EQ(tok.type, TOKEN_STRING, "unclosed string should still create token");
+
+    free_lexer(lex);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_unclosed_char_error(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lex = create_lexer("'x", errors);
+
+    Token tok = lex_char(lex);
+    ASSERT_EQ(tok.type, TOKEN_CHAR, "unclosed char should still create token");
+
+    free_lexer(lex);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_invalid_operator_error(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lex = create_lexer("@", errors);
+
+    Token tok = lex_operator(lex);
+    ASSERT_EQ(tok.type, TOKEN_ERROR, "invalid operator should create error token");
+
+    free_lexer(lex);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_single_token_identifier(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer("myVar", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_IDENTIFIER, "lex should recognize identifier");
+    ASSERT_EQ(tok.length, 5, "identifier length should be 5");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_single_token_number(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer("42", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_INT_LITERAL, "lex should recognize integer");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_single_token_string(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer("\"hello\"", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_STRING, "lex should recognize string");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_single_token_paren(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer("(", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_LEFT_PAREN, "lex should recognize left paren");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_single_token_brace(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer("{", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_LEFT_BRACE, "lex should recognize left brace");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_single_token_bracket(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer("[", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_LEFT_BRACKET, "lex should recognize left bracket");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_single_token_semicolon(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer(";", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_SEMICOLON, "lex should recognize semicolon");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_single_token_comma(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer(",", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_COMMA, "lex should recognize comma");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_single_token_operator(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer("+", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_ADD, "lex should recognize addition operator");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_whitespace_skip(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer("  \t  42", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_INT_LITERAL, "lex should skip whitespace");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_eof(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer("", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_EOF, "lex should return EOF for empty input");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
+static int test_lex_unexpected_char_error(void)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lexer = create_lexer("$", errors);
+
+    Token tok = lex(lexer);
+    ASSERT_EQ(tok.type, TOKEN_ERROR, "lex should create error token for invalid character");
+
+    free_lexer(lexer);
+    free_errors(errors);
+    return 0;
+}
+
 int run_lexer_tests(TestSuite* suite)
 {
     if (!suite)
@@ -273,6 +469,21 @@ int run_lexer_tests(TestSuite* suite)
     test_suite_run_test(suite, "lexer_operator_type_declarator", test_lex_operator_type_declarator);
     test_suite_run_test(suite, "lexer_peek_char_eof", test_peek_char_eof);
     test_suite_run_test(suite, "lexer_empty_string", test_lexer_empty_string);
+    test_suite_run_test(suite, "lexer_unclosed_string_error", test_lex_unclosed_string_error);
+    test_suite_run_test(suite, "lexer_unclosed_char_error", test_lex_unclosed_char_error);
+    test_suite_run_test(suite, "lexer_invalid_operator_error", test_lex_invalid_operator_error);
+    test_suite_run_test(suite, "lexer_single_token_identifier", test_lex_single_token_identifier);
+    test_suite_run_test(suite, "lexer_single_token_number", test_lex_single_token_number);
+    test_suite_run_test(suite, "lexer_single_token_string", test_lex_single_token_string);
+    test_suite_run_test(suite, "lexer_single_token_paren", test_lex_single_token_paren);
+    test_suite_run_test(suite, "lexer_single_token_brace", test_lex_single_token_brace);
+    test_suite_run_test(suite, "lexer_single_token_bracket", test_lex_single_token_bracket);
+    test_suite_run_test(suite, "lexer_single_token_semicolon", test_lex_single_token_semicolon);
+    test_suite_run_test(suite, "lexer_single_token_comma", test_lex_single_token_comma);
+    test_suite_run_test(suite, "lexer_single_token_operator", test_lex_single_token_operator);
+    test_suite_run_test(suite, "lexer_whitespace_skip", test_lex_whitespace_skip);
+    test_suite_run_test(suite, "lexer_eof", test_lex_eof);
+    test_suite_run_test(suite, "lexer_unexpected_char_error", test_lex_unexpected_char_error);
 
     return 0;
 }

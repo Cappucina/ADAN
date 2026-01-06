@@ -155,6 +155,8 @@ Token lex_number(Lexer* lex)
 Token lex_string(Lexer* lex)
 {
     size_t start = lex->position;
+    size_t start_line = lex->line;
+    size_t start_column = lex->column;
     next_char(lex);
     while (peek_char(lex) != '"' && peek_char(lex) != '\0')
     {
@@ -163,10 +165,13 @@ Token lex_string(Lexer* lex)
 
     if (peek_char(lex) == '\0')
     {
-        // do error shit later
+        error(error_list, "source", start_line, start_column, LEXER, "Unclosed string literal");
+    }
+    else
+    {
+        next_char(lex);
     }
 
-    next_char(lex);
     size_t length = lex->position - start;
     const char* lexeme = &lex->source[start];
     return create_token(lex, lexeme, start, length, TOKEN_STRING);
@@ -251,6 +256,9 @@ Token lex_operator(Lexer* lex)
                                 TOKEN_PERIOD);
         default: {
             size_t length = lex->position - start;
+            char invalid_char = lex->source[start];
+            error(error_list, "source", lex->line, lex->column, LEXER,
+                  "Invalid operator character '%c'", invalid_char);
             return create_token(lex, &lex->source[start], start, length, TOKEN_ERROR);
         }
     }
@@ -259,6 +267,8 @@ Token lex_operator(Lexer* lex)
 Token lex_char(Lexer* lex)
 {
     size_t start = lex->position;
+    size_t start_line = lex->line;
+    size_t start_column = lex->column;
     next_char(lex);
     while (peek_char(lex) != '\'' && peek_char(lex) != '\0')
     {
@@ -267,10 +277,13 @@ Token lex_char(Lexer* lex)
 
     if (peek_char(lex) == '\0')
     {
-        // do error shit later
+        error(error_list, "source", start_line, start_column, LEXER, "Unclosed character literal");
+    }
+    else
+    {
+        next_char(lex);
     }
 
-    next_char(lex);
     size_t length = lex->position - start;
     const char* lexeme = &lex->source[start];
     return create_token(lex, lexeme, start, length, TOKEN_CHAR);
@@ -421,6 +434,7 @@ Token lex(Lexer* lx)
     }
     else
     {
+        error(error_list, "source", lx->line, lx->column, LEXER, "Unexpected character '%c'", c);
         next_char(lx);
         return create_token(lx, &lx->source[start], start, 1, TOKEN_ERROR);
     }
