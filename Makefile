@@ -76,7 +76,7 @@ help:
 
 # 
 #  Ignore the following lines UNLESS you are working in a
-#  GitHub Codespaces environment.
+#  GitHub Codespaces environment.5
 # 
 codespaces:
 	@chmod +x ./scripts/codespaces.sh
