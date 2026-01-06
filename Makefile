@@ -41,7 +41,8 @@ compile: build
 execute:
 	$(BUILD_DIR)/$(EXE) $(ARGS)
 
-run: build execute
+run: build
+	make execute --silent
 
 tests: build
 	$(BUILD_DIR)/$(EXE) --tests
@@ -74,7 +75,7 @@ help:
 
 # 
 #  Ignore the following lines UNLESS you are working in a
-#  GitHub Codespaces environment.
+#  GitHub Codespaces environment.5
 # 
 codespaces:
 	@chmod +x ./scripts/codespaces.sh

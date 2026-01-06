@@ -7,7 +7,6 @@
 #   ~ Installing necessary VSCode extensions.
 # 
 
-#
-#  TODO: Finish this script later, preferrably when GitHub
-#         Codespaces is actually used.
-#
+sudo apt-get update
+sudo apt-get install -y \
+                     clang-format
