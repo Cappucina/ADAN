@@ -44,16 +44,6 @@ Token parser_consume(Parser* parser, TokenType type, const char* error_message);
 
 /**
  *
- * Error handling helpers.
- */
-void parser_error_at(Parser* parser, Token* token, const char* fmt, ...);
-
-void parser_error_here(Parser* parser, const char* fmt, ...);
-
-void parser_synchronize(Parser* parser);
-
-/**
- *
  * Expression parsing helpers. (Precedence climbing)
  */
 ASTNode* parse_expression(Parser* parser);
