@@ -1,6 +1,6 @@
 #include "fs.h"
 
-#include <stdio.h>
+#include <errno.h>
 
 bool file_exsists(const char* file_location)
 {
@@ -14,4 +14,31 @@ bool file_exsists(const char* file_location)
     {
         return false;
     }
+}
+
+const char* file_to_string(FILE* file, ErrorList* error_list)
+{
+    if (!file)
+    {
+        error(error_list, "input", 0, 0, GENERIC, "File not accessible.");
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    size_t length = (size_t)ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* buffer = (char*)malloc(length + 1);
+
+    if (!buffer)
+    {
+        error(error_list, "input", 0, 0, GENERIC, "No memory left.");
+        exit(-ENOMEM);
+        return NULL;
+    }
+
+    fread(buffer, 1, length, file);
+    buffer[length] = '\0';
+
+    return buffer;
 }

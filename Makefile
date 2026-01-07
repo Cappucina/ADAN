@@ -23,9 +23,9 @@ SRCS = ./source/main.c \
        ./source/driver/flags.c \
        ./source/lex/lexer.c \
        ./source/tests/test.c \
-       ./source/tests/diagnostic_test.c \
        ./source/tests/flags_test.c \
        ./source/tests/lexer_test.c \
+       ./source/tests/diagnostic_test.c \
 
 CC = gcc
 CFLAGS = -g -Wall -Wextra -Werror -O2 -Wundef -Wconversion -pedantic -std=c17 -march=native -funroll-loops -I./include \

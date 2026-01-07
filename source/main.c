@@ -43,18 +43,18 @@ int main(int argc, char* argv[])
     {
         printf("Usage: adan <input-file> [options]\n");
         printf("Options:\n");
-        printf("  -h, --help                 Show this help message\n");
-        printf("  -v, --verbose              Enable verbose output\n");
-        printf("  -o, --output <file>        Output file name (default: a.out)\n");
-        printf("  -i, --input <file>         Input file name (default: main.adn)\n");
-        printf("  -I, --include <path>       Add include path\n");
-        printf("  -O0, -O1, -O2, -O3         Optimization level\n");
-        printf("  -s, --compile-to-asm       Compile to assembly\n");
-        printf("  -a, --compile-to-object    Compile to object file\n");
-        printf("  -e, --compile-to-executable Compile to executable (default)\n");
-        printf("  -S, --suppress-warnings    Suppress warnings\n");
-        printf("  -w, --warnings-as-errors   Treat warnings as errors\n");
-        printf("  -t, --tests                Run test suite\n");
+        printf("  -h, --help                        Show this help message\n");
+        printf("  -v, --verbose                     Enable verbose output\n");
+        printf("  -o, --output <file>               Output file name (default: a.out)\n");
+        printf("  -i, --input <file>                Input file name (default: main.adn)\n");
+        printf("  -I, --include <path>              Add include path\n");
+        printf("  -O0, -O1, -O2, -O3                Optimization level\n");
+        printf("  -s, --compile-to-asm              Compile to assembly\n");
+        printf("  -a, --compile-to-object           Compile to object file\n");
+        printf("  -e, --compile-to-executable       Compile to executable (default)\n");
+        printf("  -S, --suppress-warnings           Suppress warnings\n");
+        printf("  -W, -w, --warnings-as-errors      Treat warnings as errors\n");
+        printf("  -t, --tests                       Run test suite\n");
 
         goto out;
     }
@@ -66,10 +66,16 @@ int main(int argc, char* argv[])
         goto out;
     }
 
-    if (!file_exsists(flags->input))
+    FILE* input = fopen(flags->input, "r");
+
+    if (!input)
     {
-        error(error_list, "input", 0, 0, GENERIC, "Input file does not exsist");
+        error(error_list, "input", 0, 0, GENERIC,
+              "Input file does not exsist or is not accessible");
     }
+
+    const char* source = file_to_string(input, error_list);
+
 
 out:
     if (error_list) free_errors(error_list);
