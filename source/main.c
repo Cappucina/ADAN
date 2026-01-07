@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     if (!error_list)
     {
         fprintf(stderr, "Failed to allocate memory for error_list\n");
-        return 1;
+        return -ENOMEM;
     }
 
     g_error_list = error_list;
@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
     if (!flags)
     {
         fprintf(stderr, "Failed to allocate memory for flags\n");
-        res = 1;
+        res = -ENOMEM;
         goto out;
     }
 
@@ -72,10 +72,12 @@ int main(int argc, char* argv[])
     {
         error(error_list, "input", 0, 0, GENERIC,
               "Input file does not exsist or is not accessible");
+
+        res = -EINVAL;
+        goto out;
     }
 
-    const char* source = file_to_string(input, error_list);
-
+    // const char* source = file_to_string(input, error_list);
 
 out:
     if (error_list) free_errors(error_list);
