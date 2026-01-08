@@ -22,6 +22,8 @@ SRCS = ./source/main.c \
        ./source/common/error.c \
        ./source/driver/flags.c \
        ./source/lex/lexer.c \
+	   ./source/parse/parser.c \
+	   ./source/parse/ast.c \
        ./source/tests/test.c \
        ./source/tests/flags_test.c \
        ./source/tests/lexer_test.c \

@@ -6,6 +6,7 @@
 #include "driver/flags.h"
 #include "error.h"
 #include "fs.h"
+#include "parse/parser.h"
 #include "tests/test.h"
 
 int main(int argc, char* argv[])
@@ -77,7 +78,12 @@ int main(int argc, char* argv[])
         goto out;
     }
 
-    // const char* source = file_to_string(input, error_list);
+    const char* source = file_to_string(input, error_list);
+    if (!source)
+    {
+        res = -EINVAL;
+        goto out;
+    }
 
 out:
     if (error_list) free_errors(error_list);
