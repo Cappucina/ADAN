@@ -6,22 +6,23 @@
 #include "driver/flags.h"
 #include "error.h"
 #include "fs.h"
+#include "lex/lexer.h"
 #include "parse/parser.h"
 #include "tests/test.h"
 
 int main(int argc, char* argv[])
 {
     int res = 0;
-    ErrorList* error_list = create_errors();
+    ErrorList* errors = create_errors();
     CompilerFlags* flags = flags_init(argc, argv);
 
-    if (!error_list)
+    if (!errors)
     {
         fprintf(stderr, "Failed to allocate memory for error_list\n");
         return -ENOMEM;
     }
 
-    g_error_list = error_list;
+    g_error_list = errors;
 
     if (!flags)
     {
@@ -71,22 +72,26 @@ int main(int argc, char* argv[])
 
     if (!input)
     {
-        error(error_list, "input", 0, 0, GENERIC,
-              "Input file does not exsist or is not accessible");
+        error(errors, "input", 0, 0, GENERIC, "Input file does not exsist or is not accessible");
 
         res = -EINVAL;
         goto out;
     }
 
-    const char* source = file_to_string(input, error_list);
+    const char* source = file_to_string(input, errors);
     if (!source)
     {
         res = -EINVAL;
         goto out;
     }
 
+    create_lexer(source, errors);
+    // Lexer* lex = create_lexer(source, errors);
+    // Parser* parser = create_parser(lex, errors);
+    // create_parser(lex, errors);
+
 out:
-    if (error_list) free_errors(error_list);
+    if (errors) free_errors(errors);
     if (flags) flags_free(flags);
 
     return res;
