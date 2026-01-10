@@ -1,6 +1,7 @@
 #include "lexer.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -46,7 +47,11 @@ static TokenType is_keyword(const char* name, size_t length)
 Lexer* create_lexer(const char* source, ErrorList* el)
 {
     Lexer* new = (Lexer*)malloc(sizeof(Lexer));
-    if (!new) return NULL;
+    if (!new)
+    {
+        exit(-ENOMEM);
+        return NULL;
+    }
 
     new->source = source;
     new->position = 0;

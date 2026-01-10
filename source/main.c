@@ -85,13 +85,32 @@ int main(int argc, char* argv[])
         goto out;
     }
 
-    create_lexer(source, errors);
-    // Lexer* lex = create_lexer(source, errors);
-    // Parser* parser = create_parser(lex, errors);
-    // create_parser(lex, errors);
+    Lexer* lexer = create_lexer(source, errors);
+    Token token;
+
+    for (;;)
+    {
+        token = lex(lexer);
+
+        if (token.type == TOKEN_EOF)
+        {
+            break;
+        }
+    }
+
+    free_lexer(lexer);
 
 out:
-    if (errors) free_errors(errors);
+    if (errors)
+    {
+        // for (size_t i = 0; i < errors->size; i++)
+        // {
+        //     print_diagnostic(&errors->errors[i]);
+        // }
+
+        free_errors(errors);
+    }
+
     if (flags) flags_free(flags);
 
     return res;
