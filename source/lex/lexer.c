@@ -1,4 +1,8 @@
 #include "lexer.h"
+
+#include <ctype.h>
+#include <errno.h>
+#include <stdbool.h>
 #include <string.h>
 
 static Token match_operator(Lexer* lex, char expected, TokenType if_match, TokenType if_no_match,
@@ -41,13 +45,17 @@ static TokenType is_keyword(const char* name, uint32_t length)
 Lexer* create_lexer(const char* source, ErrorList* el)
 {
     Lexer* new = (Lexer*)malloc(sizeof(Lexer));
-    if (!new) return NULL;
+    if (!new)
+    {
+        exit(-ENOMEM);
+        return NULL;
+    }
 
     new->source = source;
     new->position = 0;
     new->line = 1;
     new->column = 1;
-    new->length = strlen(source);
+    new->length = (uint32_t)strlen(source);
     new->errors = el;
     return new;
 }

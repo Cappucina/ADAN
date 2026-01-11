@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "../include/buffer.h"
 #include "diagnostic.h"
 #include "driver/flags.h"
 #include "error.h"
@@ -15,6 +16,7 @@ int main(int argc, char* argv[])
     int res = 0;
     ErrorList* errors = create_errors();
     CompilerFlags* flags = flags_init(argc, argv);
+    Buffer* tokens = NULL;
 
     if (!errors)
     {
@@ -85,12 +87,40 @@ int main(int argc, char* argv[])
         goto out;
     }
 
-    create_lexer(source, errors);
-    // Lexer* lex = create_lexer(source, errors);
-    // Parser* parser = create_parser(lex, errors);
-    // create_parser(lex, errors);
+    Lexer* lexer = create_lexer(source, errors);
+    tokens = buffer_create(sizeof(Token));
+    if (!tokens)
+    {
+        free_lexer(lexer);
+        res = -ENOMEM;
+        goto out;
+    }
+
+    for (;;)
+    {
+        Token token = lex(lexer);
+        buffer_push(tokens, &token);
+
+        if (token.type == TOKEN_EOF)
+        {
+            break;
+        }
+    }
+
+    free_lexer(lexer);
+
+    TokenStream* stream =
+        token_stream_create((Token*)tokens->data, (uint32_t)tokens->count, errors);
+
+    if (stream)
+    {
+        ParseResult* result = syntax_analyze(stream);
+        if (result) free(result);
+        token_stream_free(stream);
+    }
 
 out:
+    if (tokens) buffer_free(tokens);
     if (errors) free_errors(errors);
     if (flags) flags_free(flags);
 

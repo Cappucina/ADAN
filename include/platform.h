@@ -9,6 +9,7 @@ typedef enum
     KERNEL_UNX,
     KERNEL_FREE_BSD,
     KERNEL_OPEN_BSD,
+    KERNELLESS,
     KERNEL_UNKNOWN
 } Kernel;
 
@@ -18,6 +19,7 @@ typedef enum
     ARCH_AMD32,
     ARCH_ARM32,
     ARCH_ARM64,
+    ARCH_HPU,
     ARCH_UNKNOWN
 } Arch;
 

@@ -1,18 +1,36 @@
 #include "parser.h"
 
-Parser* create_parser(Token* tokens, uint32_t count, ErrorList* errors)
-{
-    Parser* parser = (Parser*)malloc(sizeof(Parser));
-    parser->current = 0;
-    parser->count = count;
-    parser->tokens = tokens;
-    parser->errors = errors;
-    parser->panic = false;
+#include <stdlib.h>
 
-    return parser;
+TokenStream* token_stream_create(Token* tokens, uint32_t count, ErrorList* errors)
+{
+    TokenStream* stream = (TokenStream*)malloc(sizeof(TokenStream));
+    if (!stream) return NULL;
+
+    stream->current = 0;
+    stream->count = count;
+    stream->tokens = tokens;
+    stream->errors = errors;
+    stream->panic = false;
+
+    return stream;
 }
 
-void free_parser()
+void token_stream_free(TokenStream* stream)
 {
+    if (!stream) return;
+    free(stream);
+}
 
-}g
+ParseResult* syntax_analyze(TokenStream* stream)
+{
+    if (!stream) return NULL;
+
+    ParseResult* result = (ParseResult*)malloc(sizeof(ParseResult));
+    if (!result) return NULL;
+
+    result->root = NULL;
+    result->errors = stream->errors;
+
+    return result;
+}
