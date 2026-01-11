@@ -25,13 +25,13 @@ format:
 
 help:
 	@echo "ADAN Makefile guide:"
-	@echo "  compile	   - Clean, format, and compile the compiler."
-	@echo "  run		   - Compile and immediately run the executable. Pass `ARGS=...` for arguments."
-	@echo "  test		  - Run the test suite to identify compiler errors."
-	@echo "  clean		 - Remove the output directory."
-	@echo "  format		- Reformat all source files. Keeps consistency between programmers."
-	@echo "  codespaces	- Only run when using a GitHub Codespaces environment."
-	@echo "  help		  - Displays this message."
+	@echo "  compile       - Clean, format, and compile the compiler."
+	@echo "  run           - Compile and immediately run the executable. Pass `ARGS=...` for arguments."
+	@echo "  test          - Run the test suite to identify compiler errors."
+	@echo "  clean         - Remove the output directory."
+	@echo "  format        - Reformat all source files. Keeps consistency between programmers."
+	@echo "  codespaces    - Only run when using a GitHub Codespaces environment."
+	@echo "  help          - Displays this message."
 
 #
 #  Ignore the follow lines UNLESS you are working in a
