@@ -1,7 +1,9 @@
 #ifndef LEXER_H
 #define LEXER_H
 
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "diagnostic.h"
 
@@ -115,25 +117,26 @@ typedef enum
 typedef struct
 {
     const char* lexeme;
-    size_t start;
-    size_t length;
-    size_t line;
-    size_t column;
+    uint32_t start;
+    uint32_t length;
+    uint32_t line;
+    uint32_t column;
     TokenType type;
 } Token;
 
 typedef struct
 {
     const char* source;
-    size_t position;
-    size_t length;
-    size_t line;
-    size_t column;
+    uint32_t position;
+    uint32_t length;
+    uint32_t line;
+    uint32_t column;
+    ErrorList* errors;
 } Lexer;
 
 char peek_char(Lexer* lex);
 
-char peek_next(Lexer* lex, size_t offset);
+char peek_next(Lexer* lex, uint32_t offset);
 
 char next_char(Lexer* lex);
 
@@ -149,7 +152,7 @@ void free_lexer(Lexer* lex);
  *
  * Token-specific
  */
-Token create_token(Lexer* lex, const char* lexeme, size_t start, size_t length, TokenType type);
+Token create_token(Lexer* lex, const char* lexeme, uint32_t start, uint32_t length, TokenType type);
 
 Token lex(Lexer* lx);
 

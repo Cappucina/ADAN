@@ -1,13 +1,8 @@
 #include "lexer.h"
-
-#include <ctype.h>
-#include <stdbool.h>
 #include <string.h>
 
-static ErrorList* error_list;
-
 static Token match_operator(Lexer* lex, char expected, TokenType if_match, TokenType if_no_match,
-                            size_t start);
+                            uint32_t start);
 
 struct
 {
@@ -29,10 +24,10 @@ static bool is_identifier_body(char c)
     return (isalnum(c) || c == '_');
 }
 
-static TokenType is_keyword(const char* name, size_t length)
+static TokenType is_keyword(const char* name, uint32_t length)
 {
     if (!name) return TOKEN_IDENTIFIER;
-    for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++)
+    for (uint32_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++)
     {
         if (strlen(keywords[i].name) == length && strncmp(name, keywords[i].name, length) == 0)
         {
@@ -53,7 +48,7 @@ Lexer* create_lexer(const char* source, ErrorList* el)
     new->line = 1;
     new->column = 1;
     new->length = strlen(source);
-    error_list = el;
+    new->errors = el;
     return new;
 }
 
@@ -72,7 +67,7 @@ char peek_char(Lexer* lex)
     return lex->source[lex->position];
 }
 
-char peek_next(Lexer* lex, size_t offset)
+char peek_next(Lexer* lex, uint32_t offset)
 {
     return (lex->position + offset < lex->length) ? lex->source[lex->position + offset] : '\0';
 }
@@ -93,7 +88,7 @@ char next_char(Lexer* lex)
     return current;
 }
 
-Token create_token(Lexer* lex, const char* lexeme, size_t start, size_t length, TokenType type)
+Token create_token(Lexer* lex, const char* lexeme, uint32_t start, uint32_t length, TokenType type)
 {
     Token tk = {.lexeme = lexeme,
                 .start = start,
@@ -111,14 +106,14 @@ Token create_token(Lexer* lex, const char* lexeme, size_t start, size_t length, 
  */
 Token lex_identifier(Lexer* lex)
 {
-    size_t start = lex->position;
+    uint32_t start = lex->position;
     next_char(lex);
     while (is_identifier_body(peek_char(lex)))
     {
         next_char(lex);
     }
 
-    size_t length = lex->position - start;
+    uint32_t length = lex->position - start;
     const char* lexeme = &lex->source[start];
     TokenType type = is_keyword(lexeme, length);
     return create_token(lex, lexeme, start, length, type);
@@ -126,7 +121,7 @@ Token lex_identifier(Lexer* lex)
 
 Token lex_number(Lexer* lex)
 {
-    size_t start = lex->position;
+    uint32_t start = lex->position;
     while (isdigit(peek_char(lex)))
     {
         next_char(lex);
@@ -140,13 +135,13 @@ Token lex_number(Lexer* lex)
             next_char(lex);
         }
 
-        size_t length = lex->position - start;
+        uint32_t length = lex->position - start;
         const char* lexeme = &lex->source[start];
         return create_token(lex, lexeme, start, length, TOKEN_FLOAT_LITERAL);
     }
     else
     {
-        size_t length = lex->position - start;
+        uint32_t length = lex->position - start;
         const char* lexeme = &lex->source[start];
         return create_token(lex, lexeme, start, length, TOKEN_INT_LITERAL);
     }
@@ -154,9 +149,9 @@ Token lex_number(Lexer* lex)
 
 Token lex_string(Lexer* lex)
 {
-    size_t start = lex->position;
-    size_t start_line = lex->line;
-    size_t start_column = lex->column;
+    uint32_t start = lex->position;
+    uint32_t start_line = lex->line;
+    uint32_t start_column = lex->column;
     next_char(lex);
     while (peek_char(lex) != '"' && peek_char(lex) != '\0')
     {
@@ -165,21 +160,21 @@ Token lex_string(Lexer* lex)
 
     if (peek_char(lex) == '\0')
     {
-        error(error_list, "source", start_line, start_column, LEXER, "Unclosed string literal");
+        error(lex->errors, "source", start_line, start_column, LEXER, "Unclosed string literal");
     }
     else
     {
         next_char(lex);
     }
 
-    size_t length = lex->position - start;
+    uint32_t length = lex->position - start;
     const char* lexeme = &lex->source[start];
     return create_token(lex, lexeme, start, length, TOKEN_STRING);
 }
 
 Token lex_operator(Lexer* lex)
 {
-    size_t start = lex->position;
+    uint32_t start = lex->position;
     char c = next_char(lex);
     switch (c)
     {
@@ -255,9 +250,9 @@ Token lex_operator(Lexer* lex)
             return create_token(lex, &lex->source[start], start, lex->position - start,
                                 TOKEN_PERIOD);
         default: {
-            size_t length = lex->position - start;
+            uint32_t length = lex->position - start;
             char invalid_char = lex->source[start];
-            error(error_list, "source", lex->line, lex->column, LEXER,
+            error(lex->errors, "source", lex->line, lex->column, LEXER,
                   "Invalid operator character '%c'", invalid_char);
             return create_token(lex, &lex->source[start], start, length, TOKEN_ERROR);
         }
@@ -266,9 +261,9 @@ Token lex_operator(Lexer* lex)
 
 Token lex_char(Lexer* lex)
 {
-    size_t start = lex->position;
-    size_t start_line = lex->line;
-    size_t start_column = lex->column;
+    uint32_t start = lex->position;
+    uint32_t start_line = lex->line;
+    uint32_t start_column = lex->column;
     next_char(lex);
     while (peek_char(lex) != '\'' && peek_char(lex) != '\0')
     {
@@ -277,14 +272,14 @@ Token lex_char(Lexer* lex)
 
     if (peek_char(lex) == '\0')
     {
-        error(error_list, "source", start_line, start_column, LEXER, "Unclosed character literal");
+        error(lex->errors, "source", start_line, start_column, LEXER, "Unclosed character literal");
     }
     else
     {
         next_char(lex);
     }
 
-    size_t length = lex->position - start;
+    uint32_t length = lex->position - start;
     const char* lexeme = &lex->source[start];
     return create_token(lex, lexeme, start, length, TOKEN_CHAR);
 }
@@ -335,17 +330,17 @@ void skip_whitespace(Lexer* lex)
 }
 
 static Token match_operator(Lexer* lex, char expected, TokenType if_match, TokenType if_no_match,
-                            size_t start)
+                            uint32_t start)
 {
     char pc = peek_char(lex);
     if (pc == expected)
     {
         next_char(lex);
-        size_t length = lex->position - start;
+        uint32_t length = lex->position - start;
         return create_token(lex, &lex->source[start], start, length, if_match);
     }
 
-    size_t length = lex->position - start;
+    uint32_t length = lex->position - start;
     return create_token(lex, &lex->source[start], start, length, if_no_match);
 }
 
@@ -366,7 +361,7 @@ static bool is_operator_start(char c)
 Token lex(Lexer* lx)
 {
     skip_whitespace(lx);
-    size_t start = lx->position;
+    uint32_t start = lx->position;
     char c = peek_char(lx);
     if (c == '\0')
     {
@@ -434,7 +429,7 @@ Token lex(Lexer* lx)
     }
     else
     {
-        error(error_list, "source", lx->line, lx->column, LEXER, "Unexpected character '%c'", c);
+        error(lx->errors, "source", lx->line, lx->column, LEXER, "Unexpected character '%c'", c);
         next_char(lx);
         return create_token(lx, &lx->source[start], start, 1, TOKEN_ERROR);
     }
