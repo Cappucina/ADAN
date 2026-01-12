@@ -43,11 +43,53 @@ Token current_token(Analyzer* parser)
 
 bool match(Analyzer* parser, TokenType expected)
 {
-    if (current_token(parser).type == expected)
+    return current_token(parser).type == expected;
+}
+
+Token* expect(Analyzer* parser, TokenType expected, const char* message)
+{
+    if (match(parser, expected))
     {
-        return true;
+        advance(parser);
+        return &parser->tokens[parser->current];
     }
-    return false;
+
+    Error error;
+    error.message = message;
+    error.file = current_token(parser).file;
+    error.line = current_token(parser).line;
+    error.column = current_token(parser).column;
+    if (parser->errors->size < parser->errors->capacity)
+    {
+        parser->errors->errors[parser->errors->size++] = error;
+    }
+
+    parser->panic = true;
+    return NULL;
+}
+
+static void synchronize(Analyzer* parser)
+{
+    advance(parser);
+    parser->panic = false;
+    while (!match(parser, TOKEN_EOF))
+    {
+        if (current_token(parser).type == TOKEN_SEMICOLON)
+        {
+            advance(parser);
+            return;
+        }
+        if (current_token(parser).type == TOKEN_IF ||
+            current_token(parser).type == TOKEN_FOR ||
+            current_token(parser).type == TOKEN_WHILE ||
+            current_token(parser).type == TOKEN_RETURN ||
+            current_token(parser).type == TOKEN_STRUCT ||
+            current_token(parser).type == TOKEN_INCLUDE)
+        {
+            return;
+        }
+        advance(parser);
+    }
 }
 
 Analyzer* create_parser(Buffer* token_buffer, ErrorList* errors)
@@ -151,4 +193,125 @@ void parse(Analyzer* parser)
 void free_parser(Analyzer* parser)
 {
     if (parser) free(parser);
+}
+
+// break;
+static ASTNode* parse_break(Analyzer* parser)
+{
+
+}
+
+// struct struct_name { ... }
+static ASTNode* parse_struct(Analyzer* parser)
+{
+
+}
+
+// return expression;
+static ASTNode* parse_return(Analyzer* parser)
+{
+
+}
+
+// program::type program_name(param_1, ...) { ... }
+static ASTNode* parse_program(Parser* parser)
+{
+
+}
+
+// continue;
+static ASTNode* parse_continue(Analyzer* parser)
+{
+
+}
+
+// include org.lib;
+static ASTNode* parse_include(Analyzer* parser)
+{
+
+}
+
+// for (init; condition; increment) { ... }
+static ASTNode* parse_for(Analyzer* parser)
+{
+
+}
+
+// while (condition) { ... }
+static ASTNode* parse_while(Analyzer* parser)
+{
+
+}
+
+// if (condition) { ... } else if (condition) { ... } else { ... }
+static ASTNode* parse_if(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_expression(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_statement(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_expression_list(Alayzer* parser)
+{
+}
+
+static ASTNode* parse_primary(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_binary(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_unary(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_declaration(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_type_specifier(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_assignment(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_or(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_and(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_equality(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_comparison(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_term(Analyzer* parser)
+{
+}
+
+static ASTNode* parse_factor(Analyzer* parser)
+{
+}
+
+void parse(Analyzer* parser)
+{
+    while (!match(parser, TOKEN_EOF))
+    {
+        parse_statement(parser);
+    }
 }

@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
 
     if (!input)
     {
-        error(errors, "input", 0, 0, GENERIC, "Input file does not exsist or is not accessible");
+        error(errors, "input", 0, 0, GENERIC, "Input file does not exist or is not accessible");
 
         res = -EINVAL;
         goto out;

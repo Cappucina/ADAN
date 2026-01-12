@@ -15,3 +15,4 @@ Analyzer* create_semantic(Buffer* token_buffer, ErrorList* errors);
 void free_semantic(Analyzer* analyzer);
 
 #endif
+

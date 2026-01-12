@@ -40,3 +40,4 @@ int run_semantic_tests(TestSuite* suite)
 
     return 0;
 }
+

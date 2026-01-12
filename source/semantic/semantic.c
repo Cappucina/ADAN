@@ -23,3 +23,4 @@ void free_semantic(Analyzer* analyzer)
 {
     if (analyzer) free(analyzer);
 }
+
