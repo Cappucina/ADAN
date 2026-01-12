@@ -9,6 +9,7 @@
 #include "fs.h"
 #include "lex/lexer.h"
 #include "parse/parser.h"
+#include "semantic/semantic.h"
 #include "tests/test.h"
 
 int main(int argc, char* argv[])
@@ -18,7 +19,8 @@ int main(int argc, char* argv[])
     CompilerFlags* flags = flags_init(argc, argv);
     Buffer* tokens = NULL;
     Lexer* lexer = NULL;
-    Parser* parser = NULL;
+    Analyzer* parser = NULL;
+    Analyzer* semantic = NULL;
 
     if (!errors)
     {
@@ -117,7 +119,16 @@ int main(int argc, char* argv[])
     }
 
     parser = create_parser(tokens, errors);
-    parse(parser);
+
+    if (errors->size > 0)
+    {
+        res = -EINVAL;
+        goto out;
+    }
+
+    semantic = create_semantic(tokens, errors);
+
+    semantic_analysis(semantic);
 
     if (errors->size > 0)
     {
@@ -126,6 +137,7 @@ int main(int argc, char* argv[])
     }
 
 out:
+    if (semantic) free_semantic(semantic);
     if (parser) free_parser(parser);
     if (lexer) free_lexer(lexer);
     if (tokens) buffer_free(tokens);
