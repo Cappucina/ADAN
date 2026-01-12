@@ -13,10 +13,7 @@ struct
     const char* name;
     TokenType type;
 } keywords[] = {
-    {"if", TOKEN_IF},           {"while", TOKEN_WHILE},       {"for", TOKEN_FOR},
-    {"include", TOKEN_INCLUDE}, {"continue", TOKEN_CONTINUE}, {"program", TOKEN_PROGRAM},
-    {"return", TOKEN_RETURN},   {"else", TOKEN_ELSE},         {"struct", TOKEN_STRUCT},
-    {"break", TOKEN_BREAK}};
+    {"if", TOKEN_IF}, {"while", TOKEN_WHILE}, {"for", TOKEN_FOR}, {"include", TOKEN_INCLUDE}, {"continue", TOKEN_CONTINUE}, {"program", TOKEN_PROGRAM}, {"return", TOKEN_RETURN}, {"else", TOKEN_ELSE}, {"struct", TOKEN_STRUCT}, {"break", TOKEN_BREAK}};
 
 static bool is_identifier_start(char c)
 {
@@ -42,7 +39,7 @@ static TokenType is_keyword(const char* name, uint32_t length)
     return TOKEN_IDENTIFIER;
 }
 
-Lexer* create_lexer(const char* source, ErrorList* el)
+Lexer* create_lexer(const char* source, ErrorList* el, const char* file)
 {
     Lexer* new = (Lexer*)malloc(sizeof(Lexer));
     if (!new)
@@ -53,6 +50,7 @@ Lexer* create_lexer(const char* source, ErrorList* el)
 
     new->source = source;
     new->position = 0;
+    new->file = file;
     new->line = 1;
     new->column = 1;
     new->length = (uint32_t)strlen(source);
@@ -101,6 +99,7 @@ Token create_token(Lexer* lex, const char* lexeme, uint32_t start, uint32_t leng
     Token tk = {.lexeme = lexeme,
                 .start = start,
                 .length = length,
+                .file = lex->file,
                 .line = lex->line,
                 .column = lex->column,
                 .type = type};

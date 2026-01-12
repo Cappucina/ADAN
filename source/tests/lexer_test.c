@@ -9,12 +9,14 @@
 static int test_create_lexer(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("int x = 5;", errors);
+    Lexer* lex = create_lexer("int x = 5;", errors, "test");
 
     ASSERT_NOT_NULL(lex, "create_lexer should not return NULL");
     ASSERT_EQ(lex->position, 0, "Initial position should be 0");
     ASSERT_EQ(lex->line, 1, "Initial line should be 1");
     ASSERT_EQ(lex->column, 1, "Initial column should be 1");
+    ASSERT_STREQ(lex->file, "test", "Source name should match");
+    ASSERT_EQ(lex->length, strlen("int x = 5;"), "Length should match input string length");
 
     free_lexer(lex);
     free_errors(errors);
@@ -24,7 +26,7 @@ static int test_create_lexer(void)
 static int test_peek_char(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("hello", errors);
+    Lexer* lex = create_lexer("hello", errors, "test");
 
     ASSERT_NOT_NULL(lex, "create_lexer should not return NULL");
     char c = peek_char(lex);
@@ -39,7 +41,7 @@ static int test_peek_char(void)
 static int test_next_char(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("ab", errors);
+    Lexer* lex = create_lexer("ab", errors, "test");
 
     ASSERT_NOT_NULL(lex, "create_lexer should not return NULL");
     char c1 = next_char(lex);
@@ -58,7 +60,7 @@ static int test_next_char(void)
 static int test_peek_next(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("hello", errors);
+    Lexer* lex = create_lexer("hello", errors, "test");
 
     ASSERT_NOT_NULL(lex, "create_lexer should not return NULL");
     char c = peek_next(lex, 1);
@@ -73,7 +75,7 @@ static int test_peek_next(void)
 static int test_next_char_newline(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("a\nb", errors);
+    Lexer* lex = create_lexer("a\nb", errors, "test");
 
     ASSERT_NOT_NULL(lex, "create_lexer should not return NULL");
     next_char(lex);
@@ -91,7 +93,7 @@ static int test_next_char_newline(void)
 static int test_create_token(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("int x;", errors);
+    Lexer* lex = create_lexer("int x;", errors, "test");
 
     Token tok = create_token(lex, "int", 0, 3, TOKEN_INT);
     ASSERT_EQ(tok.type, TOKEN_INT, "token type should match");
@@ -106,7 +108,7 @@ static int test_create_token(void)
 static int test_lex_identifier(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("myVariable", errors);
+    Lexer* lex = create_lexer("myVariable", errors, "test");
 
     Token tok = lex_identifier(lex);
     ASSERT_EQ(tok.type, TOKEN_IDENTIFIER, "token should be identifier");
@@ -119,7 +121,7 @@ static int test_lex_identifier(void)
 static int test_lex_keyword_if(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("if", errors);
+    Lexer* lex = create_lexer("if", errors, "test");
 
     Token tok = lex_identifier(lex);
     ASSERT_EQ(tok.type, TOKEN_IF, "keyword 'if' should be recognized");
@@ -132,7 +134,7 @@ static int test_lex_keyword_if(void)
 static int test_lex_keyword_while(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("while", errors);
+    Lexer* lex = create_lexer("while", errors, "test");
 
     Token tok = lex_identifier(lex);
     ASSERT_EQ(tok.type, TOKEN_WHILE, "keyword 'while' should be recognized");
@@ -145,7 +147,7 @@ static int test_lex_keyword_while(void)
 static int test_lex_keyword_return(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("return", errors);
+    Lexer* lex = create_lexer("return", errors, "test");
 
     Token tok = lex_identifier(lex);
     ASSERT_EQ(tok.type, TOKEN_RETURN, "keyword 'return' should be recognized");
@@ -158,7 +160,7 @@ static int test_lex_keyword_return(void)
 static int test_lex_number_integer(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("42", errors);
+    Lexer* lex = create_lexer("42", errors, "test");
 
     Token tok = lex_number(lex);
     ASSERT_EQ(tok.type, TOKEN_INT_LITERAL, "token should be integer literal");
@@ -171,7 +173,7 @@ static int test_lex_number_integer(void)
 static int test_lex_number_float(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("3.14", errors);
+    Lexer* lex = create_lexer("3.14", errors, "test");
 
     Token tok = lex_number(lex);
     ASSERT_EQ(tok.type, TOKEN_FLOAT_LITERAL, "token should be float literal");
@@ -184,7 +186,7 @@ static int test_lex_number_float(void)
 static int test_lex_string(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("\"hello\"", errors);
+    Lexer* lex = create_lexer("\"hello\"", errors, "test");
 
     Token tok = lex_string(lex);
     ASSERT_EQ(tok.type, TOKEN_STRING, "token should be string");
@@ -197,7 +199,7 @@ static int test_lex_string(void)
 static int test_skip_whitespace(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("   abc", errors);
+    Lexer* lex = create_lexer("   abc", errors, "test");
 
     skip_whitespace(lex);
     ASSERT_EQ(lex->position, 3, "skip_whitespace should advance position past spaces");
@@ -210,7 +212,7 @@ static int test_skip_whitespace(void)
 static int test_lex_operator_type_declarator(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("::", errors);
+    Lexer* lex = create_lexer("::", errors, "test");
 
     Token tok = lex_operator(lex);
     ASSERT_EQ(tok.type, TOKEN_TYPE_DECLARATOR, "token should be type declarator operator");
@@ -223,7 +225,7 @@ static int test_lex_operator_type_declarator(void)
 static int test_peek_char_eof(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("x", errors);
+    Lexer* lex = create_lexer("x", errors, "test");
 
     next_char(lex);
     char c = peek_char(lex);
@@ -237,7 +239,7 @@ static int test_peek_char_eof(void)
 static int test_lexer_empty_string(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("", errors);
+    Lexer* lex = create_lexer("", errors, "test");
 
     ASSERT_NOT_NULL(lex, "create_lexer should handle empty string");
     ASSERT_EQ(lex->length, 0, "lexer length should be 0");
@@ -252,7 +254,7 @@ static int test_lexer_empty_string(void)
 static int test_lex_unclosed_string_error(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("\"unclosed string", errors);
+    Lexer* lex = create_lexer("\"unclosed string", errors, "test");
 
     Token tok = lex_string(lex);
     ASSERT_EQ(tok.type, TOKEN_STRING, "unclosed string should still create token");
@@ -265,7 +267,7 @@ static int test_lex_unclosed_string_error(void)
 static int test_lex_unclosed_char_error(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("'x", errors);
+    Lexer* lex = create_lexer("'x", errors, "test");
 
     Token tok = lex_char(lex);
     ASSERT_EQ(tok.type, TOKEN_CHAR, "unclosed char should still create token");
@@ -278,7 +280,7 @@ static int test_lex_unclosed_char_error(void)
 static int test_lex_invalid_operator_error(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lex = create_lexer("@", errors);
+    Lexer* lex = create_lexer("@", errors, "test");
 
     Token tok = lex_operator(lex);
     ASSERT_EQ(tok.type, TOKEN_ERROR, "invalid operator should create error token");
@@ -291,7 +293,7 @@ static int test_lex_invalid_operator_error(void)
 static int test_lex_single_token_identifier(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer("myVar", errors);
+    Lexer* lexer = create_lexer("myVar", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_IDENTIFIER, "lex should recognize identifier");
@@ -305,7 +307,7 @@ static int test_lex_single_token_identifier(void)
 static int test_lex_single_token_number(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer("42", errors);
+    Lexer* lexer = create_lexer("42", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_INT_LITERAL, "lex should recognize integer");
@@ -318,7 +320,7 @@ static int test_lex_single_token_number(void)
 static int test_lex_single_token_string(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer("\"hello\"", errors);
+    Lexer* lexer = create_lexer("\"hello\"", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_STRING, "lex should recognize string");
@@ -331,7 +333,7 @@ static int test_lex_single_token_string(void)
 static int test_lex_single_token_paren(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer("(", errors);
+    Lexer* lexer = create_lexer("(", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_LEFT_PAREN, "lex should recognize left paren");
@@ -344,7 +346,7 @@ static int test_lex_single_token_paren(void)
 static int test_lex_single_token_brace(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer("{", errors);
+    Lexer* lexer = create_lexer("{", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_LEFT_BRACE, "lex should recognize left brace");
@@ -357,7 +359,7 @@ static int test_lex_single_token_brace(void)
 static int test_lex_single_token_bracket(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer("[", errors);
+    Lexer* lexer = create_lexer("[", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_LEFT_BRACKET, "lex should recognize left bracket");
@@ -370,7 +372,7 @@ static int test_lex_single_token_bracket(void)
 static int test_lex_single_token_semicolon(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer(";", errors);
+    Lexer* lexer = create_lexer(";", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_SEMICOLON, "lex should recognize semicolon");
@@ -383,7 +385,7 @@ static int test_lex_single_token_semicolon(void)
 static int test_lex_single_token_comma(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer(",", errors);
+    Lexer* lexer = create_lexer(",", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_COMMA, "lex should recognize comma");
@@ -396,7 +398,7 @@ static int test_lex_single_token_comma(void)
 static int test_lex_single_token_operator(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer("+", errors);
+    Lexer* lexer = create_lexer("+", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_ADD, "lex should recognize addition operator");
@@ -409,7 +411,7 @@ static int test_lex_single_token_operator(void)
 static int test_lex_whitespace_skip(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer("  \t  42", errors);
+    Lexer* lexer = create_lexer("  \t  42", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_INT_LITERAL, "lex should skip whitespace");
@@ -422,7 +424,7 @@ static int test_lex_whitespace_skip(void)
 static int test_lex_eof(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer("", errors);
+    Lexer* lexer = create_lexer("", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_EOF, "lex should return EOF for empty input");
@@ -435,7 +437,7 @@ static int test_lex_eof(void)
 static int test_lex_unexpected_char_error(void)
 {
     ErrorList* errors = create_errors();
-    Lexer* lexer = create_lexer("$", errors);
+    Lexer* lexer = create_lexer("$", errors, "test");
 
     Token tok = lex(lexer);
     ASSERT_EQ(tok.type, TOKEN_ERROR, "lex should create error token for invalid character");

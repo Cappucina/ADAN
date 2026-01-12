@@ -119,6 +119,7 @@ typedef struct
     const char* lexeme;
     uint32_t start;
     uint32_t length;
+    const char* file;
     uint32_t line;
     uint32_t column;
     TokenType type;
@@ -129,6 +130,7 @@ typedef struct
     const char* source;
     uint32_t position;
     uint32_t length;
+    const char* file;
     uint32_t line;
     uint32_t column;
     ErrorList* errors;
@@ -144,7 +146,7 @@ char next_char(Lexer* lex);
  *
  * Lexer-specific
  */
-Lexer* create_lexer(const char* source, ErrorList* error_list);
+Lexer* create_lexer(const char* source, ErrorList* error_list, const char* file);
 
 void free_lexer(Lexer* lex);
 

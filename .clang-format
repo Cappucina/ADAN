@@ -2,7 +2,7 @@ BasedOnStyle: Google
 IndentWidth: 4
 UseTab: Never
 PointerAlignment: Left
-ColumnLimit: 100
+ColumnLimit: 0
 AllowShortFunctionsOnASingleLine: None
 DerivePointerBinding: false
 AlignAfterOpenBracket: true

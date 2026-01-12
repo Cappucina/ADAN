@@ -1,33 +1,30 @@
-#ifndef SYNTAX_H
-#define SYNTAX_H
+#ifndef PARSER_H
+#define PARSER_H
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
+#include "../lex/lexer.h"
 #include "ast.h"
 #include "diagnostic.h"
-#include "../lex/lexer.h"
+#include "buffer.h"
 
-typedef struct
+typedef struct Parser
 {
     Token* tokens;
-    uint32_t current;
-    uint32_t count;
+    size_t current;
+    size_t count;
     ErrorList* errors;
     bool panic;
-} TokenStream;
+} Parser;
 
-typedef struct
-{
-    ASTNode* root;
-    ErrorList* errors;
-} ParseResult;
+Token peek(Parser* parser);
+Token advance(Parser* parser);
+Token current_token(Parser* parser);
+bool match(Parser* parser, uint32_t ct, ...);
+Parser* create_parser(Buffer* token_buffer, ErrorList* errors);
 
-TokenStream* token_stream_create(Token* tokens, uint32_t count, ErrorList* errors);
-
-void token_stream_free(TokenStream* stream);
-
-ParseResult* syntax_analyze(TokenStream* stream);
+void free_parser(Parser* parser);
 
 #endif

@@ -131,6 +131,15 @@ bool test_suite_all_passed(TestSuite* suite)
 extern int run_diagnostic_tests(TestSuite* suite);
 extern int run_flags_tests(TestSuite* suite);
 extern int run_lexer_tests(TestSuite* suite);
+extern int run_parser_tests(TestSuite* suite);
+
+/*
+ * To be implemented first:
+ *
+ * extern int run_semantic_tests(TestSuite* suite);
+ * extern int run_codegen_tests(TestSuite* suite);
+ *   
+ */
 
 int run_all_tests(void)
 {
@@ -144,6 +153,9 @@ int run_all_tests(void)
     run_diagnostic_tests(suite);
     run_flags_tests(suite);
     run_lexer_tests(suite);
+    run_parser_tests(suite);
+    // run_semantic_tests(suite);
+    // run_codegen_tests(suite);
 
     test_suite_print_results(suite);
     bool all_passed = test_suite_all_passed(suite);
