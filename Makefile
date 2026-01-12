@@ -15,27 +15,31 @@ SRC = ./source
 BUILD_DIR = ./build
 EXE = $(BUILD_DIR)/adan
 
-SRCS = ./source/main.c \
-	   ./source/common/fs.c \
-       ./source/common/diagnostic.c \
-       ./source/common/platform.c \
-       ./source/common/error.c \
-       ./source/common/buffer.c \
-       ./source/driver/flags.c \
-       ./source/lex/lexer.c \
-       ./source/parse/parser.c \
-       ./source/tests/test.c \
-       ./source/tests/flags_test.c \
-       ./source/tests/lexer_test.c \
-       ./source/tests/diagnostic_test.c \
-	   ./source/tests/parser_test.c \
+SRCS = 	./source/main.c \
+	   	./source/common/fs.c \
+       	./source/common/diagnostic.c \
+       	./source/common/platform.c \
+       	./source/common/error.c \
+       	./source/common/buffer.c \
+       	./source/driver/flags.c \
+       	./source/lex/lexer.c \
+       	./source/parse/parser.c \
+	   	./source/semantic/semantic.c \
+       	./source/tests/test.c \
+       	./source/tests/flags_test.c \
+       	./source/tests/lexer_test.c \
+       	./source/tests/diagnostic_test.c \
+	   	./source/tests/parser_test.c \
+		./source/tests/semantic_test.c \
 
 CC = gcc
 CFLAGS = -g -Wall -Wextra -Werror -O2 -Wundef -Wconversion -pedantic -std=c17 -march=native -funroll-loops -I./include \
 		 -I./source -I./source/common -I./source/lex -I./source/syntax -I./source/ir -I./source/semantic -I./source/gen \
 		 -I./source/driver -I./source/tests
 
-build: clean format
+build:
+	make clean
+	make format
 	mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(SRCS) -o $(EXE)
 
@@ -60,7 +64,7 @@ debug: clean format
 	@./$(BUILD_DIR)/$(EXE)
 
 clean:
-	@rm -rf $(BUILD_DIR)
+	[ -f $(BUILD_DIR) ] && rm -rf $(BUILD_DIR)
 
 format:
 	@find source include -type f \( -name '*.c' -o -name '*.h' \) -print0 | xargs -0 clang-format -i

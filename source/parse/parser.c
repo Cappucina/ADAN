@@ -7,22 +7,22 @@
 #include "buffer.h"
 #include "diagnostic.h"
 
-Token peek(Parser* parser)
+Token peek(Analyzer* parser)
 {
     return parser->tokens[parser->current + 1];
 }
 
-Token advance(Parser* parser)
+Token advance(Analyzer* parser)
 {
     return parser->tokens[++parser->current];
 }
 
-Token current_token(Parser* parser)
+Token current_token(Analyzer* parser)
 {
     return parser->tokens[parser->current];
 }
 
-// bool match(Parser* parser, uint32_t ct, ...)
+// bool match(Analyzer* parser, uint32_t ct, ...)
 // {
 //     TokenType current = current_token(parser).type;
 
@@ -41,7 +41,7 @@ Token current_token(Parser* parser)
 //     return true;
 // }
 
-bool match(Parser* parser, TokenType expected)
+bool match(Analyzer* parser, TokenType expected)
 {
     if (current_token(parser).type == expected)
     {
@@ -50,9 +50,9 @@ bool match(Parser* parser, TokenType expected)
     return false;
 }
 
-Parser* create_parser(Buffer* token_buffer, ErrorList* errors)
+Analyzer* create_parser(Buffer* token_buffer, ErrorList* errors)
 {
-    Parser* parser = (Parser*)malloc(sizeof(Parser));
+    Analyzer* parser = (Analyzer*)malloc(sizeof(Analyzer));
     parser->current = 0;
     parser->count = token_buffer->count;
     parser->tokens = token_buffer->data;
@@ -62,7 +62,7 @@ Parser* create_parser(Buffer* token_buffer, ErrorList* errors)
     return parser;
 }
 
-void parse(Parser* parser)
+void parse(Analyzer* parser)
 {
     for (size_t i = 0; i < parser->count; i++)
     {
@@ -148,7 +148,7 @@ void parse(Parser* parser)
     }
 }
 
-void free_parser(Parser* parser)
+void free_parser(Analyzer* parser)
 {
     if (parser) free(parser);
 }

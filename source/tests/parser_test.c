@@ -1,13 +1,13 @@
-#include "../parse/parser.h"
+#include "parse/parser.h"
+#include "lex/lexer.h"
 
-#include "../lex/lexer.h"
 #include "buffer.h"
 #include "test.h"
 
 static int test_create_parser(void)
 {
     Buffer* buffer = buffer_create(sizeof(Token));
-    Parser* parser = create_parser(buffer, create_errors());
+    Analyzer* parser = create_parser(buffer, create_errors());
     ASSERT_NOT_NULL(parser, "Parser should be created successfully");
     free_parser(parser);
     return 0;
@@ -16,7 +16,7 @@ static int test_create_parser(void)
 static int test_free_parser(void)
 {
     Buffer* buffer = buffer_create(sizeof(Token));
-    Parser* parser = create_parser(buffer, create_errors());
+    Analyzer* parser = create_parser(buffer, create_errors());
     ASSERT_NOT_NULL(parser, "Parser should be created successfully");
     free_parser(parser);
     return 0;
@@ -54,7 +54,7 @@ static int test_match_token(void)
 
     free(token);
 
-    Parser* parser = create_parser(buffer, create_errors());
+    Analyzer* parser = create_parser(buffer, create_errors());
     ASSERT_NOT_NULL(parser, "Parser should be created successfully");
 
     ASSERT_TRUE(match(parser, TOKEN_IDENTIFIER), "Should match TOKEN_IDENTIFIER");
@@ -106,7 +106,7 @@ static int test_advance_parser(void)
 
     free(addToken);
 
-    Parser* parser = create_parser(buffer, create_errors());
+    Analyzer* parser = create_parser(buffer, create_errors());
     ASSERT_NOT_NULL(parser, "Parser should be created successfully");
 
     Token tmp_token = advance(parser);
@@ -165,7 +165,7 @@ static int test_peek_token(void)
 
     free(addToken);
 
-    Parser* parser = create_parser(buffer, create_errors());
+    Analyzer* parser = create_parser(buffer, create_errors());
     ASSERT_NOT_NULL(parser, "Parser should be created successfully");
 
     Token tmp_token = peek(parser);
@@ -214,7 +214,7 @@ static int test_current_token(void)
 
     free(addToken);
 
-    Parser* parser = create_parser(buffer, create_errors());
+    Analyzer* parser = create_parser(buffer, create_errors());
     ASSERT_NOT_NULL(parser, "Parser should be created successfully");
 
     Token tmp_token = current_token(parser);

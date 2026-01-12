@@ -5,27 +5,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "../lex/lexer.h"
+#include "lex/lexer.h"
+
 #include "ast.h"
 #include "buffer.h"
 #include "diagnostic.h"
+#include "common.h"
 
-typedef struct Parser
-{
-    Token* tokens;
-    size_t current;
-    size_t count;
-    ErrorList* errors;
-    bool panic;
-} Parser;
+Token peek(Analyzer* parser);
+Token advance(Analyzer* parser);
+Token current_token(Analyzer* parser);
+// bool match(Analyzer* parser, uint32_t ct, ...);
+bool match(Analyzer* parser, TokenType expected);
 
-Token peek(Parser* parser);
-Token advance(Parser* parser);
-Token current_token(Parser* parser);
-// bool match(Parser* parser, uint32_t ct, ...);
-bool match(Parser* parser, TokenType expected);
-Parser* create_parser(Buffer* token_buffer, ErrorList* errors);
-
-void free_parser(Parser* parser);
+Analyzer* create_parser(Buffer* token_buffer, ErrorList* errors);
+void free_parser(Analyzer* analyzer);
 
 #endif
