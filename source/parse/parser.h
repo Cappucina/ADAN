@@ -20,12 +20,19 @@ typedef struct Parser
 } Parser;
 
 Token peek(Parser* parser);
+
 Token advance(Parser* parser);
+
 Token current_token(Parser* parser);
-// bool match(Parser* parser, uint32_t ct, ...);
+
 bool match(Parser* parser, TokenType expected);
+
 Parser* create_parser(Buffer* token_buffer, ErrorList* errors);
 
 void free_parser(Parser* parser);
+
+void parse(Parser* parser);
+
+Token* expect(Parser* parser, TokenType expected, const char* message);
 
 #endif

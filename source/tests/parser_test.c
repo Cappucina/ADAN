@@ -218,7 +218,7 @@ static int test_current_token(void)
     ASSERT_NOT_NULL(parser, "Parser should be created successfully");
 
     Token tmp_token = current_token(parser);
-    Token* token = &tmp_token;  // did you edit this? it returns Token not a pointer to Token. This is the easiest solution. I don't like it becuse it has another new thing for the stack.
+    Token* token = &tmp_token;
     ASSERT_NOT_NULL(token, "Should get current token");
     ASSERT_EQ(token->type, TOKEN_IDENTIFIER, "Should get TOKEN_IDENTIFIER");
 
