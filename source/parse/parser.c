@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #include "buffer.h"
-#include "diagnostics.h"
+#include "diagnostic.h"
 
 Token peek(Parser* parser)
 {

@@ -4,7 +4,7 @@
 #include "buffer.h"
 #include "test.h"
 
-static int test_create_parser()
+static int test_create_parser(void)
 {
     Buffer* buffer = buffer_create(sizeof(Token));
     Parser* parser = create_parser(buffer, create_errors());
@@ -13,7 +13,7 @@ static int test_create_parser()
     return 0;
 }
 
-static int test_free_parser()
+static int test_free_parser(void)
 {
     Buffer* buffer = buffer_create(sizeof(Token));
     Parser* parser = create_parser(buffer, create_errors());
@@ -22,7 +22,7 @@ static int test_free_parser()
     return 0;
 }
 
-static int test_match_token()
+static int test_match_token(void)
 {
     Buffer* buffer = buffer_create(sizeof(Token));
 
@@ -64,7 +64,7 @@ static int test_match_token()
     return 0;
 }
 
-static int test_advance_parser()
+static int test_advance_parser(void)
 {
     Buffer* buffer = buffer_create(sizeof(Token));
 
@@ -118,7 +118,7 @@ static int test_advance_parser()
     return 0;
 }
 
-static int test_peek_token()
+static int test_peek_token(void)
 {
     Buffer* buffer = buffer_create(sizeof(Token));
 
@@ -167,7 +167,7 @@ static int test_peek_token()
     return 0;
 }
 
-static int test_current_token()
+static int test_current_token(void)
 {
     Buffer* buffer = buffer_create(sizeof(Token));
 
@@ -203,7 +203,7 @@ static int test_current_token()
     ASSERT_NOT_NULL(parser, "Parser should be created successfully");
 
     Token tmp_token = current_token(parser);
-    Token* token = &tmp_token; // did you edit this? it returns Token not a pointer to Token. This is the easiest solution. I don't like it becuse it has another new thing for the stack.
+    Token* token = &tmp_token;  // did you edit this? it returns Token not a pointer to Token. This is the easiest solution. I don't like it becuse it has another new thing for the stack.
     ASSERT_NOT_NULL(token, "Should get current token");
     ASSERT_EQ(token->type, TOKEN_IDENTIFIER, "Should get TOKEN_IDENTIFIER");
 

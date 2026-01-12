@@ -138,7 +138,7 @@ extern int run_parser_tests(TestSuite* suite);
  *
  * extern int run_semantic_tests(TestSuite* suite);
  * extern int run_codegen_tests(TestSuite* suite);
- *   
+ *
  */
 
 int run_all_tests(void)

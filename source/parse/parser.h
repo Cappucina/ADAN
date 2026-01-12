@@ -7,8 +7,8 @@
 
 #include "../lex/lexer.h"
 #include "ast.h"
-#include "diagnostic.h"
 #include "buffer.h"
+#include "diagnostic.h"
 
 typedef struct Parser
 {
