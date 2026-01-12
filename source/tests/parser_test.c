@@ -58,7 +58,17 @@ static int test_match_token(void)
     ASSERT_NOT_NULL(parser, "Parser should be created successfully");
 
     ASSERT_TRUE(match(parser, TOKEN_IDENTIFIER), "Should match TOKEN_IDENTIFIER");
-    ASSERT_FALSE(match(parser, TOKEN_INT_LITERAL), "Should not match TOKEN_INT_LITERAL");
+    ASSERT_FALSE(match(parser, TOKEN_EOF), "Should not match TOKEN_EOF");
+
+    advance(parser);
+
+    ASSERT_TRUE(match(parser, TOKEN_EQUALS), "Should match TOKEN_EQUALS");
+    ASSERT_FALSE(match(parser, TOKEN_EOF), "Should not match TOKEN_EOF");
+
+    advance(parser);
+
+    ASSERT_TRUE(match(parser, TOKEN_INT_LITERAL), "Should match TOKEN_INT_LITERAL");
+    ASSERT_FALSE(match(parser, TOKEN_EOF), "Should not match TOKEN_EOF");
 
     free_parser(parser);
     return 0;
@@ -101,18 +111,23 @@ static int test_advance_parser(void)
 
     Token tmp_token = advance(parser);
     Token* token = &tmp_token;
-    ASSERT_NOT_NULL(token, "Should advance to first token");
-    ASSERT_EQ(token->type, TOKEN_IDENTIFIER, "Should advance to TOKEN_IDENTIFIER");
-
-    tmp_token = advance(parser);
-    token = &tmp_token;
     ASSERT_NOT_NULL(token, "Should advance to second token");
     ASSERT_EQ(token->type, TOKEN_EQUALS, "WShould advance to TOKEN_EQUALS");
+
+    tmp_token = current_token(parser);
+    token = &tmp_token;
+    ASSERT_NOT_NULL(token, "Should get current token");
+    ASSERT_EQ(token->type, TOKEN_EQUALS, "Current token should still be TOKEN_EQUALS");
 
     tmp_token = advance(parser);
     token = &tmp_token;
     ASSERT_NOT_NULL(token, "Should advance to third token");
     ASSERT_EQ(token->type, TOKEN_INT_LITERAL, "Should advance to TOKEN_INT_LITERAL");
+
+    tmp_token = current_token(parser);
+    token = &tmp_token;
+    ASSERT_NOT_NULL(token, "Should get current token");
+    ASSERT_EQ(token->type, TOKEN_INT_LITERAL, "Current token should still be TOKEN_INT_LITERAL");
 
     free_parser(parser);
     return 0;
@@ -155,13 +170,13 @@ static int test_peek_token(void)
 
     Token tmp_token = peek(parser);
     Token* token = &tmp_token;
-    ASSERT_NOT_NULL(token, "Should peek first token");
-    ASSERT_EQ(token->type, TOKEN_IDENTIFIER, "Should peek TOKEN_IDENTIFIER");
-
-    tmp_token = peek(parser);
-    token = &tmp_token;
     ASSERT_NOT_NULL(token, "Should peek second token");
     ASSERT_EQ(token->type, TOKEN_EQUALS, "Should peek TOKEN_EQUALS");
+
+    tmp_token = current_token(parser);
+    token = &tmp_token;
+    ASSERT_NOT_NULL(token, "Should get current token");
+    ASSERT_EQ(token->type, TOKEN_IDENTIFIER, "Current token should still be TOKEN_IDENTIFIER");
 
     free_parser(parser);
     return 0;

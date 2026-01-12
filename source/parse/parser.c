@@ -22,23 +22,32 @@ Token current_token(Parser* parser)
     return parser->tokens[parser->current];
 }
 
-bool match(Parser* parser, uint32_t ct, ...)
+// bool match(Parser* parser, uint32_t ct, ...)
+// {
+//     TokenType current = current_token(parser).type;
+
+//     va_list args;
+//     va_start(args, ct);
+//     for (uint32_t i = 0; i < ct; i++)
+//     {
+//         if (current != va_arg(args, TokenType))
+//         {
+//             va_end(args);
+//             return false;
+//         }
+//     }
+
+//     va_end(args);
+//     return true;
+// }
+
+bool match(Parser* parser, TokenType expected)
 {
-    TokenType current = current_token(parser).type;
-
-    va_list args;
-    va_start(args, ct);
-    for (uint32_t i = 0; i < ct; i++)
+    if (current_token(parser).type == expected)
     {
-        if (current != va_arg(args, TokenType))
-        {
-            va_end(args);
-            return false;
-        }
+        return true;
     }
-
-    va_end(args);
-    return true;
+    return false;
 }
 
 Parser* create_parser(Buffer* token_buffer, ErrorList* errors)

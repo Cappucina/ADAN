@@ -22,7 +22,8 @@ typedef struct Parser
 Token peek(Parser* parser);
 Token advance(Parser* parser);
 Token current_token(Parser* parser);
-bool match(Parser* parser, uint32_t ct, ...);
+// bool match(Parser* parser, uint32_t ct, ...);
+bool match(Parser* parser, TokenType expected);
 Parser* create_parser(Buffer* token_buffer, ErrorList* errors);
 
 void free_parser(Parser* parser);

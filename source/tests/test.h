@@ -34,71 +34,71 @@ bool test_suite_all_passed(TestSuite* suite);
 int run_all_tests(void);
 
 #define ASSERT_EQ(actual, expected, message) \
-    printf(message);                         \
     do                                       \
     {                                        \
         if ((actual) != (expected))          \
         {                                    \
+            printf(message);                 \
             return 1;                        \
         }                                    \
     } while (0)
 
 #define ASSERT_TRUE(condition, message) \
-    printf(message);                    \
     do                                  \
     {                                   \
         if (!(condition))               \
         {                               \
+            printf(message);            \
             return 1;                   \
         }                               \
     } while (0)
 
 #define ASSERT_FALSE(condition, message) \
-    printf(message);                     \
     do                                   \
     {                                    \
         if ((condition))                 \
         {                                \
+            printf(message);             \
             return 1;                    \
         }                                \
     } while (0)
 
 #define ASSERT_NULL(ptr, message) \
-    printf(message);              \
     do                            \
     {                             \
         if ((ptr) != NULL)        \
         {                         \
+            printf(message);      \
             return 1;             \
         }                         \
     } while (0)
 
 #define ASSERT_NOT_NULL(ptr, message) \
-    printf(message);                  \
     do                                \
     {                                 \
         if ((ptr) == NULL)            \
         {                             \
+            printf(message);          \
             return 1;                 \
         }                             \
     } while (0)
 
 #define ASSERT_STREQ(actual, expected, message) \
-    printf(message);                            \
     do                                          \
     {                                           \
         if (strcmp((actual), (expected)) != 0)  \
         {                                       \
+            printf(message);                    \
             return 1;                           \
         }                                       \
     } while (0)
 
 #define ASSERT_ERROR_COUNT(error_list, expected, message) \
-    printf(message);                                      \
     do                                                    \
     {                                                     \
         if ((error_list)->size != (expected))             \
         {                                                 \
+            printf(message);                              \
             return 1;                                     \
         }                                                 \
     } while (0)
