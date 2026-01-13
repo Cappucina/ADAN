@@ -110,7 +110,7 @@ typedef struct ASTNode
 
         struct
         {
-            ASTNode* value;
+            struct ASTNode* value;
         } return_stmt;
     } data;
 

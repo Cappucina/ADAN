@@ -211,6 +211,9 @@ static ASTNode* parse_break(Analyzer* parser)
     return node;
 }
 
+static ASTNode* parse_declaration(Analyzer* parser);
+static ASTNode* parse_expression(Analyzer* parser);
+
 // struct struct_name { ... }
 static ASTNode* parse_struct(Analyzer* parser)
 {
