@@ -1,73 +1,42 @@
-.SILENT:
+EXE = adan
+RELEASE_DIR = ./build/release
+DEBUG_DIR = ./build/debug
+BUILD_TYPE ?= Release
 
-UNAME := $(shell uname)
-NUM_JOBS := 1
-
-ifeq ($(UNAME), Linux)
-	NUM_JOBS := $(shell nproc)
-else ifeq ($(UNAME), Darwin)
-	NUM_JOBS := $(shell sysctl -n hw.ncpu)
+ifeq ($(BUILD_TYPE),Debug)
+    BUILD_DIR = $(DEBUG_DIR)
+else
+    BUILD_DIR = $(RELEASE_DIR)
 endif
 
-MAKEFLAGS += "-j $(NUM_JOBS) -s"
+UNAME := $(shell uname -s 2>/dev/null || echo UNKNOWN)
 
-SRC = ./source
-BUILD_DIR = ./build
-EXE = $(BUILD_DIR)/adan
+all: build
 
-SRCS = ./source/main.c \
-	   ./source/common/fs.c \
-       ./source/common/diagnostic.c \
-       ./source/common/platform.c \
-       ./source/common/error.c \
-       ./source/common/buffer.c \
-       ./source/driver/flags.c \
-       ./source/lex/lexer.c \
-       ./source/parse/parser.c \
-	   ./source/semantic/semantic.c \
-       ./source/tests/test.c \
-       ./source/tests/flags_test.c \
-       ./source/tests/lexer_test.c \
-       ./source/tests/semantic_test.c \
-       ./source/tests/diagnostic_test.c \
-	   ./source/tests/parser_test.c \
+build: clean
+	@cmake -B $(BUILD_DIR) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
+	@cmake --build $(BUILD_DIR) -- -s
 
-CC = gcc
-CFLAGS = -g -Wall -Wextra -Werror -O2 -Wundef -Wconversion -pedantic -std=c17 -march=native -funroll-loops -I./include \
-		 -I./source -I./source/common -I./source/lex -I./source/syntax -I./source/ir -I./source/semantic -I./source/gen \
-		 -I./source/driver -I./source/tests
+build-release:
+	@$(MAKE) build BUILD_TYPE=Release
 
-build:
-	make clean
-	make format
-	mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(SRCS) -o $(EXE)
+build-debug:
+	@$(MAKE) build BUILD_TYPE=Debug
 
-compile: build
+run: build-release
+	@$(RELEASE_DIR)/$(EXE)
 
-execute:
-	$(EXE) $(ARGS)
+test: build-debug
+	@$(DEBUG_DIR)/$(EXE) --tests
 
-run:
-	$(MAKE) build
-	$(MAKE) execute
-
-tests: build
-	$(EXE) --tests
-
-test: tests
-
-debug: clean format
-	@clear
-	@mkdir -p $(BUILD_DIR)
-	@$(CC) $(CFLAGS) -DDEBUG $(SRCS) -o $(BUILD_DIR)/$(EXE)
-	@./$(BUILD_DIR)/$(EXE)
+debug: build-debug
+	@$(DEBUG_DIR)/$(EXE)
 
 clean:
-	[ -f $(BUILD_DIR) ] && rm -rf $(BUILD_DIR)
+	@rm -rf $(BUILD_DIR) || rmdir $(BUILD_DIR)
 
 format:
-	@find source include -type f \( -name '*.c' -o -name '*.h' \) -print0 | xargs -0 clang-format -i
+	@python scripts/format.py
 
 help:
 	@echo "ADAN Makefile targets:"
@@ -81,11 +50,22 @@ help:
 	@echo "  codespaces   - Setup for GitHub Codespaces environment"
 	@echo "  help         - Display this help message"
 
-install: $(EXE) ./man/adan.1 ./man/adan.7
-	sudo cp $(EXE) /usr/local/bin/
-	sudo mkdir -p /usr/local/share/man/{man7,man1}
-	sudo cp ./man/adan.7 /usr/local/share/man/man7/
-	sudo cp ./man/adan.1 /usr/local/share/man/man1/
+ifeq ($(OS),Windows_NT)
+    INSTALL_CMD = mkdir C:\tools\adan && copy $(BUILD_DIR)\$(EXE) C:\tools\adan
+else ifeq ($(UNAME_S),Darwin)
+    INSTALL_CMD = sudo cp $(BUILD_DIR)/$(EXE) /usr/local/bin/ && \
+                  sudo mkdir -p /usr/local/share/man/{man7,man1} && \
+                  sudo cp ./man/adan.7 /usr/local/share/man/man7/ && \
+                  sudo cp ./man/adan.1 /usr/local/share/man/man1/
+else ifeq ($(UNAME_S),Linux)
+    INSTALL_CMD = sudo cp $(BUILD_DIR)/$(EXE) /usr/local/bin/ && \
+                  sudo mkdir -p /usr/local/share/man/{man7,man1} && \
+                  sudo cp ./man/adan.7 /usr/local/share/man/man7/ && \
+                  sudo cp ./man/adan.1 /usr/local/share/man/man1/
+endif
+
+install: $(BUILD_DIR)/$(EXE)
+	@$(INSTALL_CMD)
 
 # 
 #  Ignore the following lines UNLESS you are working in a

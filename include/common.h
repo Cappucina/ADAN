@@ -18,5 +18,7 @@ typedef struct
     bool panic;
 } Analyzer;
 
+char *strdup(const char *s);
+
 #endif
 

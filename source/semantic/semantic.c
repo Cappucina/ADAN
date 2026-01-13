@@ -27,7 +27,6 @@ void semantic_analysis(Analyzer* analyzer)
         switch (analyzer->tokens[i].type)
         {
             case TOKEN_EOF:
-                error(analyzer->errors, analyzer->tokens[i].file, analyzer->tokens[i].line, analyzer->tokens[i].column, SEMANTIC, "Unexpected end of file.");
                 break;
             case TOKEN_ERROR:
             case TOKEN_IDENTIFIER:
@@ -97,11 +96,6 @@ void semantic_analysis(Analyzer* analyzer)
             case TOKEN_STRUCT:
             case TOKEN_BREAK:
                 continue;
-            default:
-                error(analyzer->errors, analyzer->tokens[i].file, analyzer->tokens[i].line, analyzer->tokens[i].column, SEMANTIC,
-                      "Unexpected token.");
-                break;
         }
     }
 }
-

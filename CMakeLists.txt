@@ -6,11 +6,13 @@ set(CMAKE_C_COMPILER_ID "GNU")
 
 set(SOURCES
     source/main.c
+    source/common/common.c
     source/common/fs.c
     source/common/diagnostic.c
     source/common/platform.c
     source/common/error.c
     source/common/buffer.c
+    source/common/ast.c
     source/driver/flags.c
     source/lex/lexer.c
     source/parse/parser.c
@@ -39,5 +41,5 @@ target_include_directories(adan PRIVATE
 )
 
 target_compile_options(adan PRIVATE
-    -g -Wall -Wextra -Werror -O2 -Wundef -Wconversion -pedantic -std=c17 -march=native -funroll-loops
+    -g -Wall -Wextra -O2 -Wundef -Wconversion -pedantic -std=c17 -march=native -funroll-loops
 )

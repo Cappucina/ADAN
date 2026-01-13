@@ -17,10 +17,9 @@ Token advance(Analyzer* parser);
 Token current_token(Analyzer* parser);
 bool match(Analyzer* parser, TokenType expected);
 
-
 Analyzer* create_parser(Buffer* token_buffer, ErrorList* errors);
 void parse(Analyzer* analyzer);
 void free_parser(Analyzer* analyzer);
+void free_ast(ASTNode* node);
 
 #endif
-

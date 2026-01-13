@@ -16,4 +16,3 @@ void semantic_analysis(Analyzer* analyzer);
 void free_semantic(Analyzer* analyzer);
 
 #endif
-
