@@ -36,7 +36,7 @@ void free_ast(ASTNode* node) {
         case AST_PARAM_LIST:
             if (node->data.param_list.params) {
                 for (size_t i = 0; i < node->data.param_list.count; ++i) {
-                    free_ast(&node->data.param_list.params[i]);
+                    free_ast(node->data.param_list.params[i]);
                 }
                 free(node->data.param_list.params);
             }
@@ -105,15 +105,11 @@ ASTNode* create_string_literal_node(const char* value) {
 ASTNode* create_binary_node(const char* op, ASTNode* left, ASTNode* right) {
     ASTNode* node = create_ast_node(AST_BINARY_OP);
     if (node == NULL) {
-        free_ast(left);
-        free_ast(right);
         return NULL;
     }
 
     node->data.binary.op = strdup(op);
     if (node->data.binary.op == NULL) {
-        free_ast(left);
-        free_ast(right);
         free_ast(node);
         return NULL;
     }
@@ -127,14 +123,12 @@ ASTNode* create_binary_node(const char* op, ASTNode* left, ASTNode* right) {
 ASTNode* create_unary_node(const char* op, ASTNode* operand) {
     ASTNode* node = create_ast_node(AST_UNARY_OP);
     if (node == NULL) {
-        free_ast(operand);
         return NULL;
     }
 
     node->data.unary.op = strdup(op);
     if (node->data.unary.op == NULL) {
         free_ast(node);
-        free_ast(operand);
         return NULL;
     }
 
@@ -155,7 +149,7 @@ ASTNode* create_block_node(ASTNode** statements, size_t count) {
     return node;
 }
 
-ASTNode* create_param_list_node(ASTNode* params, size_t count) {
+ASTNode* create_param_list_node(ASTNode** params, size_t count) {
     ASTNode* node = create_ast_node(AST_PARAM_LIST);
     if (node == NULL) {
         return NULL;
@@ -170,28 +164,11 @@ ASTNode* create_param_list_node(ASTNode* params, size_t count) {
 ASTNode* create_struct_decl_node(const char* name, ASTNode** members, size_t count) {
     ASTNode* node = create_ast_node(AST_STRUCT);
     if (node == NULL) {
-        if (members) {
-            for (size_t i = 0; i < count; ++i) {
-                free_ast(members[i]);
-            }
-         
-            free(members);
-        }
-
         return NULL;
     }
 
     node->data.struct_decl.name = strdup(name);
-    
     if (node->data.struct_decl.name == NULL) {
-        if (members) {
-            for (size_t i = 0; i < count; ++i) {
-                free_ast(members[i]);
-            }
-         
-            free(members);
-        }
-
         free_ast(node);
         return NULL;
     }
