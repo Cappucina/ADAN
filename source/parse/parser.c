@@ -9,11 +9,18 @@
 
 Token peek(Analyzer* parser)
 {
+    if (parser->current + 1 >= parser->count) {
+        return parser->tokens[parser->current]; // Return current or EOF token
+    }
     return parser->tokens[parser->current + 1];
 }
 
 Token advance(Analyzer* parser)
 {
+    if (parser->current + 1 >= parser->count) {
+        return parser->tokens[parser->current];
+    }
+
     return parser->tokens[++parser->current];
 }
 
@@ -35,11 +42,14 @@ Token* expect(Analyzer* parser, TokenType expected, const char* message)
         return &parser->tokens[parser->current];
     }
 
-    Error error;
+    Error error = {0};  // Zero-initialize all fields
     error.message = message;
     error.file = current_token(parser).file;
     error.line = current_token(parser).line;
     error.column = current_token(parser).column;
+    error.length = 0;
+    error.severity = ERROR;
+    error.category = GENERIC;
     if (parser->errors->size < parser->errors->capacity)
     {
         parser->errors->errors[parser->errors->size++] = error;

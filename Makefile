@@ -52,12 +52,12 @@ help:
 
 ifeq ($(OS),Windows_NT)
     INSTALL_CMD = mkdir C:\tools\adan && copy $(BUILD_DIR)\$(EXE) C:\tools\adan
-else ifeq ($(UNAME_S),Darwin)
+else ifeq ($(UNAME),Darwin)
     INSTALL_CMD = sudo cp $(BUILD_DIR)/$(EXE) /usr/local/bin/ && \
                   sudo mkdir -p /usr/local/share/man/{man7,man1} && \
                   sudo cp ./man/adan.7 /usr/local/share/man/man7/ && \
                   sudo cp ./man/adan.1 /usr/local/share/man/man1/
-else ifeq ($(UNAME_S),Linux)
+else ifeq ($(UNAME),Linux)
     INSTALL_CMD = sudo cp $(BUILD_DIR)/$(EXE) /usr/local/bin/ && \
                   sudo mkdir -p /usr/local/share/man/{man7,man1} && \
                   sudo cp ./man/adan.7 /usr/local/share/man/man7/ && \

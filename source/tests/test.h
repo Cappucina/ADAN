@@ -38,7 +38,7 @@ int run_all_tests(void);
     {                                        \
         if ((actual) != (expected))          \
         {                                    \
-            printf(message);                 \
+            printf("%s", message);           \
             return 1;                        \
         }                                    \
     } while (0)

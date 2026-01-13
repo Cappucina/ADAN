@@ -87,7 +87,7 @@ typedef struct ASTNode
         } block;
 
         struct {
-            struct ASTNode* params;
+            struct ASTNode** params;
             size_t count;
         } param_list;
 

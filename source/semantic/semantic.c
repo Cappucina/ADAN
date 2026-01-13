@@ -4,7 +4,15 @@
 
 Analyzer* create_semantic(Buffer* token_buffer, ErrorList* errors)
 {
+    if (!token_buffer || !token_buffer->data) {
+        return;
+    }
+
     Analyzer* analyzer = (Analyzer*)malloc(sizeof(Analyzer));
+
+    if (!analyzer) {
+        return NULL;
+    }
  
     analyzer->current = 0;
     analyzer->count = token_buffer->count;
