@@ -24,15 +24,16 @@ SRCS = ./source/main.c \
        ./source/driver/flags.c \
        ./source/lex/lexer.c \
        ./source/parse/parser.c \
-	   ./source/semantic/semantic,c \
+	   ./source/semantic/semantic.c \
        ./source/tests/test.c \
        ./source/tests/flags_test.c \
        ./source/tests/lexer_test.c \
+       ./source/tests/semantic_test.c \
        ./source/tests/diagnostic_test.c \
 	   ./source/tests/parser_test.c \
 
 CC = gcc
-CFLAGS = -g -Wall -Wextra -O2 -Wundef -Wconversion -pedantic -std=c17 -march=native -funroll-loops -I./include \
+CFLAGS = -g -Wall -Wextra -Werror -O2 -Wundef -Wconversion -pedantic -std=c17 -march=native -funroll-loops -I./include \
 		 -I./source -I./source/common -I./source/lex -I./source/syntax -I./source/ir -I./source/semantic -I./source/gen \
 		 -I./source/driver -I./source/tests
 

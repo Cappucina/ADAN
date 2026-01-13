@@ -120,6 +120,8 @@ int main(int argc, char* argv[])
 
     parser = create_parser(tokens, errors);
 
+    parse(parser);
+
     if (errors->size > 0)
     {
         res = -EINVAL;

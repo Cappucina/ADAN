@@ -22,25 +22,6 @@ Token current_token(Analyzer* parser)
     return parser->tokens[parser->current];
 }
 
-// bool match(Analyzer* parser, uint32_t ct, ...)
-// {
-//     TokenType current = current_token(parser).type;
-
-//     va_list args;
-//     va_start(args, ct);
-//     for (uint32_t i = 0; i < ct; i++)
-//     {
-//         if (current != va_arg(args, TokenType))
-//         {
-//             va_end(args);
-//             return false;
-//         }
-//     }
-
-//     va_end(args);
-//     return true;
-// }
-
 bool match(Analyzer* parser, TokenType expected)
 {
     return current_token(parser).type == expected;
@@ -68,10 +49,11 @@ Token* expect(Analyzer* parser, TokenType expected, const char* message)
     return NULL;
 }
 
-static void synchronize(Analyzer* parser)
+__attribute__((unused)) static void synchronize(Analyzer* parser)
 {
     advance(parser);
     parser->panic = false;
+
     while (!match(parser, TOKEN_EOF))
     {
         if (current_token(parser).type == TOKEN_SEMICOLON)
@@ -79,6 +61,7 @@ static void synchronize(Analyzer* parser)
             advance(parser);
             return;
         }
+    
         if (current_token(parser).type == TOKEN_IF ||
             current_token(parser).type == TOKEN_FOR ||
             current_token(parser).type == TOKEN_WHILE ||
@@ -88,6 +71,7 @@ static void synchronize(Analyzer* parser)
         {
             return;
         }
+        
         advance(parser);
     }
 }
@@ -95,6 +79,7 @@ static void synchronize(Analyzer* parser)
 Analyzer* create_parser(Buffer* token_buffer, ErrorList* errors)
 {
     Analyzer* parser = (Analyzer*)malloc(sizeof(Analyzer));
+    
     parser->current = 0;
     parser->count = token_buffer->count;
     parser->tokens = token_buffer->data;
@@ -104,15 +89,14 @@ Analyzer* create_parser(Buffer* token_buffer, ErrorList* errors)
     return parser;
 }
 
-void parse(Analyzer* parser)
+void parse(Analyzer* analyzer)
 {
-    for (size_t i = 0; i < parser->count; i++)
+    for (size_t i = 0; i < analyzer->count; i++)
     {
-        switch (parser->tokens[i].type)
+        switch (analyzer->tokens[i].type)
         {
             case TOKEN_EOF:
-                error(parser->errors, parser->tokens[i].file, parser->tokens[i].line, parser->tokens[i].column, LEXER,
-                      "Unexpected end of file.");
+                error(analyzer->errors, analyzer->tokens[i].file, analyzer->tokens[i].line, analyzer->tokens[i].column, PARSER, "Unexpected end of file.");
                 break;
             case TOKEN_ERROR:
             case TOKEN_IDENTIFIER:
@@ -183,7 +167,7 @@ void parse(Analyzer* parser)
             case TOKEN_BREAK:
                 continue;
             default:
-                error(parser->errors, parser->tokens[i].file, parser->tokens[i].line, parser->tokens[i].column, LEXER,
+                error(analyzer->errors, analyzer->tokens[i].file, analyzer->tokens[i].line, analyzer->tokens[i].column, PARSER,
                       "Unexpected token.");
                 break;
         }
@@ -196,122 +180,131 @@ void free_parser(Analyzer* parser)
 }
 
 // break;
-static ASTNode* parse_break(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_break(Analyzer* parser __attribute__((unused)))
 {
-
+    return NULL;
 }
 
 // struct struct_name { ... }
-static ASTNode* parse_struct(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_struct(Analyzer* parser __attribute__((unused)))
 {
-
+    return NULL;
 }
 
 // return expression;
-static ASTNode* parse_return(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_return(Analyzer* parser __attribute__((unused)))
 {
-
+    return NULL;
 }
 
 // program::type program_name(param_1, ...) { ... }
-static ASTNode* parse_program(Parser* parser)
+__attribute__((unused)) static ASTNode* parse_program(Analyzer* parser __attribute__((unused)))
 {
-
+    return NULL;
 }
 
 // continue;
-static ASTNode* parse_continue(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_continue(Analyzer* parser __attribute__((unused)))
 {
-
+    return NULL;
 }
 
 // include org.lib;
-static ASTNode* parse_include(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_include(Analyzer* parser __attribute__((unused)))
 {
-
+    return NULL;
 }
 
 // for (init; condition; increment) { ... }
-static ASTNode* parse_for(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_for(Analyzer* parser __attribute__((unused)))
 {
-
+    return NULL;
 }
 
 // while (condition) { ... }
-static ASTNode* parse_while(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_while(Analyzer* parser __attribute__((unused)))
 {
-
+    return NULL;
 }
 
 // if (condition) { ... } else if (condition) { ... } else { ... }
-static ASTNode* parse_if(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_if(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_expression(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_expression(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_statement(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_statement(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_expression_list(Alayzer* parser)
+__attribute__((unused)) static ASTNode* parse_expression_list(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_primary(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_primary(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_binary(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_binary(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_unary(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_unary(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_declaration(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_declaration(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_type_specifier(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_type_specifier(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_assignment(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_assignment(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_or(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_or(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_and(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_and(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_equality(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_equality(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_comparison(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_comparison(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_term(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_term(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-static ASTNode* parse_factor(Analyzer* parser)
+__attribute__((unused)) static ASTNode* parse_factor(Analyzer* parser __attribute__((unused)))
 {
+    return NULL;
 }
 
-void parse(Analyzer* parser)
-{
-    while (!match(parser, TOKEN_EOF))
-    {
-        parse_statement(parser);
-    }
-}
