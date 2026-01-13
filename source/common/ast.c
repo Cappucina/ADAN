@@ -59,6 +59,9 @@ void free_ast(ASTNode* node)
                 free(node->data.struct_decl.members);
             }
             break;
+        case AST_RETURN:
+            free_ast(node->data.return_stmt.value);
+            break;
         default:
             break;
     }

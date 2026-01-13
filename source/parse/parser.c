@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "ast.h"
 #include "buffer.h"
 #include "diagnostic.h"
 
@@ -11,7 +12,7 @@ Token peek(Analyzer* parser)
 {
     if (parser->current + 1 >= parser->count)
     {
-        return parser->tokens[parser->current];  // Return current or EOF token
+        return parser->tokens[parser->current];
     }
     return parser->tokens[parser->current + 1];
 }
@@ -44,7 +45,7 @@ Token* expect(Analyzer* parser, TokenType expected, const char* message)
         return &parser->tokens[parser->current];
     }
 
-    Error error = {0};  // Zero-initialize all fields
+    Error error = {0};
     error.message = message;
     error.file = current_token(parser).file;
     error.line = current_token(parser).line;
@@ -193,18 +194,131 @@ void free_parser(Analyzer* parser)
 // break;
 static ASTNode* parse_break(Analyzer* parser)
 {
-    return NULL;
+    ASTNode* node = create_ast_node(AST_BREAK);
+    if (!node) return NULL;
+
+    node->line = current_token(parser).line;
+    node->column = current_token(parser).column;
+    node->file_name = current_token(parser).file;
+
+    advance(parser);
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected ';' after 'break'"))
+    {
+        free_ast(node);
+        return NULL;
+    }
+
+    return node;
 }
 
 // struct struct_name { ... }
 static ASTNode* parse_struct(Analyzer* parser)
 {
-    return NULL;
+    Token struct_token = current_token(parser);
+    advance(parser);
+    if (!match(parser, TOKEN_IDENTIFIER))
+    {
+        expect(parser, TOKEN_IDENTIFIER, "Expected struct name after 'struct'");
+        return NULL;
+    }
+
+    Token name_token = current_token(parser);
+    advance(parser);
+    if (!expect(parser, TOKEN_LEFT_BRACE, "Expected '{' after struct name"))
+    {
+        return NULL;
+    }
+
+    size_t capacity = 8;
+    size_t count = 0;
+    ASTNode** members = (ASTNode**)malloc(sizeof(ASTNode*) * capacity);
+    if (!members) return NULL;
+    while (!match(parser, TOKEN_RIGHT_BRACE) && !match(parser, TOKEN_EOF))
+    {
+        ASTNode* member = parse_declaration(parser);
+        if (!member)
+        {
+            if (parser->panic) synchronize(parser);
+            continue;
+        }
+
+        if (count >= capacity)
+        {
+            capacity *= 2;
+            ASTNode** new_members = (ASTNode**)realloc(members, sizeof(ASTNode*) * capacity);
+            if (!new_members)
+            {
+                for (size_t i = 0; i < count; i++) free_ast(members[i]);
+                free(members);
+                return NULL;
+            }
+            members = new_members;
+        }
+
+        members[count++] = member;
+    }
+
+    if (!expect(parser, TOKEN_RIGHT_BRACE, "Expected '}' after struct body"))
+    {
+        for (size_t i = 0; i < count; i++) free_ast(members[i]);
+        free(members);
+        return NULL;
+    }
+
+    ASTNode* node = create_struct_decl_node(name_token.start, members, count);
+    if (!node)
+    {
+        for (size_t i = 0; i < count; i++) free_ast(members[i]);
+        free(members);
+        return NULL;
+    }
+
+    node->line = struct_token.line;
+    node->column = struct_token.column;
+    node->file_name = struct_token.file;
+
+    return node;
 }
 
 // return expression;
 static ASTNode* parse_return(Analyzer* parser)
 {
+    Token return_token = current_token(parser);
+    advance(parser);
+    if (match(parser, TOKEN_SEMICOLON))
+    {
+        ASTNode* node = create_ast_node(AST_RETURN);
+        if (!node) return NULL;
+
+        node->line = return_token.line;
+        node->column = return_token.column;
+        node->file_name = return_token.file;
+
+        advance(parser);
+        return node;
+    }
+    ASTNode* value = parse_expression(parser);
+    if (value)
+    {
+        ASTNode* node = create_ast_node(AST_RETURN);
+        if (!node)
+        {
+            free_ast(value);
+            return NULL;
+        }
+
+        node->line = return_token.line;
+        node->column = return_token.column;
+        node->file_name = return_token.file;
+        node->data.return_stmt.value = value;
+        if (!expect(parser, TOKEN_SEMICOLON, "Expected ';' after return value"))
+        {
+            free_ast(node);
+            return NULL;
+        }
+
+        return node;
+    }
     return NULL;
 }
 

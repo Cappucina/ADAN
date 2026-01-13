@@ -108,6 +108,10 @@ typedef struct ASTNode
             size_t count;
         } struct_decl;
 
+        struct
+        {
+            ASTNode* value;
+        } return_stmt;
     } data;
 
     // union {
@@ -119,5 +123,23 @@ typedef struct ASTNode
 
     // struct Type* resolved_type;
 } ASTNode;
+
+void free_ast(ASTNode* node);
+
+ASTNode* create_ast_node(ASTNodeType type);
+
+ASTNode* create_ident_node(const char* name);
+
+ASTNode* create_string_literal_node(const char* value);
+
+ASTNode* create_binary_node(const char* op, ASTNode* left, ASTNode* right);
+
+ASTNode* create_unary_node(const char* op, ASTNode* operand);
+
+ASTNode* create_block_node(ASTNode** statements, size_t count);
+
+ASTNode* create_param_list_node(ASTNode** params, size_t count);
+
+ASTNode* create_struct_decl_node(const char* name, ASTNode** members, size_t count);
 
 #endif
