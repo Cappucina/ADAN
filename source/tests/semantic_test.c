@@ -6,10 +6,10 @@
 static int test_create_semantic(void)
 {
     Buffer* buffer = buffer_create(sizeof(Token));
-    
+
     Analyzer* analyzer = create_semantic(buffer, create_errors());
     ASSERT_NOT_NULL(analyzer, "Analyzer should be created successfully");
-    
+
     free_semantic(analyzer);
 
     return 0;
@@ -23,10 +23,9 @@ static int test_free_semantic(void)
     ASSERT_NOT_NULL(analyzer, "Analyzer should be created successfully");
 
     free_semantic(analyzer);
-    
+
     return 0;
 }
-
 
 int run_semantic_tests(TestSuite* suite)
 {

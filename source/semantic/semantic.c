@@ -4,13 +4,15 @@
 
 Analyzer* create_semantic(Buffer* token_buffer, ErrorList* errors)
 {
-    if (!token_buffer || !token_buffer->data) {
+    if (!token_buffer || !token_buffer->data)
+    {
         return NULL;
     }
 
     Analyzer* analyzer = (Analyzer*)malloc(sizeof(Analyzer));
- 
-    if (!analyzer) {
+
+    if (!analyzer)
+    {
         return NULL;
     }
 

@@ -23,12 +23,15 @@ typedef struct
 typedef int (*TestFunc)(void);
 
 TestSuite* test_suite_create(void);
+
 void test_suite_free(TestSuite* suite);
 
 int test_suite_add_result(TestSuite* suite, const char* name, bool passed, const char* message);
+
 int test_suite_run_test(TestSuite* suite, const char* name, TestFunc test_func);
 
 void test_suite_print_results(TestSuite* suite);
+
 bool test_suite_all_passed(TestSuite* suite);
 
 int run_all_tests(void);

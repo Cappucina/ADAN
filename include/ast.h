@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
 #include "lex/lexer.h"
 
 typedef enum
@@ -50,48 +51,58 @@ typedef struct ASTNode
     const char* file_name;
 
     union {
-        struct {
+        struct
+        {
             char* name;
         } ident;
 
-        struct {
+        struct
+        {
             int64_t value;
         } int_literal;
 
-        struct {
+        struct
+        {
             double value;
         } float_literal;
 
-        struct {
+        struct
+        {
             char* value;
         } string_literal;
 
-        struct {
+        struct
+        {
             bool value;
         } bool_literal;
 
-        struct {
+        struct
+        {
             char* op;
             struct ASTNode* left;
             struct ASTNode* right;
         } binary;
 
-        struct {
+        struct
+        {
             char* op;
             struct ASTNode* operand;
         } unary;
 
-        struct {
+        struct
+        {
             struct ASTNode** statements;
             size_t count;
         } block;
 
-        struct {
+        struct
+        {
             struct ASTNode** params;
             size_t count;
         } param_list;
 
-        struct {
+        struct
+        {
             char* name;
             struct ASTNode** members;
             size_t count;

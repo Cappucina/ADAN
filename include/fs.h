@@ -7,6 +7,7 @@
 #include "diagnostic.h"
 
 bool file_exsists(const char* file_location);
+
 const char* file_to_string(FILE* file, ErrorList* error_list);
 
 #endif

@@ -4,12 +4,15 @@
 
 #include "common.h"
 
-void free_ast(ASTNode* node) {
-    if (node == NULL) {
+void free_ast(ASTNode* node)
+{
+    if (node == NULL)
+    {
         return;
     }
 
-    switch (node->type) {
+    switch (node->type)
+    {
         case AST_IDENT:
             free(node->data.ident.name);
             break;
@@ -26,16 +29,20 @@ void free_ast(ASTNode* node) {
             free_ast(node->data.unary.operand);
             break;
         case AST_BLOCK:
-            if (node->data.block.statements) {
-                for (size_t i = 0; i < node->data.block.count; ++i) {
+            if (node->data.block.statements)
+            {
+                for (size_t i = 0; i < node->data.block.count; ++i)
+                {
                     free_ast(node->data.block.statements[i]);
                 }
                 free(node->data.block.statements);
             }
             break;
         case AST_PARAM_LIST:
-            if (node->data.param_list.params) {
-                for (size_t i = 0; i < node->data.param_list.count; ++i) {
+            if (node->data.param_list.params)
+            {
+                for (size_t i = 0; i < node->data.param_list.count; ++i)
+                {
                     free_ast(node->data.param_list.params[i]);
                 }
                 free(node->data.param_list.params);
@@ -43,8 +50,10 @@ void free_ast(ASTNode* node) {
             break;
         case AST_STRUCT:
             free(node->data.struct_decl.name);
-            if (node->data.struct_decl.members) {
-                for (size_t i = 0; i < node->data.struct_decl.count; ++i) {
+            if (node->data.struct_decl.members)
+            {
+                for (size_t i = 0; i < node->data.struct_decl.count; ++i)
+                {
                     free_ast(node->data.struct_decl.members[i]);
                 }
                 free(node->data.struct_decl.members);
@@ -57,10 +66,12 @@ void free_ast(ASTNode* node) {
     free(node);
 }
 
-ASTNode* create_ast_node(ASTNodeType type) {
+ASTNode* create_ast_node(ASTNodeType type)
+{
     ASTNode* node = (ASTNode*)calloc(1, sizeof(ASTNode));
-    
-    if (node == NULL) {
+
+    if (node == NULL)
+    {
         return NULL;
     }
 
@@ -72,14 +83,17 @@ ASTNode* create_ast_node(ASTNodeType type) {
     return node;
 }
 
-ASTNode* create_ident_node(const char* name) {
+ASTNode* create_ident_node(const char* name)
+{
     ASTNode* node = create_ast_node(AST_IDENT);
-    if (node == NULL) {
+    if (node == NULL)
+    {
         return NULL;
     }
 
     node->data.ident.name = strdup(name);
-    if (node->data.ident.name == NULL) {
+    if (node->data.ident.name == NULL)
+    {
         free_ast(node);
         return NULL;
     }
@@ -87,14 +101,17 @@ ASTNode* create_ident_node(const char* name) {
     return node;
 }
 
-ASTNode* create_string_literal_node(const char* value) {
+ASTNode* create_string_literal_node(const char* value)
+{
     ASTNode* node = create_ast_node(AST_STRING_LITERAL);
-    if (node == NULL) {
+    if (node == NULL)
+    {
         return NULL;
     }
 
     node->data.string_literal.value = strdup(value);
-    if (node->data.string_literal.value == NULL) {
+    if (node->data.string_literal.value == NULL)
+    {
         free_ast(node);
         return NULL;
     }
@@ -102,14 +119,17 @@ ASTNode* create_string_literal_node(const char* value) {
     return node;
 }
 
-ASTNode* create_binary_node(const char* op, ASTNode* left, ASTNode* right) {
+ASTNode* create_binary_node(const char* op, ASTNode* left, ASTNode* right)
+{
     ASTNode* node = create_ast_node(AST_BINARY_OP);
-    if (node == NULL) {
+    if (node == NULL)
+    {
         return NULL;
     }
 
     node->data.binary.op = strdup(op);
-    if (node->data.binary.op == NULL) {
+    if (node->data.binary.op == NULL)
+    {
         free_ast(node);
         return NULL;
     }
@@ -120,14 +140,17 @@ ASTNode* create_binary_node(const char* op, ASTNode* left, ASTNode* right) {
     return node;
 }
 
-ASTNode* create_unary_node(const char* op, ASTNode* operand) {
+ASTNode* create_unary_node(const char* op, ASTNode* operand)
+{
     ASTNode* node = create_ast_node(AST_UNARY_OP);
-    if (node == NULL) {
+    if (node == NULL)
+    {
         return NULL;
     }
 
     node->data.unary.op = strdup(op);
-    if (node->data.unary.op == NULL) {
+    if (node->data.unary.op == NULL)
+    {
         free_ast(node);
         return NULL;
     }
@@ -137,9 +160,11 @@ ASTNode* create_unary_node(const char* op, ASTNode* operand) {
     return node;
 }
 
-ASTNode* create_block_node(ASTNode** statements, size_t count) {
+ASTNode* create_block_node(ASTNode** statements, size_t count)
+{
     ASTNode* node = create_ast_node(AST_BLOCK);
-    if (node == NULL) {
+    if (node == NULL)
+    {
         return NULL;
     }
 
@@ -149,9 +174,11 @@ ASTNode* create_block_node(ASTNode** statements, size_t count) {
     return node;
 }
 
-ASTNode* create_param_list_node(ASTNode** params, size_t count) {
+ASTNode* create_param_list_node(ASTNode** params, size_t count)
+{
     ASTNode* node = create_ast_node(AST_PARAM_LIST);
-    if (node == NULL) {
+    if (node == NULL)
+    {
         return NULL;
     }
 
@@ -161,14 +188,17 @@ ASTNode* create_param_list_node(ASTNode** params, size_t count) {
     return node;
 }
 
-ASTNode* create_struct_decl_node(const char* name, ASTNode** members, size_t count) {
+ASTNode* create_struct_decl_node(const char* name, ASTNode** members, size_t count)
+{
     ASTNode* node = create_ast_node(AST_STRUCT);
-    if (node == NULL) {
+    if (node == NULL)
+    {
         return NULL;
     }
 
     node->data.struct_decl.name = strdup(name);
-    if (node->data.struct_decl.name == NULL) {
+    if (node->data.struct_decl.name == NULL)
+    {
         free_ast(node);
         return NULL;
     }
