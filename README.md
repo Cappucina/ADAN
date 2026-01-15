@@ -8,3 +8,7 @@
 		<a href="https://github.com/Cappucina/ADAN-VSC-LSP">ADAN language server for VS Code</a>
 	</p>
 </div>
+
+<p align="center">
+	ADAN has been continuously maintained from between <b>November 2nd, 2025</b> to <b>Now</b>.
+</p>
