@@ -6,8 +6,5 @@ Test codespaces as ssh is broken on school wifi with most other protocols
 lex_string() / lex_char() - No escape sequence handling (\n, \", \\, etc.)
         skip_whitespace() - No comment handling (// and /* */)
 
-************ IMPORTANT ************
-Write a type system for parser
-to transfer types over to
-AST for semantic analyzing.
-***********************************
+Finish the parser, it's missing a ton of implementation.
+There might be ways we can optimize it, however I wouldn't worry too much since it's going to be rewritten in ADAN eventually.

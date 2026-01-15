@@ -1,3 +1,5 @@
+MAKEFLAGS += --no-print-directory
+
 EXE = adan
 RELEASE_DIR = ./build/release
 DEBUG_DIR = ./build/debug
@@ -15,7 +17,7 @@ all: build
 
 build: clean
 	@cmake -B $(BUILD_DIR) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
-	@cmake --build $(BUILD_DIR) -- -s
+	@cmake --build $(BUILD_DIR) --config $(BUILD_TYPE) -- -s
 
 build-release:
 	@$(MAKE) build BUILD_TYPE=Release

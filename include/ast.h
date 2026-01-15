@@ -62,6 +62,7 @@ typedef struct ASTNode
         struct
         {
             char* name;
+            struct ASTNode* type;
         } ident;
 
         struct
@@ -124,6 +125,16 @@ typedef struct ASTNode
         struct
         {
             char* name;
+            struct ASTNode* type;
+            struct ASTNode* body;
+            struct ASTNode** arguments;
+            size_t count;
+        } program_def;
+
+        struct
+        {
+            char* name;
+            struct ASTNode* type;
             struct ASTNode** arguments;
             size_t count;
         } program_call;

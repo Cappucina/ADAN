@@ -62,6 +62,18 @@ void free_ast(ASTNode* node)
         case AST_RETURN:
             free_ast(node->data.return_stmt.value);
             break;
+        case AST_PROGRAM:
+            free(node->data.program_call.name);
+            free_ast(node->data.program_call.type);
+            if (node->data.program_call.arguments)
+            {
+                for (size_t i = 0; i < node->data.program_call.count; ++i)
+                {
+                    free_ast(node->data.program_call.arguments[i]);
+                }
+                free(node->data.program_call.arguments);
+            }
+            break;
         default:
             break;
     }
