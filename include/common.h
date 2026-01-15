@@ -7,7 +7,7 @@
 
 #include "buffer.h"
 #include "diagnostic.h"
-#include "lex/lexer.h"
+#include "../source/lex/lexer.h"
 
 typedef struct
 {
@@ -16,7 +16,7 @@ typedef struct
     size_t count;
     ErrorList* errors;
     bool panic;
-} Analyzer;
+} Parser;
 
 char* strdup(const char* s);
 

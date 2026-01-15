@@ -9,10 +9,10 @@
 #include "common.h"
 #include "diagnostic.h"
 
-Analyzer* create_semantic(Buffer* token_buffer, ErrorList* errors);
+Parser* create_semantic(Buffer* token_buffer, ErrorList* errors);
 
-void semantic_analysis(Analyzer* analyzer);
+void semantic_analysis(Parser* parser);
 
-void free_semantic(Analyzer* analyzer);
+void free_semantic(Parser* parser);
 
 #endif

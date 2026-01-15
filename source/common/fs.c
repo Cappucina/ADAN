@@ -1,7 +1,5 @@
 #include "fs.h"
 
-#include <errno.h>
-
 bool file_exsists(const char* file_location)
 {
     FILE* file;
@@ -33,7 +31,6 @@ const char* file_to_string(FILE* file, ErrorList* error_list)
     if (!buffer)
     {
         error(error_list, "input", 0, 0, GENERIC, "No memory left.");
-        exit(-ENOMEM);
         return NULL;
     }
 
@@ -41,4 +38,9 @@ const char* file_to_string(FILE* file, ErrorList* error_list)
     buffer[length] = '\0';
 
     return buffer;
+}
+
+void free_file_string(const char* file_string)
+{
+    free((void*)file_string);
 }

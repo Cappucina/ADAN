@@ -9,21 +9,21 @@
 #include "buffer.h"
 #include "common.h"
 #include "diagnostic.h"
-#include "lex/lexer.h"
+#include "../lex/lexer.h"
 
-Token peek(Analyzer* parser);
+Token peek(Parser* parser);
 
-Token advance(Analyzer* parser);
+Token advance(Parser* parser);
 
-Token current_token(Analyzer* parser);
+Token current_token(Parser* parser);
 
-bool match(Analyzer* parser, TokenType expected);
+bool match(Parser* parser, TokenType expected);
 
-Analyzer* create_parser(Buffer* token_buffer, ErrorList* errors);
+Parser* create_parser(Buffer* token_buffer, ErrorList* errors);
 
-void parse(Analyzer* analyzer);
+ASTNode* parse(Parser* parser);
 
-void free_parser(Analyzer* analyzer);
+void free_parser(Parser* parser);
 
 void free_ast(ASTNode* node);
 

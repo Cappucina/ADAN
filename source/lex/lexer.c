@@ -42,6 +42,7 @@ static TokenType is_keyword(const char* name, uint32_t length)
 Lexer* create_lexer(const char* source, ErrorList* el, const char* file)
 {
     Lexer* new = (Lexer*)malloc(sizeof(Lexer));
+    
     if (!new)
     {
         exit(-ENOMEM);
@@ -55,6 +56,7 @@ Lexer* create_lexer(const char* source, ErrorList* el, const char* file)
     new->column = 1;
     new->length = (uint32_t)strlen(source);
     new->errors = el;
+
     return new;
 }
 
@@ -240,7 +242,7 @@ Token lex_operator(Lexer* lex)
         case '%':
             return create_token(lex, &lex->source[start], start, 1, TOKEN_MODULO);
         case '^':
-            return create_token(lex, &lex->source[start], start, 1, TOKEN_CARET);
+            return create_token(lex, &lex->source[start], start, 1, TOKEN_BITWISE_XOR);
         case '~':
             return create_token(lex, &lex->source[start], start, 1, TOKEN_BITWISE_NOT);
         case '.':

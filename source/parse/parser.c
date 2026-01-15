@@ -3,12 +3,13 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <errno.h>
 
 #include "ast.h"
 #include "buffer.h"
 #include "diagnostic.h"
 
-Token peek(Analyzer* parser)
+Token peek(Parser* parser)
 {
     if (parser->current + 1 >= parser->count)
     {
@@ -17,7 +18,7 @@ Token peek(Analyzer* parser)
     return parser->tokens[parser->current + 1];
 }
 
-Token advance(Analyzer* parser)
+Token advance(Parser* parser)
 {
     if (parser->current + 1 >= parser->count)
     {
@@ -27,17 +28,21 @@ Token advance(Analyzer* parser)
     return parser->tokens[++parser->current];
 }
 
-Token current_token(Analyzer* parser)
+Token current_token(Parser* parser)
 {
     return parser->tokens[parser->current];
 }
 
-bool match(Analyzer* parser, TokenType expected)
+bool is_at_end(Parser* parser) {
+    return parser->tokens[parser->current].type == TOKEN_EOF;
+}
+
+bool match(Parser* parser, TokenType expected)
 {
     return current_token(parser).type == expected;
 }
 
-Token* expect(Analyzer* parser, TokenType expected, const char* message)
+Token* expect(Parser* parser, TokenType expected, const char* message)
 {
     if (match(parser, expected))
     {
@@ -62,7 +67,7 @@ Token* expect(Analyzer* parser, TokenType expected, const char* message)
     return NULL;
 }
 
-static void synchronize(Analyzer* parser)
+static void synchronize(Parser* parser)
 {
     advance(parser);
     parser->panic = false;
@@ -89,110 +94,8 @@ static void synchronize(Analyzer* parser)
     }
 }
 
-Analyzer* create_parser(Buffer* token_buffer, ErrorList* errors)
-{
-    Analyzer* parser = (Analyzer*)malloc(sizeof(Analyzer));
-
-    parser->current = 0;
-    parser->count = token_buffer->count;
-    parser->tokens = token_buffer->data;
-    parser->errors = errors;
-    parser->panic = false;
-
-    return parser;
-}
-
-void parse(Analyzer* analyzer)
-{
-    for (size_t i = 0; i < analyzer->count; i++)
-    {
-        switch (analyzer->tokens[i].type)
-        {
-            case TOKEN_EOF:
-                break;
-            case TOKEN_ERROR:
-            case TOKEN_IDENTIFIER:
-            case TOKEN_INT:
-            case TOKEN_FLOAT:
-            case TOKEN_STRING:
-            case TOKEN_BOOL:
-            case TOKEN_CHAR:
-            case TOKEN_NULL:
-            case TOKEN_VOID:
-                continue;
-            case TOKEN_ADD:
-            case TOKEN_SUBTRACT:
-            case TOKEN_MULTIPLY:
-            case TOKEN_DIVIDE:
-            case TOKEN_MODULO:
-            case TOKEN_CARET:
-            case TOKEN_EXPONENT:
-                continue;
-            case TOKEN_ADDRESS_OF:
-            case TOKEN_REFERENCE:
-                continue;
-            case TOKEN_INCREMENT:
-            case TOKEN_DECREMENT:
-            case TOKEN_BITWISE_AND:
-            case TOKEN_BITWISE_OR:
-            case TOKEN_BITWISE_NOT:
-            case TOKEN_BITWISE_XOR:
-            case TOKEN_BITWISE_NAND:
-            case TOKEN_BITWISE_NOR:
-            case TOKEN_BITWISE_XNOR:
-            case TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT:
-            case TOKEN_BITWISE_SIGNED_RIGHT_SHIFT:
-            case TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT:
-                continue;
-            case TOKEN_LEFT_PAREN:
-            case TOKEN_RIGHT_PAREN:
-            case TOKEN_LEFT_BRACE:
-            case TOKEN_RIGHT_BRACE:
-            case TOKEN_LEFT_BRACKET:
-            case TOKEN_RIGHT_BRACKET:
-            case TOKEN_SEMICOLON:
-            case TOKEN_COMMA:
-            case TOKEN_PERIOD:
-            case TOKEN_APOSTROPHE:
-            case TOKEN_QUOTATION:
-            case TOKEN_NOT:
-            case TOKEN_AND:
-            case TOKEN_TYPE_DECLARATOR:
-            case TOKEN_EQUALS:
-            case TOKEN_GREATER:
-            case TOKEN_LESS:
-            case TOKEN_GREATER_EQUALS:
-            case TOKEN_LESS_EQUALS:
-            case TOKEN_ASSIGN:
-            case TOKEN_NOT_EQUALS:
-            case TOKEN_OR:
-            case TOKEN_ELLIPSIS:
-            case TOKEN_TRUE_LITERAL:
-            case TOKEN_INT_LITERAL:
-            case TOKEN_FALSE_LITERAL:
-            case TOKEN_FLOAT_LITERAL:
-            case TOKEN_IF:
-            case TOKEN_WHILE:
-            case TOKEN_FOR:
-            case TOKEN_INCLUDE:
-            case TOKEN_CONTINUE:
-            case TOKEN_PROGRAM:
-            case TOKEN_RETURN:
-            case TOKEN_ELSE:
-            case TOKEN_STRUCT:
-            case TOKEN_BREAK:
-                continue;
-        }
-    }
-}
-
-void free_parser(Analyzer* parser)
-{
-    if (parser) free(parser);
-}
-
 // break;
-static ASTNode* parse_break(Analyzer* parser)
+static ASTNode* parse_break(Parser* parser)
 {
     ASTNode* node = create_ast_node(AST_BREAK);
     if (!node) return NULL;
@@ -211,11 +114,18 @@ static ASTNode* parse_break(Analyzer* parser)
     return node;
 }
 
-static ASTNode* parse_declaration(Analyzer* parser);
-static ASTNode* parse_expression(Analyzer* parser);
+static ASTNode* parse_declaration(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_expression(Parser* parser)
+{
+    return NULL;
+}
 
 // struct struct_name { ... }
-static ASTNode* parse_struct(Analyzer* parser)
+static ASTNode* parse_struct(Parser* parser)
 {
     Token struct_token = current_token(parser);
     advance(parser);
@@ -267,8 +177,8 @@ static ASTNode* parse_struct(Analyzer* parser)
         free(members);
         return NULL;
     }
-
-    ASTNode* node = create_struct_decl_node(name_token.start, members, count);
+    
+    ASTNode* node = create_struct_decl_node(name_token.lexeme, members, count);
     if (!node)
     {
         for (size_t i = 0; i < count; i++) free_ast(members[i]);
@@ -284,7 +194,7 @@ static ASTNode* parse_struct(Analyzer* parser)
 }
 
 // return expression;
-static ASTNode* parse_return(Analyzer* parser)
+static ASTNode* parse_return(Parser* parser)
 {
     Token return_token = current_token(parser);
     advance(parser);
@@ -322,116 +232,196 @@ static ASTNode* parse_return(Analyzer* parser)
 
         return node;
     }
+    
     return NULL;
 }
 
 // program::type program_name(param_1, ...) { ... }
-static ASTNode* parse_program(Analyzer* parser)
+static ASTNode* parse_program(Parser* parser)
 {
+    ASTNode* node = create_ast_node(AST_PROGRAM);
+    expect(parser, TOKEN_TYPE_DECLARATOR, "Expected '::' after program"); 
+    TokenType t = advance(parser).type;
+    
+    if (t != TOKEN_INT || t != TOKEN_FLOAT || t != TOKEN_STRING || t != TOKEN_CHAR) {
+        // Either undefined type or user-defined type
+    }
+    
     return NULL;
 }
 
 // continue;
-static ASTNode* parse_continue(Analyzer* parser)
+static ASTNode* parse_continue(Parser* parser)
 {
     return NULL;
 }
 
-// include org.lib;
-static ASTNode* parse_include(Analyzer* parser)
+/**
+ * 
+ * @todo Let Sammy finish this function.
+ */
+static ASTNode* parse_include(Parser* parser)
 {
-    return NULL;
+    if (!expect(parser, TOKEN_INCLUDE, "Expected include")) {
+        return NULL;
+    }
+    // org DOT lib*
+    ASTNode* node = create_ast_node(AST_INCLUDE);
+    
+    Token* org_node = expect(parser, TOKEN_IDENTIFIER, "Expected identifier after include");
+    if (!org_node) {
+        synchronize(parser);
+        return NULL;
+    }
+    const char* org = strdup(org_node->lexeme);
+    if (!org) {
+        return NULL;
+    }
+
+    Buffer* libs_buffer = buffer_create(sizeof(char*));
+
+    while (!match(parser, TOKEN_SEMICOLON)) {
+        if (!expect(parser, TOKEN_PERIOD, "Expected a period")) {
+            synchronize(parser);
+            free(org);
+            return NULL;
+        }
+
+        Token* current_lib = expect(parser, TOKEN_IDENTIFIER, "Expected identifier after period");
+        if (!current_lib) {
+            synchronize(parser);
+            free(org);
+            return NULL;
+        }
+        buffer_push(libs_buffer, &current_lib->lexeme);
+    }
+    advance(parser);
+
+    uint32_t ct = libs_buffer->count;
+    char** libs;
+    if (ct > 0) {
+        libs = (char**)malloc(sizeof(char*) * ct);
+        if (!libs) {
+            return NULL;
+        }
+        for (uint32_t i = 0; i < ct; i++) {
+            libs[i] = strdup(*(char**)buffer_get(libs_buffer, i));
+            if (!libs[i]) {
+                return NULL;
+            }
+        }
+    }
+
+    node->data.include.count = ct;
+    node->data.include.org = org;
+    node->data.include.libs = libs;
+
+    buffer_free(libs_buffer);
+    return node;
 }
 
 // for (init; condition; increment) { ... }
-static ASTNode* parse_for(Analyzer* parser)
+static ASTNode* parse_for(Parser* parser)
 {
     return NULL;
 }
 
 // while (condition) { ... }
-static ASTNode* parse_while(Analyzer* parser)
+static ASTNode* parse_while(Parser* parser)
 {
     return NULL;
 }
 
 // if (condition) { ... } else if (condition) { ... } else { ... }
-static ASTNode* parse_if(Analyzer* parser)
+static ASTNode* parse_if(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_expression(Analyzer* parser)
+static ASTNode* parse_statement(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_statement(Analyzer* parser)
+static ASTNode* parse_expression_list(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_expression_list(Analyzer* parser)
+static ASTNode* parse_primary(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_primary(Analyzer* parser)
+static ASTNode* parse_binary(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_binary(Analyzer* parser)
+static ASTNode* parse_unary(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_unary(Analyzer* parser)
+static ASTNode* parse_type_specifier(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_declaration(Analyzer* parser)
+static ASTNode* parse_assignment(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_type_specifier(Analyzer* parser)
+static ASTNode* parse_or(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_assignment(Analyzer* parser)
+static ASTNode* parse_and(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_or(Analyzer* parser)
+static ASTNode* parse_equality(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_and(Analyzer* parser)
+static ASTNode* parse_comparison(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_equality(Analyzer* parser)
+static ASTNode* parse_term(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_comparison(Analyzer* parser)
+static ASTNode* parse_factor(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_term(Analyzer* parser)
+Parser* create_parser(Buffer* token_buffer, ErrorList* errors)
+{
+    Parser* parser = (Parser*)malloc(sizeof(Parser));
+
+    parser->current = 0;
+    parser->count = token_buffer->count;
+    parser->tokens = token_buffer->data;
+    parser->errors = errors;
+    parser->panic = false;
+
+    return parser;
+}
+
+ASTNode* parse(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_factor(Analyzer* parser)
+void free_parser(Parser* parser)
 {
-    return NULL;
+    if (parser) free(parser);
 }

@@ -5,10 +5,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "lex/lexer.h"
+#include "../source/lex/lexer.h"
 
 typedef enum
 {
+    AST_ROOT,
     AST_IDENT,
     AST_EXPRESSION,
     AST_LITERAL,
@@ -35,7 +36,7 @@ typedef enum
     AST_FLOAT_LITERAL,
     AST_BOOL_LITERAL,
     AST_INDEX_ACCESS,
-    AST_ELIF,
+    AST_ELSE_IF,
     AST_SWITCH,
     AST_CASE,
     AST_DEFAULT_CASE,
@@ -51,6 +52,13 @@ typedef struct ASTNode
     const char* file_name;
 
     union {
+        struct
+        {
+            char* org;
+            char** libs;
+            uint32_t count;
+        } include;
+
         struct
         {
             char* name;
@@ -113,15 +121,6 @@ typedef struct ASTNode
             struct ASTNode* value;
         } return_stmt;
     } data;
-
-    // union {
-    //     int64_t int_value;
-    //     double float_value;
-    //     const char* string_value;
-    //     bool bool_value;
-    // } value;
-
-    // struct Type* resolved_type;
 } ASTNode;
 
 void free_ast(ASTNode* node);

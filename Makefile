@@ -27,6 +27,7 @@ run: build-release
 	@$(RELEASE_DIR)/$(EXE)
 
 test: build-debug
+	@clear || cls
 	@$(DEBUG_DIR)/$(EXE) --tests
 
 debug: build-debug

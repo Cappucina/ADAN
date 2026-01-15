@@ -5,6 +5,111 @@
 
 #include "diagnostic.h"
 #include "test.h"
+#include <stdio.h>
+
+static const char* token_to_string(TokenType type)
+{
+    switch (type)
+    {
+        case TOKEN_EOF: return "TOKEN_EOF";
+        case TOKEN_ERROR: return "TOKEN_ERROR";
+        case TOKEN_IDENTIFIER: return "TOKEN_IDENTIFIER";
+        case TOKEN_INT: return "TOKEN_INT";
+        case TOKEN_FLOAT: return "TOKEN_FLOAT";
+        case TOKEN_STRING: return "TOKEN_STRING";
+        case TOKEN_BOOL: return "TOKEN_BOOL";
+        case TOKEN_CHAR: return "TOKEN_CHAR";
+        case TOKEN_NULL: return "TOKEN_NULL";
+        case TOKEN_VOID: return "TOKEN_VOID";
+        case TOKEN_ADD: return "TOKEN_ADD";
+        case TOKEN_SUBTRACT: return "TOKEN_SUBTRACT";
+        case TOKEN_MULTIPLY: return "TOKEN_MULTIPLY";
+        case TOKEN_DIVIDE: return "TOKEN_DIVIDE";
+        case TOKEN_MODULO: return "TOKEN_MODULO";
+        case TOKEN_CARET: return "TOKEN_CARET";
+        case TOKEN_EXPONENT: return "TOKEN_EXPONENT";
+        case TOKEN_ADDRESS_OF: return "TOKEN_ADDRESS_OF";
+        case TOKEN_REFERENCE: return "TOKEN_REFERENCE";
+        case TOKEN_INCREMENT: return "TOKEN_INCREMENT";
+        case TOKEN_DECREMENT: return "TOKEN_DECREMENT";
+        case TOKEN_BITWISE_AND: return "TOKEN_BITWISE_AND";
+        case TOKEN_BITWISE_OR: return "TOKEN_BITWISE_OR";
+        case TOKEN_BITWISE_NOT: return "TOKEN_BITWISE_NOT";
+        case TOKEN_BITWISE_XOR: return "TOKEN_BITWISE_XOR";
+        case TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT: return "TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT";
+        case TOKEN_BITWISE_SIGNED_RIGHT_SHIFT: return "TOKEN_BITWISE_SIGNED_RIGHT_SHIFT";
+        case TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT: return "TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT";
+        case TOKEN_LEFT_PAREN: return "TOKEN_LEFT_PAREN";
+        case TOKEN_RIGHT_PAREN: return "TOKEN_RIGHT_PAREN";
+        case TOKEN_LEFT_BRACE: return "TOKEN_LEFT_BRACE";
+        case TOKEN_RIGHT_BRACE: return "TOKEN_RIGHT_BRACE";
+        case TOKEN_LEFT_BRACKET: return "TOKEN_LEFT_BRACKET";
+        case TOKEN_RIGHT_BRACKET: return "TOKEN_RIGHT_BRACKET";
+        case TOKEN_SEMICOLON: return "TOKEN_SEMICOLON";
+        case TOKEN_COMMA: return "TOKEN_COMMA";
+        case TOKEN_PERIOD: return "TOKEN_PERIOD";
+        case TOKEN_APOSTROPHE: return "TOKEN_APOSTROPHE";
+        case TOKEN_QUOTATION: return "TOKEN_QUOTATION";
+        case TOKEN_NOT: return "TOKEN_NOT";
+        case TOKEN_AND: return "TOKEN_AND";
+        case TOKEN_TYPE_DECLARATOR: return "TOKEN_TYPE_DECLARATOR";
+        case TOKEN_EQUALS: return "TOKEN_EQUALS";
+        case TOKEN_GREATER: return "TOKEN_GREATER";
+        case TOKEN_LESS: return "TOKEN_LESS";
+        case TOKEN_GREATER_EQUALS: return "TOKEN_GREATER_EQUALS";
+        case TOKEN_LESS_EQUALS: return "TOKEN_LESS_EQUALS";
+        case TOKEN_ASSIGN: return "TOKEN_ASSIGN";
+        case TOKEN_NOT_EQUALS: return "TOKEN_NOT_EQUALS";
+        case TOKEN_OR: return "TOKEN_OR";
+        case TOKEN_ELLIPSIS: return "TOKEN_ELLIPSIS";
+        case TOKEN_TRUE_LITERAL: return "TOKEN_TRUE_LITERAL";
+        case TOKEN_INT_LITERAL: return "TOKEN_INT_LITERAL";
+        case TOKEN_FALSE_LITERAL: return "TOKEN_FALSE_LITERAL";
+        case TOKEN_FLOAT_LITERAL: return "TOKEN_FLOAT_LITERAL";
+        case TOKEN_IF: return "TOKEN_IF";
+        case TOKEN_WHILE: return "TOKEN_WHILE";
+        case TOKEN_FOR: return "TOKEN_FOR";
+        case TOKEN_INCLUDE: return "TOKEN_INCLUDE";
+        case TOKEN_CONTINUE: return "TOKEN_CONTINUE";
+        case TOKEN_PROGRAM: return "TOKEN_PROGRAM";
+        case TOKEN_RETURN: return "TOKEN_RETURN";
+        case TOKEN_ELSE: return "TOKEN_ELSE";
+        case TOKEN_STRUCT: return "TOKEN_STRUCT";
+        case TOKEN_BREAK: return "TOKEN_BREAK";
+        default: return "TOKEN_UNKNOWN";
+    }
+}
+
+static void print_token_stream(const char* src)
+{
+    ErrorList* errors = create_errors();
+    Lexer* lx = create_lexer(src, errors, "(test)");
+    if (!lx)
+    {
+        free_errors(errors);
+        return;
+    }
+
+    printf("Token stream for source: %s\n", src);
+    while (true)
+    {
+        Token t = lex(lx);
+        const char* name = token_to_string(t.type);
+        printf("%s: '%.*s' (start=%u len=%u line=%u col=%u)\n",
+               name,
+               (int)t.length,
+               t.lexeme ? t.lexeme : "",
+               t.start,
+               t.length,
+               t.line,
+               t.column);
+        if (t.type == TOKEN_EOF || t.type == TOKEN_ERROR)
+            break;
+    }
+
+    free_lexer(lx);
+    free_errors(errors);
+}
 
 static int test_create_lexer(void)
 {
@@ -447,6 +552,57 @@ static int test_lex_unexpected_char_error(void)
     return 0;
 }
 
+static int test_lex_example_program(void)
+{
+    FILE* f = fopen("examples/adan.adn", "rb");
+    if (!f)
+    {
+        printf("Could not open examples/adan.adn\n");
+        return 1;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    char* buf = (char*)malloc((size_t)sz + 1);
+    if (!buf)
+    {
+        fclose(f);
+        printf("Out of memory reading example file\n");
+        return 1;
+    }
+
+    size_t read = fread(buf, 1, (size_t)sz, f);
+    fclose(f);
+    buf[read] = '\0';
+
+    print_token_stream(buf);
+
+    ErrorList* errors = create_errors();
+    Lexer* lx = create_lexer(buf, errors, "examples/adan.adn");
+    if (!lx)
+    {
+        free(buf);
+        free_errors(errors);
+        return 1;
+    }
+
+    while (true)
+    {
+        Token t = lex(lx);
+        if (t.type == TOKEN_EOF || t.type == TOKEN_ERROR)
+            break;
+    }
+
+    ASSERT_ERROR_COUNT(errors, 0, "Example program should produce no diagnostics\n");
+
+    free_lexer(lx);
+    free_errors(errors);
+    free(buf);
+    return 0;
+}
+
 int run_lexer_tests(TestSuite* suite)
 {
     if (!suite)
@@ -486,6 +642,11 @@ int run_lexer_tests(TestSuite* suite)
     test_suite_run_test(suite, "lexer_whitespace_skip", test_lex_whitespace_skip);
     test_suite_run_test(suite, "lexer_eof", test_lex_eof);
     test_suite_run_test(suite, "lexer_unexpected_char_error", test_lex_unexpected_char_error);
+    test_suite_run_test(suite, "lexer_example_program", test_lex_example_program);
+
+
+
+    //print_token_stream("int main() { int x = 42; if (x > 0) x = x - 1; return x; }");
 
     return 0;
 }
