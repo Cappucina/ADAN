@@ -120,6 +120,13 @@ typedef struct ASTNode
         {
             struct ASTNode* value;
         } return_stmt;
+
+        struct
+        {
+            char* name;
+            struct ASTNode** arguments;
+            size_t count;
+        } program_call;
     } data;
 } ASTNode;
 

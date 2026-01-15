@@ -5,3 +5,9 @@ Test codespaces as ssh is broken on school wifi with most other protocols
                lex_char() - No validation that char literal contains exactly one character
 lex_string() / lex_char() - No escape sequence handling (\n, \", \\, etc.)
         skip_whitespace() - No comment handling (// and /* */)
+
+************ IMPORTANT ************
+Write a type system for parser
+to transfer types over to
+AST for semantic analyzing.
+***********************************

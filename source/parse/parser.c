@@ -236,18 +236,90 @@ static ASTNode* parse_return(Parser* parser)
     return NULL;
 }
 
-// program::type program_name(param_1, ...) { ... }
+static ASTNode* parse_type(Parser* parser)
+{
+    return NULL;
+}
+
+/**
+ * 
+ * @todo Modify this to include the type of the program in the AST node.
+ */
 static ASTNode* parse_program(Parser* parser)
 {
-    ASTNode* node = create_ast_node(AST_PROGRAM);
-    expect(parser, TOKEN_TYPE_DECLARATOR, "Expected '::' after program"); 
-    TokenType t = advance(parser).type;
-    
-    if (t != TOKEN_INT || t != TOKEN_FLOAT || t != TOKEN_STRING || t != TOKEN_CHAR) {
-        // Either undefined type or user-defined type
+    if (!expect(parser, TOKEN_PROGRAM, "Expected 'program'")) {
+        return NULL;
     }
-    
-    return NULL;
+    ASTNode* node = create_ast_node(AST_PROGRAM);
+    if (!node) {
+        return NULL;
+    }
+    if (!expect(parser, TOKEN_TYPE_DECLARATOR, "Expected '::' after 'program'")) {
+        free_ast(node);
+        return NULL;
+    }
+    Token* program_type = expect(parser, TOKEN_IDENTIFIER, "Expected program type after '::'");
+    if (!program_type) {
+        free_ast(node);
+        synchronize(parser);
+        return NULL;
+    }
+    Token* program_name = expect(parser, TOKEN_IDENTIFIER, "Expected program name after program type");
+    if (!program_name) {
+        free_ast(node);
+        synchronize(parser);
+        return NULL;
+    }
+    node->data.program_call.name = strdup(program_name->lexeme);
+    if (!expect(parser, TOKEN_LEFT_PAREN, "Expected '(' after program name")) {
+        free_ast(node);
+        return NULL;
+    }
+
+    // Written like: (param_one::<type>, param_two::<type>, ...)
+    Buffer* arguments_buffer = buffer_create(sizeof(ASTNode*));
+    while (!match(parser, TOKEN_RIGHT_PAREN) && !match(parser, TOKEN_EOF)) {
+        Token* param_name = expect(parser, TOKEN_IDENTIFIER, "Expected parameter name");
+        if (!param_name) {
+            free_ast(node);
+            synchronize(parser);
+            return NULL;
+        }
+        if (!expect(parser, TOKEN_TYPE_DECLARATOR, "Expected '::' after parameter name")) {
+            free_ast(node);
+            synchronize(parser);
+            return NULL;
+        }
+        Token* param_type = expect(parser, TOKEN_IDENTIFIER, "Expected parameter type after '::'");
+        if (!param_type) {
+            free_ast(node);
+            synchronize(parser);
+            return NULL;
+        }
+        ASTNode* parameter = create_ast_node(AST_PARAM);
+        if (!parameter) {
+            free_ast(node);
+            buffer_free(arguments_buffer);
+            return NULL;
+        }
+        parameter->data.ident.name = strdup(param_name->lexeme);
+        parameter->line = param_name->line;
+        parameter->column = param_name->column;
+        parameter->file_name = param_name->file;
+        buffer_push(arguments_buffer, &parameter);
+    }
+    node->data.program_call.arguments = (ASTNode**)malloc(sizeof(ASTNode*) * arguments_buffer->count);
+    if (!node->data.program_call.arguments) {
+        buffer_free(arguments_buffer);
+        free_ast(node);
+        return NULL;
+    }
+    for (size_t i = 0; i < arguments_buffer->count; i++) {
+        node->data.program_call.arguments[i] = *(ASTNode**)buffer_get(arguments_buffer, i);
+    }
+    node->data.program_call.count = arguments_buffer->count;
+    buffer_free(arguments_buffer);
+    return node;
 }
 
 // continue;
@@ -283,14 +355,14 @@ static ASTNode* parse_include(Parser* parser)
     while (!match(parser, TOKEN_SEMICOLON)) {
         if (!expect(parser, TOKEN_PERIOD, "Expected a period")) {
             synchronize(parser);
-            free(org);
+            free((void*)org);
             return NULL;
         }
 
         Token* current_lib = expect(parser, TOKEN_IDENTIFIER, "Expected identifier after period");
         if (!current_lib) {
             synchronize(parser);
-            free(org);
+            free((void*)org);
             return NULL;
         }
         buffer_push(libs_buffer, &current_lib->lexeme);
@@ -313,7 +385,7 @@ static ASTNode* parse_include(Parser* parser)
     }
 
     node->data.include.count = ct;
-    node->data.include.org = org;
+    node->data.include.org = (void*)org;
     node->data.include.libs = libs;
 
     buffer_free(libs_buffer);
