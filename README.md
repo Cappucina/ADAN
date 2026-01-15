@@ -12,3 +12,7 @@
 <p align="center">
 	ADAN has been continuously maintained from between <b>November 2nd, 2025</b> to <b>Now</b>.
 </p>
+
+<div align="center">
+	<img src="https://github.com/Cappucina/ADAN/actions/workflows/c-cpp.yml/badge.svg"/>
+</div>
