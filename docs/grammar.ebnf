@@ -1,0 +1,94 @@
+/* NOTATION/SYNTAX: EBNF ( Extended Backus-Naur Form ) */
+/* READ: https://ics.uci.edu/~pattis/ICS-33/lectures/ebnf.pdf */
+
+(* EBNF uses:
+   - ::= for definition
+   - | for alternatives
+   - [] for optional (0 or 1)
+   - {} for repetition (0 or more)
+   - () for grouping
+   - "..." for terminals
+   - (* ... *) for comments
+   - Non-terminals in <...>
+*)
+
+<program> ::= {<include>} {<top_decl>}
+
+<top_decl> ::= <fun_decl> | <struct_decl> | <var_decl>
+
+<include> ::= "include" <identifier> {"." <identifier>} ";"
+
+<type> ::= <builtin_type> | <user_type> | <pointer_type> | "void"
+
+<builtin_type> ::= "int" | "float" | "string" | "bool" | "char"
+
+<user_type> ::= <identifier>
+
+<pointer_type> ::= <type> {"*"}
+
+<fun_decl> ::= "program" "::" <type> <identifier> "(" [<param_list>] ")" <block>
+
+<param_list> ::= <param> {"," <param>}
+
+<param> ::= <identifier> "::" <type>
+
+<var_decl> ::= <identifier> "::" <type> ["=" <expression>] ";"
+
+<struct_decl> ::= "struct" <identifier> "{" {<struct_member>} "}" ";"
+
+<struct_member> ::= <var_decl> | <fun_decl>
+
+<statement> ::= <if_stmt> | <while_stmt> | <for_stmt> | <return_stmt> | <break_stmt> | <continue_stmt> | <expression_stmt> | <block> | <var_decl>
+
+<if_stmt> ::= "if" "(" <expression> ")" <block> ["else" (<if_stmt> | <block>)]
+
+<while_stmt> ::= "while" "(" <expression> ")" <block>
+
+<for_stmt> ::= "for" "(" (<var_decl> | <expression_stmt>) ";" [<expression>] ";" [<expression>] ")" <block>
+
+<return_stmt> ::= "return" [<expression>] ";"
+
+<break_stmt> ::= "break" ";"
+
+<continue_stmt> ::= "continue" ";"
+
+<expression_stmt> ::= <expression> ";"
+
+<block> ::= "{" {<statement>} "}"
+
+<expression> ::= <assignment>
+
+<assignment> ::= <logical_or> [<assignment_op> <assignment>]
+
+<assignment_op> ::= "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^="
+
+<logical_or> ::= <logical_and> {"||" <logical_and>}
+
+<logical_and> ::= <equality> {"&&" <equality>}
+
+<equality> ::= <comparison> {("==" | "!=") <comparison>}
+
+<comparison> ::= <additive> {(">" | ">=" | "<" | "<=") <additive>}
+
+<additive> ::= <multiplicative> {("+" | "-") <multiplicative>}
+
+<multiplicative> ::= <unary> {("*" | "/" | "%") <unary>}
+
+<unary> ::= {"!" | "-" | "&" | "*"} <postfix>
+
+<postfix> ::= <primary> ["++" | "--"]
+
+<primary> ::= <identifier> | <int_literal> | <float_literal> | <string_literal> | <char_literal> | "true" | "false" | "null" | "(" <expression> ")"
+
+(* Lexical tokens *)
+<identifier> ::= <letter> {<letter> | <digit> | "_"}
+<int_literal> ::= <digit> {<digit>}
+<float_literal> ::= <digit> {<digit>} "." {<digit>} | "." <digit> {<digit>}
+<string_literal> ::= '"' {<character> | <escape_sequence>} '"'
+<char_literal> ::= "'" (<character> | <escape_sequence>) "'"
+
+(* Basic character classes *)
+<letter> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+<digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+<character> ::= (* Any printable character except quotes and backslash *)
+<escape_sequence> ::= "\" ("n" | "t" | "r" | "\" | "'" | '"' | "0")
