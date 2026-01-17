@@ -18,6 +18,8 @@
 
 <include> ::= "include" <identifier> {"." <identifier>} ";"
 
+(* PARSER PROGRESS HERE *)
+
 <type> ::= <builtin_type> | <user_type> | <pointer_type> | "void"
 
 <builtin_type> ::= "int" | "float" | "string" | "bool" | "char"
@@ -80,14 +82,12 @@
 
 <primary> ::= <identifier> | <int_literal> | <float_literal> | <string_literal> | <char_literal> | "true" | "false" | "null" | "(" <expression> ")"
 
-(* Lexical tokens *)
 <identifier> ::= <letter> {<letter> | <digit> | "_"}
 <int_literal> ::= <digit> {<digit>}
 <float_literal> ::= <digit> {<digit>} "." {<digit>} | "." <digit> {<digit>}
 <string_literal> ::= '"' {<character> | <escape_sequence>} '"'
 <char_literal> ::= "'" (<character> | <escape_sequence>) "'"
 
-(* Basic character classes *)
 <letter> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
 <digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 <character> ::= (* Any printable character except quotes and backslash *)

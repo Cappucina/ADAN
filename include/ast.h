@@ -56,7 +56,7 @@ typedef struct ASTNode
         {
             char* org;
             char** libs;
-            uint32_t count;
+            uint32_t libs_count;
         } include;
 
         struct
@@ -138,6 +138,14 @@ typedef struct ASTNode
             struct ASTNode** arguments;
             size_t count;
         } program_call;
+
+        struct {
+            ASTNode** includes;
+            size_t includes_count;
+            ASTNode** decls;
+            size_t decls_count;
+        } root;
+
     } data;
 } ASTNode;
 

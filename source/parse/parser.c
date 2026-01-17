@@ -427,16 +427,12 @@ static ASTNode* parse_continue(Parser* parser)
     return node;
 }
 
-/**
- * 
- * @todo Let Sammy finish this function.
- */
 static ASTNode* parse_include(Parser* parser)
 {
+    // <include> ::= "include" <identifier> {"." <identifier>} ";"
     if (!expect(parser, TOKEN_INCLUDE, "Expected include")) {
         return NULL;
     }
-    // org DOT lib*
     ASTNode* node = create_ast_node(AST_INCLUDE);
     
     Token* org_node = expect(parser, TOKEN_IDENTIFIER, "Expected identifier after include");
@@ -444,48 +440,47 @@ static ASTNode* parse_include(Parser* parser)
         synchronize(parser);
         return NULL;
     }
-    const char* org = strdup(org_node->lexeme);
-    if (!org) {
-        return NULL;
-    }
 
     Buffer* libs_buffer = buffer_create(sizeof(char*));
 
-    while (!match(parser, TOKEN_SEMICOLON)) {
-        if (!expect(parser, TOKEN_PERIOD, "Expected a period")) {
-            synchronize(parser);
-            free((void*)org);
-            return NULL;
-        }
-
+    while (match(parser, TOKEN_PERIOD)) {
+        advance(parser);
+        
         Token* current_lib = expect(parser, TOKEN_IDENTIFIER, "Expected identifier after period");
         if (!current_lib) {
             synchronize(parser);
-            free((void*)org);
+            buffer_free(libs_buffer);
+            free_ast(node);
             return NULL;
         }
         buffer_push(libs_buffer, &current_lib->lexeme);
     }
-    advance(parser);
-
-    uint32_t ct = libs_buffer->count;
-    char** libs;
-    if (ct > 0) {
-        libs = (char**)malloc(sizeof(char*) * ct);
-        if (!libs) {
-            return NULL;
-        }
-        for (uint32_t i = 0; i < ct; i++) {
-            libs[i] = strdup(*(char**)buffer_get(libs_buffer, i));
-            if (!libs[i]) {
-                return NULL;
-            }
-        }
+    
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected ';' after include statement")) {
+        synchronize(parser);
+        buffer_free(libs_buffer);
+        free_ast(node);
+        return NULL;
     }
 
-    node->data.include.count = ct;
-    node->data.include.org = (void*)org;
+    char** libs = (char**)malloc(sizeof(char*) * libs_buffer->count);
+    if (!libs) {
+        buffer_free(libs_buffer);
+        free_ast(node);
+        return NULL;
+    }
+    memcpy(libs, libs_buffer->data, sizeof(char*) * libs_buffer->count);
+
+    const char* tmp_org = strdup(org_node->lexeme);
+    if (!tmp_org) {
+        free(libs);
+        buffer_free(libs_buffer);
+        free_ast(node);
+        return NULL;
+    }
+    node->data.include.org = tmp_org;
     node->data.include.libs = libs;
+    node->data.include.libs_count = libs_buffer->count;
 
     buffer_free(libs_buffer);
     return node;
@@ -584,7 +579,65 @@ Parser* create_parser(Buffer* token_buffer, ErrorList* errors)
 
 ASTNode* parse(Parser* parser)
 {
-    return NULL;
+    // <program> ::= {<include>} {<top_decl>}
+    Token current = current_token(parser);
+    ASTNode* root_node = create_ast_node(AST_ROOT);
+    if (!root_node) {
+        return NULL;
+    }
+
+    Buffer* includes = buffer_create(sizeof(ASTNode*));
+    while (match(parser, TOKEN_INCLUDE) && !is_at_end(parser)) {
+        ASTNode* tmp = parse_include(parser);
+        if (!tmp) {
+            synchronize(parser);
+            continue;
+        }
+        buffer_push(includes, tmp);
+    }
+
+    Buffer* top_decls = buffer_create(sizeof(ASTNode*));
+    while (!is_at_end(parser)) {
+        ASTNode* tmp = parse_declaration(parser);
+        if (!tmp) {
+            synchronize(parser);
+            continue;
+        }
+        buffer_push(top_decls, tmp);
+    }
+
+    ASTNode** includes_ast = NULL;
+    if (includes->count > 0) {
+        includes_ast = (ASTNode**)malloc(sizeof(ASTNode*) * includes->count);
+        if (!includes_ast) {
+            buffer_free(includes);
+            buffer_free(top_decls);
+            return NULL;
+        }
+        memcpy(includes_ast, includes->data, includes->count * sizeof(ASTNode*));
+    }
+    ASTNode** top_decls_ast = NULL;
+    if (top_decls->count > 0) {
+        top_decls_ast = (ASTNode**)malloc(sizeof(ASTNode*) * top_decls->count);
+        if (!top_decls_ast) {
+            free(includes_ast);
+            buffer_free(includes);
+            buffer_free(top_decls);
+            return NULL;
+        }
+        memcpy(top_decls_ast, top_decls->data, top_decls->count * sizeof(ASTNode*));
+    }
+
+    root_node->data.root.includes = includes_ast;
+    root_node->data.root.includes_count = includes->count;
+    root_node->data.root.decls = top_decls_ast;
+    root_node->data.root.decls_count = top_decls->count;
+
+    root_node->line = current.line;
+    root_node->column = current.column;
+    buffer_free(includes);
+    buffer_free(top_decls);
+    return root_node;
 }
 
 void free_parser(Parser* parser)

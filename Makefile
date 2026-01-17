@@ -17,7 +17,7 @@ all: build
 
 build: clean
 	@cmake -B $(BUILD_DIR) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
-	@cmake --build $(BUILD_DIR) --config $(BUILD_TYPE) -- -s
+	@cmake --build $(BUILD_DIR) --config $(BUILD_TYPE)
 
 build-release:
 	@$(MAKE) build BUILD_TYPE=Release
@@ -36,7 +36,11 @@ debug: build-debug
 	@$(DEBUG_DIR)/$(EXE)
 
 clean:
-	@rm -rf $(BUILD_DIR) || rmdir $(BUILD_DIR)
+ifeq ($(OS),Windows_NT)
+	@if exist "$(BUILD_DIR)" rmdir /S /Q "$(BUILD_DIR)" 2>nul
+else
+	@rm -rf "$(BUILD_DIR)"
+endif
 
 format:
 	@python scripts/format.py
