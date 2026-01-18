@@ -1,7 +1,7 @@
 #include "../parse/parser.h"
 
-#include "buffer.h"
 #include "../lex/lexer.h"
+#include "buffer.h"
 #include "test.h"
 
 static int test_create_parser(void)

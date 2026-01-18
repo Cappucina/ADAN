@@ -139,7 +139,8 @@ typedef struct ASTNode
             size_t count;
         } program_call;
 
-        struct {
+        struct
+        {
             ASTNode** includes;
             size_t includes_count;
             ASTNode** decls;

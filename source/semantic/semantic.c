@@ -32,5 +32,4 @@ void free_semantic(Parser* parser)
 
 void semantic_analysis(Parser* parser)
 {
-    
 }

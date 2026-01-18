@@ -1,9 +1,9 @@
 #include "parser.h"
 
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <errno.h>
 
 #include "ast.h"
 #include "buffer.h"
@@ -33,7 +33,8 @@ Token current_token(Parser* parser)
     return parser->tokens[parser->current];
 }
 
-bool is_at_end(Parser* parser) {
+bool is_at_end(Parser* parser)
+{
     return parser->tokens[parser->current].type == TOKEN_EOF;
 }
 
@@ -182,7 +183,7 @@ static ASTNode* parse_struct(Parser* parser)
         free(members);
         return NULL;
     }
-    
+
     ASTNode* node = create_struct_decl_node(name_token.lexeme, members, count);
     if (!node)
     {
@@ -237,7 +238,7 @@ static ASTNode* parse_return(Parser* parser)
 
         return node;
     }
-    
+
     return NULL;
 }
 
@@ -251,94 +252,111 @@ static ASTNode* parse_program(Parser* parser)
 {
     Token program_token = current_token(parser);
     advance(parser);
-    if (!expect(parser, TOKEN_TYPE_DECLARATOR, "Expected '::' after 'program'")) {
+    if (!expect(parser, TOKEN_TYPE_DECLARATOR, "Expected '::' after 'program'"))
+    {
         return NULL;
     }
     Token* program_type = expect(parser, TOKEN_IDENTIFIER, "Expected program type after '::'");
-    if (!program_type) {
+    if (!program_type)
+    {
         synchronize(parser);
         return NULL;
     }
     Token* program_name = expect(parser, TOKEN_IDENTIFIER, "Expected program name after program type");
-    if (!program_name) {
+    if (!program_name)
+    {
         synchronize(parser);
         return NULL;
     }
     ASTNode* node = create_ast_node(AST_PROGRAM);
-    if (!node) {
+    if (!node)
+    {
         return NULL;
     }
     node->line = program_token.line;
     node->column = program_token.column;
     node->file_name = program_token.file;
     node->data.program_def.type = create_ast_node(AST_TYPE);
-    if (!node->data.program_def.type) {
+    if (!node->data.program_def.type)
+    {
         free_ast(node);
         return NULL;
     }
     node->data.program_def.type->data.ident.name = strdup(program_type->lexeme);
-    if (!node->data.program_def.type->data.ident.name) {
+    if (!node->data.program_def.type->data.ident.name)
+    {
         free_ast(node);
         return NULL;
     }
     node->data.program_def.name = strdup(program_name->lexeme);
-    if (!node->data.program_def.name) {
+    if (!node->data.program_def.name)
+    {
         free_ast(node);
         return NULL;
     }
-    if (!expect(parser, TOKEN_LEFT_PAREN, "Expected '(' after program name")) {
+    if (!expect(parser, TOKEN_LEFT_PAREN, "Expected '(' after program name"))
+    {
         free_ast(node);
         return NULL;
     }
     // Written like: (param_one::<type>, param_two::<type>, ...)
     Buffer* arguments_buffer = buffer_create(sizeof(ASTNode*));
-    if (!arguments_buffer) {
+    if (!arguments_buffer)
+    {
         free_ast(node);
         return NULL;
     }
-    while (!match(parser, TOKEN_RIGHT_PAREN) && !match(parser, TOKEN_EOF)) {
+    while (!match(parser, TOKEN_RIGHT_PAREN) && !match(parser, TOKEN_EOF))
+    {
         Token* param_name = expect(parser, TOKEN_IDENTIFIER, "Expected parameter name");
-        if (!param_name) {
+        if (!param_name)
+        {
             buffer_free(arguments_buffer);
             free_ast(node);
             synchronize(parser);
             return NULL;
         }
-        if (!expect(parser, TOKEN_TYPE_DECLARATOR, "Expected '::' after parameter name")) {
+        if (!expect(parser, TOKEN_TYPE_DECLARATOR, "Expected '::' after parameter name"))
+        {
             buffer_free(arguments_buffer);
             free_ast(node);
             synchronize(parser);
             return NULL;
         }
         Token* param_type = expect(parser, TOKEN_IDENTIFIER, "Expected parameter type after '::'");
-        if (!param_type) {
+        if (!param_type)
+        {
             buffer_free(arguments_buffer);
             free_ast(node);
             synchronize(parser);
             return NULL;
         }
         ASTNode* parameter = create_ast_node(AST_PARAM);
-        if (!parameter) {
+        if (!parameter)
+        {
             buffer_free(arguments_buffer);
             free_ast(node);
             return NULL;
         }
         parameter->data.ident.name = strdup(param_name->lexeme);
-        if (!parameter->data.ident.name) {
+        if (!parameter->data.ident.name)
+        {
             free_ast(parameter);
             buffer_free(arguments_buffer);
             free_ast(node);
             return NULL;
         }
         parameter->data.ident.type = create_ast_node(AST_TYPE);
-        if (!parameter->data.ident.type) {
+        if (!parameter->data.ident.type)
+        {
             free_ast(parameter);
             buffer_free(arguments_buffer);
             free_ast(node);
             return NULL;
         }
         parameter->data.ident.type->data.ident.name = strdup(param_type->lexeme);
-        if (!parameter->data.ident.type->data.ident.name) {
+        if (!parameter->data.ident.type->data.ident.name)
+        {
             free_ast(parameter);
             buffer_free(arguments_buffer);
             free_ast(node);
@@ -347,70 +365,81 @@ static ASTNode* parse_program(Parser* parser)
         parameter->line = param_name->line;
         parameter->column = param_name->column;
         parameter->file_name = param_name->file;
-        buffer_push(arguments_buffer, &parameter);    
-        if (match(parser, TOKEN_COMMA)) {
+        buffer_push(arguments_buffer, &parameter);
+        if (match(parser, TOKEN_COMMA))
+        {
             advance(parser);
-        } else {
+        }
+        else
+        {
             break;
         }
     }
-    if (!expect(parser, TOKEN_RIGHT_PAREN, "Expected ')' after parameters")) {
+    if (!expect(parser, TOKEN_RIGHT_PAREN, "Expected ')' after parameters"))
+    {
         buffer_free(arguments_buffer);
         free_ast(node);
         return NULL;
     }
-    if (!expect(parser, TOKEN_LEFT_BRACE, "Expected opening brace, '{' after program declaration")) {
+    if (!expect(parser, TOKEN_LEFT_BRACE, "Expected opening brace, '{' after program declaration"))
+    {
         buffer_free(arguments_buffer);
         free_ast(node);
         return NULL;
     }
-    
+
     Buffer* body_buffer = buffer_create(sizeof(ASTNode*));
-    if (!body_buffer) {
+    if (!body_buffer)
+    {
         buffer_free(arguments_buffer);
         free_ast(node);
         return NULL;
     }
-    
-    while (!match(parser, TOKEN_RIGHT_BRACE) && !match(parser, TOKEN_EOF)) {
+
+    while (!match(parser, TOKEN_RIGHT_BRACE) && !match(parser, TOKEN_EOF))
+    {
         ASTNode* stmt = parse_statement(parser);
-        if (!stmt) {
+        if (!stmt)
+        {
             if (parser->panic) synchronize(parser);
             continue;
         }
         buffer_push(body_buffer, &stmt);
     }
-    
-    if (!expect(parser, TOKEN_RIGHT_BRACE, "Expected closing brace, '}' after program body")) {
+
+    if (!expect(parser, TOKEN_RIGHT_BRACE, "Expected closing brace, '}' after program body"))
+    {
         buffer_free(arguments_buffer);
         buffer_free(body_buffer);
         free_ast(node);
         return NULL;
     }
-    
+
     node->data.program_def.arguments = (ASTNode**)malloc(sizeof(ASTNode*) * arguments_buffer->count);
-    if (!node->data.program_def.arguments) {
+    if (!node->data.program_def.arguments)
+    {
         buffer_free(arguments_buffer);
         buffer_free(body_buffer);
         free_ast(node);
         return NULL;
     }
-    for (size_t i = 0; i < arguments_buffer->count; i++) {
+    for (size_t i = 0; i < arguments_buffer->count; i++)
+    {
         node->data.program_def.arguments[i] = *(ASTNode**)buffer_get(arguments_buffer, i);
     }
     node->data.program_def.count = arguments_buffer->count;
-    
+
     node->data.program_def.body = create_block_node(
         (ASTNode**)body_buffer->data,
-        body_buffer->count
-    );
-    if (!node->data.program_def.body) {
+        body_buffer->count);
+    if (!node->data.program_def.body)
+    {
         buffer_free(arguments_buffer);
         buffer_free(body_buffer);
         free_ast(node);
         return NULL;
     }
-    
+
     buffer_free(arguments_buffer);
     buffer_free(body_buffer);
     return node;
@@ -430,24 +459,28 @@ static ASTNode* parse_continue(Parser* parser)
 static ASTNode* parse_include(Parser* parser)
 {
     // <include> ::= "include" <identifier> {"." <identifier>} ";"
-    if (!expect(parser, TOKEN_INCLUDE, "Expected include")) {
+    if (!expect(parser, TOKEN_INCLUDE, "Expected include"))
+    {
         return NULL;
     }
     ASTNode* node = create_ast_node(AST_INCLUDE);
-    
+
     Token* org_node = expect(parser, TOKEN_IDENTIFIER, "Expected identifier after include");
-    if (!org_node) {
+    if (!org_node)
+    {
         synchronize(parser);
         return NULL;
     }
 
     Buffer* libs_buffer = buffer_create(sizeof(char*));
 
-    while (match(parser, TOKEN_PERIOD)) {
+    while (match(parser, TOKEN_PERIOD))
+    {
         advance(parser);
-        
+
         Token* current_lib = expect(parser, TOKEN_IDENTIFIER, "Expected identifier after period");
-        if (!current_lib) {
+        if (!current_lib)
+        {
             synchronize(parser);
             buffer_free(libs_buffer);
             free_ast(node);
@@ -455,8 +488,9 @@ static ASTNode* parse_include(Parser* parser)
         }
         buffer_push(libs_buffer, &current_lib->lexeme);
     }
-    
-    if (!expect(parser, TOKEN_SEMICOLON, "Expected ';' after include statement")) {
+
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected ';' after include statement"))
+    {
         synchronize(parser);
         buffer_free(libs_buffer);
         free_ast(node);
@@ -464,7 +498,8 @@ static ASTNode* parse_include(Parser* parser)
     }
 
     char** libs = (char**)malloc(sizeof(char*) * libs_buffer->count);
-    if (!libs) {
+    if (!libs)
+    {
         buffer_free(libs_buffer);
         free_ast(node);
         return NULL;
@@ -472,7 +507,8 @@ static ASTNode* parse_include(Parser* parser)
     memcpy(libs, libs_buffer->data, sizeof(char*) * libs_buffer->count);
 
     const char* tmp_org = strdup(org_node->lexeme);
-    if (!tmp_org) {
+    if (!tmp_org)
+    {
         free(libs);
         buffer_free(libs_buffer);
         free_ast(node);
@@ -582,14 +618,17 @@ ASTNode* parse(Parser* parser)
     // <program> ::= {<include>} {<top_decl>}
     Token current = current_token(parser);
     ASTNode* root_node = create_ast_node(AST_ROOT);
-    if (!root_node) {
+    if (!root_node)
+    {
         return NULL;
     }
 
     Buffer* includes = buffer_create(sizeof(ASTNode*));
-    while (match(parser, TOKEN_INCLUDE) && !is_at_end(parser)) {
+    while (match(parser, TOKEN_INCLUDE) && !is_at_end(parser))
+    {
         ASTNode* tmp = parse_include(parser);
-        if (!tmp) {
+        if (!tmp)
+        {
             synchronize(parser);
             continue;
         }
@@ -597,9 +636,11 @@ ASTNode* parse(Parser* parser)
     }
 
     Buffer* top_decls = buffer_create(sizeof(ASTNode*));
-    while (!is_at_end(parser)) {
+    while (!is_at_end(parser))
+    {
         ASTNode* tmp = parse_declaration(parser);
-        if (!tmp) {
+        if (!tmp)
+        {
             synchronize(parser);
             continue;
         }
@@ -607,9 +648,11 @@ ASTNode* parse(Parser* parser)
     }
 
     ASTNode** includes_ast = NULL;
-    if (includes->count > 0) {
+    if (includes->count > 0)
+    {
         includes_ast = (ASTNode**)malloc(sizeof(ASTNode*) * includes->count);
-        if (!includes_ast) {
+        if (!includes_ast)
+        {
             buffer_free(includes);
             buffer_free(top_decls);
             return NULL;
@@ -617,9 +660,11 @@ ASTNode* parse(Parser* parser)
         memcpy(includes_ast, includes->data, includes->count * sizeof(ASTNode*));
     }
     ASTNode** top_decls_ast = NULL;
-    if (top_decls->count > 0) {
+    if (top_decls->count > 0)
+    {
         top_decls_ast = (ASTNode**)malloc(sizeof(ASTNode*) * top_decls->count);
-        if (!top_decls_ast) {
+        if (!top_decls_ast)
+        {
             free(includes_ast);
             buffer_free(includes);
             buffer_free(top_decls);

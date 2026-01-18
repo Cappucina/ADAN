@@ -150,12 +150,12 @@ int run_all_tests(void)
         return 1;
     }
 
-    //run_diagnostic_tests(suite);
-    //run_flags_tests(suite);
+    // run_diagnostic_tests(suite);
+    // run_flags_tests(suite);
     run_lexer_tests(suite);
-    //run_parser_tests(suite);
-    //run_semantic_tests(suite);
-    // run_codegen_tests(suite);
+    // run_parser_tests(suite);
+    // run_semantic_tests(suite);
+    //  run_codegen_tests(suite);
 
     test_suite_print_results(suite);
     bool all_passed = test_suite_all_passed(suite);

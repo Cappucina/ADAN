@@ -1,82 +1,148 @@
 #include "../lex/lexer.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "diagnostic.h"
 #include "test.h"
-#include <stdio.h>
 
 static const char* token_to_string(TokenType type)
 {
     switch (type)
     {
-        case TOKEN_EOF: return "TOKEN_EOF";
-        case TOKEN_ERROR: return "TOKEN_ERROR";
-        case TOKEN_IDENTIFIER: return "TOKEN_IDENTIFIER";
-        case TOKEN_INT: return "TOKEN_INT";
-        case TOKEN_FLOAT: return "TOKEN_FLOAT";
-        case TOKEN_STRING: return "TOKEN_STRING";
-        case TOKEN_BOOL: return "TOKEN_BOOL";
-        case TOKEN_CHAR: return "TOKEN_CHAR";
-        case TOKEN_NULL: return "TOKEN_NULL";
-        case TOKEN_VOID: return "TOKEN_VOID";
-        case TOKEN_ADD: return "TOKEN_ADD";
-        case TOKEN_SUBTRACT: return "TOKEN_SUBTRACT";
-        case TOKEN_MULTIPLY: return "TOKEN_MULTIPLY";
-        case TOKEN_DIVIDE: return "TOKEN_DIVIDE";
-        case TOKEN_MODULO: return "TOKEN_MODULO";
-        case TOKEN_CARET: return "TOKEN_CARET";
-        case TOKEN_EXPONENT: return "TOKEN_EXPONENT";
-        case TOKEN_ADDRESS_OF: return "TOKEN_ADDRESS_OF";
-        case TOKEN_REFERENCE: return "TOKEN_REFERENCE";
-        case TOKEN_INCREMENT: return "TOKEN_INCREMENT";
-        case TOKEN_DECREMENT: return "TOKEN_DECREMENT";
-        case TOKEN_BITWISE_AND: return "TOKEN_BITWISE_AND";
-        case TOKEN_BITWISE_OR: return "TOKEN_BITWISE_OR";
-        case TOKEN_BITWISE_NOT: return "TOKEN_BITWISE_NOT";
-        case TOKEN_BITWISE_XOR: return "TOKEN_BITWISE_XOR";
-        case TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT: return "TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT";
-        case TOKEN_BITWISE_SIGNED_RIGHT_SHIFT: return "TOKEN_BITWISE_SIGNED_RIGHT_SHIFT";
-        case TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT: return "TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT";
-        case TOKEN_LEFT_PAREN: return "TOKEN_LEFT_PAREN";
-        case TOKEN_RIGHT_PAREN: return "TOKEN_RIGHT_PAREN";
-        case TOKEN_LEFT_BRACE: return "TOKEN_LEFT_BRACE";
-        case TOKEN_RIGHT_BRACE: return "TOKEN_RIGHT_BRACE";
-        case TOKEN_LEFT_BRACKET: return "TOKEN_LEFT_BRACKET";
-        case TOKEN_RIGHT_BRACKET: return "TOKEN_RIGHT_BRACKET";
-        case TOKEN_SEMICOLON: return "TOKEN_SEMICOLON";
-        case TOKEN_COMMA: return "TOKEN_COMMA";
-        case TOKEN_PERIOD: return "TOKEN_PERIOD";
-        case TOKEN_APOSTROPHE: return "TOKEN_APOSTROPHE";
-        case TOKEN_QUOTATION: return "TOKEN_QUOTATION";
-        case TOKEN_NOT: return "TOKEN_NOT";
-        case TOKEN_AND: return "TOKEN_AND";
-        case TOKEN_TYPE_DECLARATOR: return "TOKEN_TYPE_DECLARATOR";
-        case TOKEN_EQUALS: return "TOKEN_EQUALS";
-        case TOKEN_GREATER: return "TOKEN_GREATER";
-        case TOKEN_LESS: return "TOKEN_LESS";
-        case TOKEN_GREATER_EQUALS: return "TOKEN_GREATER_EQUALS";
-        case TOKEN_LESS_EQUALS: return "TOKEN_LESS_EQUALS";
-        case TOKEN_ASSIGN: return "TOKEN_ASSIGN";
-        case TOKEN_NOT_EQUALS: return "TOKEN_NOT_EQUALS";
-        case TOKEN_OR: return "TOKEN_OR";
-        case TOKEN_ELLIPSIS: return "TOKEN_ELLIPSIS";
-        case TOKEN_TRUE_LITERAL: return "TOKEN_TRUE_LITERAL";
-        case TOKEN_INT_LITERAL: return "TOKEN_INT_LITERAL";
-        case TOKEN_FALSE_LITERAL: return "TOKEN_FALSE_LITERAL";
-        case TOKEN_FLOAT_LITERAL: return "TOKEN_FLOAT_LITERAL";
-        case TOKEN_IF: return "TOKEN_IF";
-        case TOKEN_WHILE: return "TOKEN_WHILE";
-        case TOKEN_FOR: return "TOKEN_FOR";
-        case TOKEN_INCLUDE: return "TOKEN_INCLUDE";
-        case TOKEN_CONTINUE: return "TOKEN_CONTINUE";
-        case TOKEN_PROGRAM: return "TOKEN_PROGRAM";
-        case TOKEN_RETURN: return "TOKEN_RETURN";
-        case TOKEN_ELSE: return "TOKEN_ELSE";
-        case TOKEN_STRUCT: return "TOKEN_STRUCT";
-        case TOKEN_BREAK: return "TOKEN_BREAK";
-        default: return "TOKEN_UNKNOWN";
+        case TOKEN_EOF:
+            return "TOKEN_EOF";
+        case TOKEN_ERROR:
+            return "TOKEN_ERROR";
+        case TOKEN_IDENTIFIER:
+            return "TOKEN_IDENTIFIER";
+        case TOKEN_INT:
+            return "TOKEN_INT";
+        case TOKEN_FLOAT:
+            return "TOKEN_FLOAT";
+        case TOKEN_STRING:
+            return "TOKEN_STRING";
+        case TOKEN_BOOL:
+            return "TOKEN_BOOL";
+        case TOKEN_CHAR:
+            return "TOKEN_CHAR";
+        case TOKEN_NULL:
+            return "TOKEN_NULL";
+        case TOKEN_VOID:
+            return "TOKEN_VOID";
+        case TOKEN_ADD:
+            return "TOKEN_ADD";
+        case TOKEN_SUBTRACT:
+            return "TOKEN_SUBTRACT";
+        case TOKEN_MULTIPLY:
+            return "TOKEN_MULTIPLY";
+        case TOKEN_DIVIDE:
+            return "TOKEN_DIVIDE";
+        case TOKEN_MODULO:
+            return "TOKEN_MODULO";
+        case TOKEN_CARET:
+            return "TOKEN_CARET";
+        case TOKEN_EXPONENT:
+            return "TOKEN_EXPONENT";
+        case TOKEN_ADDRESS_OF:
+            return "TOKEN_ADDRESS_OF";
+        case TOKEN_REFERENCE:
+            return "TOKEN_REFERENCE";
+        case TOKEN_INCREMENT:
+            return "TOKEN_INCREMENT";
+        case TOKEN_DECREMENT:
+            return "TOKEN_DECREMENT";
+        case TOKEN_BITWISE_AND:
+            return "TOKEN_BITWISE_AND";
+        case TOKEN_BITWISE_OR:
+            return "TOKEN_BITWISE_OR";
+        case TOKEN_BITWISE_NOT:
+            return "TOKEN_BITWISE_NOT";
+        case TOKEN_BITWISE_XOR:
+            return "TOKEN_BITWISE_XOR";
+        case TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT:
+            return "TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT";
+        case TOKEN_BITWISE_SIGNED_RIGHT_SHIFT:
+            return "TOKEN_BITWISE_SIGNED_RIGHT_SHIFT";
+        case TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT:
+            return "TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT";
+        case TOKEN_LEFT_PAREN:
+            return "TOKEN_LEFT_PAREN";
+        case TOKEN_RIGHT_PAREN:
+            return "TOKEN_RIGHT_PAREN";
+        case TOKEN_LEFT_BRACE:
+            return "TOKEN_LEFT_BRACE";
+        case TOKEN_RIGHT_BRACE:
+            return "TOKEN_RIGHT_BRACE";
+        case TOKEN_LEFT_BRACKET:
+            return "TOKEN_LEFT_BRACKET";
+        case TOKEN_RIGHT_BRACKET:
+            return "TOKEN_RIGHT_BRACKET";
+        case TOKEN_SEMICOLON:
+            return "TOKEN_SEMICOLON";
+        case TOKEN_COMMA:
+            return "TOKEN_COMMA";
+        case TOKEN_PERIOD:
+            return "TOKEN_PERIOD";
+        case TOKEN_APOSTROPHE:
+            return "TOKEN_APOSTROPHE";
+        case TOKEN_QUOTATION:
+            return "TOKEN_QUOTATION";
+        case TOKEN_NOT:
+            return "TOKEN_NOT";
+        case TOKEN_AND:
+            return "TOKEN_AND";
+        case TOKEN_TYPE_DECLARATOR:
+            return "TOKEN_TYPE_DECLARATOR";
+        case TOKEN_EQUALS:
+            return "TOKEN_EQUALS";
+        case TOKEN_GREATER:
+            return "TOKEN_GREATER";
+        case TOKEN_LESS:
+            return "TOKEN_LESS";
+        case TOKEN_GREATER_EQUALS:
+            return "TOKEN_GREATER_EQUALS";
+        case TOKEN_LESS_EQUALS:
+            return "TOKEN_LESS_EQUALS";
+        case TOKEN_ASSIGN:
+            return "TOKEN_ASSIGN";
+        case TOKEN_NOT_EQUALS:
+            return "TOKEN_NOT_EQUALS";
+        case TOKEN_OR:
+            return "TOKEN_OR";
+        case TOKEN_ELLIPSIS:
+            return "TOKEN_ELLIPSIS";
+        case TOKEN_TRUE_LITERAL:
+            return "TOKEN_TRUE_LITERAL";
+        case TOKEN_INT_LITERAL:
+            return "TOKEN_INT_LITERAL";
+        case TOKEN_FALSE_LITERAL:
+            return "TOKEN_FALSE_LITERAL";
+        case TOKEN_FLOAT_LITERAL:
+            return "TOKEN_FLOAT_LITERAL";
+        case TOKEN_IF:
+            return "TOKEN_IF";
+        case TOKEN_WHILE:
+            return "TOKEN_WHILE";
+        case TOKEN_FOR:
+            return "TOKEN_FOR";
+        case TOKEN_INCLUDE:
+            return "TOKEN_INCLUDE";
+        case TOKEN_CONTINUE:
+            return "TOKEN_CONTINUE";
+        case TOKEN_PROGRAM:
+            return "TOKEN_PROGRAM";
+        case TOKEN_RETURN:
+            return "TOKEN_RETURN";
+        case TOKEN_ELSE:
+            return "TOKEN_ELSE";
+        case TOKEN_STRUCT:
+            return "TOKEN_STRUCT";
+        case TOKEN_BREAK:
+            return "TOKEN_BREAK";
+        default:
+            return "TOKEN_UNKNOWN";
     }
 }
 
@@ -644,9 +710,7 @@ int run_lexer_tests(TestSuite* suite)
     test_suite_run_test(suite, "lexer_unexpected_char_error", test_lex_unexpected_char_error);
     test_suite_run_test(suite, "lexer_example_program", test_lex_example_program);
 
-
-
-    //print_token_stream("int main() { int x = 42; if (x > 0) x = x - 1; return x; }");
+    // print_token_stream("int main() { int x = 42; if (x > 0) x = x - 1; return x; }");
 
     return 0;
 }

@@ -5,11 +5,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "../lex/lexer.h"
 #include "ast.h"
 #include "buffer.h"
 #include "common.h"
 #include "diagnostic.h"
-#include "../lex/lexer.h"
 
 Token peek(Parser* parser);
 

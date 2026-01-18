@@ -2,19 +2,18 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "ast.h"
 #include "buffer.h"
 #include "diagnostic.h"
 #include "driver/flags.h"
 #include "error.h"
 #include "fs.h"
-#include "driver/flags.h"
+#include "gen/codegen.h"
+#include "ir/ir.h"
 #include "lex/lexer.h"
 #include "parse/parser.h"
 #include "semantic/semantic.h"
 #include "tests/test.h"
-#include "ir/ir.h"
-#include "gen/codegen.h"
-#include "ast.h"
 
 int main(int argc, char* argv[])
 {
@@ -25,7 +24,7 @@ int main(int argc, char* argv[])
     Lexer* lexer = NULL;
     Parser* parser = NULL;
     Parser* semantic = NULL;
-    //IR* ir = NULL;
+    // IR* ir = NULL;
     ASTNode* root_ast = NULL;
 
     if (!errors)
@@ -137,9 +136,9 @@ int main(int argc, char* argv[])
         goto out;
     }
 
-    //semantic = create_semantic(root_ast, errors);
+    // semantic = create_semantic(root_ast, errors);
 
-    //semantic_analysis(semantic);
+    // semantic_analysis(semantic);
 
     if (errors->size > 0)
     {
@@ -147,19 +146,19 @@ int main(int argc, char* argv[])
         goto out;
     }
 
-    //ir = ir_generation(root_ast, errors);
-    
+    // ir = ir_generation(root_ast, errors);
+
     if (errors->size > 0)
     {
         res = -EINVAL;
         goto out;
     }
 
-    //codegen(ir, flags, errors);
+    // codegen(ir, flags, errors);
 
 out:
     if (root_ast) free_ast(root_ast);
-    //if (ir) free_ir(ir);
+    // if (ir) free_ir(ir);
     if (semantic) free_semantic(semantic);
     if (parser) free_parser(parser);
     if (lexer) free_lexer(lexer);

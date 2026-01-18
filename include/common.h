@@ -5,9 +5,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "../source/lex/lexer.h"
 #include "buffer.h"
 #include "diagnostic.h"
-#include "../source/lex/lexer.h"
 
 typedef struct
 {

@@ -42,7 +42,7 @@ static TokenType is_keyword(const char* name, uint32_t length)
 Lexer* create_lexer(const char* source, ErrorList* el, const char* file)
 {
     Lexer* new = (Lexer*)malloc(sizeof(Lexer));
-    
+
     if (!new)
     {
         exit(-ENOMEM);

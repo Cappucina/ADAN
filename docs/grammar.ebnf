@@ -12,6 +12,21 @@
    - Non-terminals in <...>
 *)
 
+(*
+finished
+---
+root
+includes
+
+to-do
+---
+declaration
+function
+struct
+variable
+types
+*)
+
 <program> ::= {<include>} {<top_decl>}
 
 <top_decl> ::= <fun_decl> | <struct_decl> | <var_decl>
