@@ -141,9 +141,9 @@ typedef struct ASTNode
 
         struct
         {
-            ASTNode** includes;
+            struct ASTNode** includes;
             size_t includes_count;
-            ASTNode** decls;
+            struct ASTNode** decls;
             size_t decls_count;
         } root;
 
