@@ -9,93 +9,115 @@
 #include "buffer.h"
 #include "diagnostic.h"
 
-Token peek(Parser* parser)
+static ASTNode* parse_primary(Parser* parser)
 {
-    if (parser->current + 1 >= parser->count)
-    {
-        return parser->tokens[parser->current];
-    }
-    return parser->tokens[parser->current + 1];
-}
-
-Token advance(Parser* parser)
-{
-    if (parser->current + 1 >= parser->count)
-    {
-        return parser->tokens[parser->current];
-    }
-
-    return parser->tokens[++parser->current];
-}
-
-Token current_token(Parser* parser)
-{
-    return parser->tokens[parser->current];
-}
-
-bool is_at_end(Parser* parser)
-{
-    return parser->tokens[parser->current].type == TOKEN_EOF;
-}
-
-bool match(Parser* parser, TokenType expected)
-{
-    return current_token(parser).type == expected;
-}
-
-Token* expect(Parser* parser, TokenType expected, const char* message)
-{
-    if (match(parser, expected))
-    {
-        advance(parser);
-        return &parser->tokens[parser->current];
-    }
-
-    Error error = {0};
-    error.message = message;
-    error.file = current_token(parser).file;
-    error.line = current_token(parser).line;
-    error.column = current_token(parser).column;
-    error.length = 0;
-    error.severity = ERROR;
-    error.category = GENERIC;
-    if (parser->errors->size < parser->errors->capacity)
-    {
-        parser->errors->errors[parser->errors->size++] = error;
-    }
-
-    parser->panic = true;
     return NULL;
 }
 
-static void synchronize(Parser* parser)
+static ASTNode* parse_postfix(Parser* parser)
 {
-    advance(parser);
-    parser->panic = false;
-
-    while (!match(parser, TOKEN_EOF))
-    {
-        if (current_token(parser).type == TOKEN_SEMICOLON)
-        {
-            advance(parser);
-            return;
-        }
-
-        if (current_token(parser).type == TOKEN_IF ||
-            current_token(parser).type == TOKEN_FOR ||
-            current_token(parser).type == TOKEN_WHILE ||
-            current_token(parser).type == TOKEN_RETURN ||
-            current_token(parser).type == TOKEN_STRUCT ||
-            current_token(parser).type == TOKEN_INCLUDE)
-        {
-            return;
-        }
-
-        advance(parser);
-    }
+    return NULL;
 }
 
-// break;
+static ASTNode* parse_unary(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_multiplicative(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_additive(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_comparison(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_equality(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_and(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_or(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_assignment(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_expression(Parser* parser)
+{
+    return NULL;
+}
+
+/*
+ * <block> ::= "{" {<statement>} "}"
+ */
+static ASTNode* parse_block(Parser* parser)
+{
+    ASTNode* node = create_ast_node(AST_BLOCK);
+    if (!node)
+    {
+        return NULL;
+    }
+
+    Buffer* statements_buffer = buffer_create(sizeof(ASTNode*));
+    while (!is_at_end(parser))
+    {
+        ASTNode* s = parse_statement(parser);
+        if (!s)
+        {
+            synchronize(parser);
+            buffer_free(statements_buffer);
+            return NULL;
+        }
+        buffer_push(statements_buffer, s);
+    }
+    ASTNode** statements = (ASTNode**)malloc(sizeof(ASTNode*) * statements_buffer->count);
+    memcpy(statements, statements_buffer->data, sizeof(ASTNode*) * statements_buffer->count);
+    node->data.block.count = statements_buffer->count;
+    node->data.block.statements = statements;
+
+    return node;
+}
+
+/*
+ * <continue_stmt> ::= "continue" ";"
+ */
+static ASTNode* parse_continue(Parser* parser)
+{
+    ASTNode* node = create_ast_node(AST_CONTINUE);
+    if (!node)
+    {
+        return NULL;
+    }
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected ';' after 'continue'"))
+    {
+        return NULL;
+    }
+    node->line = current_token(parser).line;
+    node->column = current_token(parser).column;
+    node->file_name = current_token(parser).file;
+    return node;
+}
+
+/*
+ * <break_stmt> ::= "break" ";"
+ */
 static ASTNode* parse_break(Parser* parser)
 {
     ASTNode* node = create_ast_node(AST_BREAK);
@@ -115,22 +137,105 @@ static ASTNode* parse_break(Parser* parser)
     return node;
 }
 
-static ASTNode* parse_declaration(Parser* parser)
+/*
+ * <return_stmt> ::= "return" [<expression>] ";"
+ */
+static ASTNode* parse_return(Parser* parser)
+{
+    Token return_token = current_token(parser);
+    advance(parser);
+    if (match(parser, TOKEN_SEMICOLON))
+    {
+        ASTNode* node = create_ast_node(AST_RETURN);
+        if (!node) return NULL;
+
+        node->line = return_token.line;
+        node->column = return_token.column;
+        node->file_name = return_token.file;
+
+        advance(parser);
+        return node;
+    }
+
+    ASTNode* value = parse_expression(parser);
+    if (value)
+    {
+        ASTNode* node = create_ast_node(AST_RETURN);
+        if (!node)
+        {
+            free_ast(value);
+            return NULL;
+        }
+
+        node->line = return_token.line;
+        node->column = return_token.column;
+        node->file_name = return_token.file;
+        node->data.return_stmt.value = value;
+        if (!expect(parser, TOKEN_SEMICOLON, "Expected ';' after return value"))
+        {
+            free_ast(node);
+            return NULL;
+        }
+
+        return node;
+    }
+
+    return NULL;
+}
+
+/*
+ * <for_stmt> ::= "for" "(" (<var_decl> | <expression_stmt>) ";" [<expression>] ";" [<expression>] ")" <block>
+ */
+static ASTNode* parse_for(Parser* parser)
+{
+    ASTNode* node = create_ast_node(AST_FOR);
+    if (!node) return NULL;
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected '(' after 'for'"))
+    {
+        return NULL;
+    }
+
+    // Check if next token looks like expression or declaration and parse depending on that
+    // ASTNode* expr = parse_expression(parser);
+    // ASTNode* decl = parse_declaration(parser);
+
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected ')' after 'for'"))
+    {
+        return NULL;
+    }
+
+    return node;
+}
+
+/*
+ * <while_stmt> ::= "while" "(" <expression> ")" <block>
+ */
+static ASTNode* parse_while(Parser* parser)
 {
     return NULL;
 }
 
+/*
+ * <if_stmt> ::= "if" "(" <expression> ")" <block> ["else" (<if_stmt> | <block>)]
+ */
+static ASTNode* parse_if(Parser* parser)
+{
+    return NULL;
+}
+
+/*
+ * <statement> ::= <if_stmt> | <while_stmt> | <for_stmt> | <return_stmt> | <break_stmt> | <continue_stmt> | <expression_stmt> | <block> | <var_decl>
+ */
 static ASTNode* parse_statement(Parser* parser)
 {
     return NULL;
 }
 
-static ASTNode* parse_expression(Parser* parser)
+static ASTNode* parse_struct_member(Parser* parser)
 {
     return NULL;
 }
 
-// struct struct_name { ... }
 static ASTNode* parse_struct(Parser* parser)
 {
     Token struct_token = current_token(parser);
@@ -199,46 +304,18 @@ static ASTNode* parse_struct(Parser* parser)
     return node;
 }
 
-// return expression;
-static ASTNode* parse_return(Parser* parser)
+static ASTNode* parse_variable(Parser* parser)
 {
-    Token return_token = current_token(parser);
-    advance(parser);
-    if (match(parser, TOKEN_SEMICOLON))
-    {
-        ASTNode* node = create_ast_node(AST_RETURN);
-        if (!node) return NULL;
+    return NULL;
+}
 
-        node->line = return_token.line;
-        node->column = return_token.column;
-        node->file_name = return_token.file;
+static ASTNode* parse_param(Parser* parser)
+{
+    return NULL;
+}
 
-        advance(parser);
-        return node;
-    }
-    ASTNode* value = parse_expression(parser);
-    if (value)
-    {
-        ASTNode* node = create_ast_node(AST_RETURN);
-        if (!node)
-        {
-            free_ast(value);
-            return NULL;
-        }
-
-        node->line = return_token.line;
-        node->column = return_token.column;
-        node->file_name = return_token.file;
-        node->data.return_stmt.value = value;
-        if (!expect(parser, TOKEN_SEMICOLON, "Expected ';' after return value"))
-        {
-            free_ast(node);
-            return NULL;
-        }
-
-        return node;
-    }
-
+static ASTNode* parse_param_list(Parser* parser)
+{
     return NULL;
 }
 
@@ -247,8 +324,7 @@ static ASTNode* parse_type(Parser* parser)
     return NULL;
 }
 
-// program::<type> program_name(param_one::<type>, param_two::<type>, ...);
-static ASTNode* parse_program(Parser* parser)
+static ASTNode* parse_function(Parser* parser)
 {
     Token program_token = current_token(parser);
     advance(parser);
@@ -445,20 +521,36 @@ static ASTNode* parse_program(Parser* parser)
     return node;
 }
 
-// continue;
-static ASTNode* parse_continue(Parser* parser)
+/*
+ * <top_decl> ::= <fun_decl> | <struct_decl> | <var_decl>
+ */
+static ASTNode* parse_declaration(Parser* parser)
 {
-    ASTNode* node = create_ast_node(AST_CONTINUE);
-    if (!node) return NULL;
-    node->line = current_token(parser).line;
-    node->column = current_token(parser).column;
-    node->file_name = current_token(parser).file;
+    ASTNode* node;
+    if (match(parser, TOKEN_PROGRAM))
+    {
+        node = parse_function(parser);
+    }
+    else if (match(parser, TOKEN_STRUCT))
+    {
+        node = parse_struct(parser);
+    }
+    else
+    {
+        node = parse_variable(parser);
+    }
+
+    if (!node)
+    {
+        synchronize(parser);
+        return NULL;
+    }
     return node;
 }
 
+// <include> ::= "include" <identifier> {"." <identifier>} ";"
 static ASTNode* parse_include(Parser* parser)
 {
-    // <include> ::= "include" <identifier> {"." <identifier>} ";"
     if (!expect(parser, TOKEN_INCLUDE, "Expected include"))
     {
         return NULL;
@@ -522,98 +614,7 @@ static ASTNode* parse_include(Parser* parser)
     return node;
 }
 
-// for (init; condition; increment) { ... }
-static ASTNode* parse_for(Parser* parser)
-{
-    return NULL;
-}
-
-// while (condition) { ... }
-static ASTNode* parse_while(Parser* parser)
-{
-    return NULL;
-}
-
-// if (condition) { ... } else if (condition) { ... } else { ... }
-static ASTNode* parse_if(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_expression_list(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_primary(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_binary(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_unary(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_type_specifier(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_assignment(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_or(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_and(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_equality(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_comparison(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_term(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_factor(Parser* parser)
-{
-    return NULL;
-}
-
-Parser* create_parser(Buffer* token_buffer, ErrorList* errors)
-{
-    Parser* parser = (Parser*)malloc(sizeof(Parser));
-
-    parser->current = 0;
-    parser->count = token_buffer->count;
-    parser->tokens = token_buffer->data;
-    parser->errors = errors;
-    parser->panic = false;
-
-    return parser;
-}
-
-ASTNode* parse(Parser* parser)
+ASTNode* parse_program(Parser* parser)
 {
     // <program> ::= {<include>} {<top_decl>}
     Token current = current_token(parser);
@@ -688,4 +689,107 @@ ASTNode* parse(Parser* parser)
 void free_parser(Parser* parser)
 {
     if (parser) free(parser);
+}
+
+Parser* create_parser(Buffer* token_buffer, ErrorList* errors)
+{
+    Parser* parser = (Parser*)malloc(sizeof(Parser));
+
+    parser->current = 0;
+    parser->count = token_buffer->count;
+    parser->tokens = token_buffer->data;
+    parser->errors = errors;
+    parser->panic = false;
+
+    return parser;
+}
+
+Token peek(Parser* parser)
+{
+    if (parser->current + 1 >= parser->count)
+    {
+        return parser->tokens[parser->current];
+    }
+    return parser->tokens[parser->current + 1];
+}
+
+Token advance(Parser* parser)
+{
+    if (parser->current + 1 >= parser->count)
+    {
+        return parser->tokens[parser->current];
+    }
+
+    return parser->tokens[++parser->current];
+}
+
+Token current_token(Parser* parser)
+{
+    return parser->tokens[parser->current];
+}
+
+bool is_at_end(Parser* parser)
+{
+    return parser->tokens[parser->current].type == TOKEN_EOF;
+}
+
+bool match(Parser* parser, TokenType expected)
+{
+    return current_token(parser).type == expected;
+}
+
+void free_parser(Parser* parser)
+{
+}
+
+Token* expect(Parser* parser, TokenType expected, const char* message)
+{
+    if (match(parser, expected))
+    {
+        advance(parser);
+        return &parser->tokens[parser->current];
+    }
+
+    Error error = {0};
+    error.message = message;
+    error.file = current_token(parser).file;
+    error.line = current_token(parser).line;
+    error.column = current_token(parser).column;
+    error.length = 0;
+    error.severity = ERROR;
+    error.category = GENERIC;
+    if (parser->errors->size < parser->errors->capacity)
+    {
+        parser->errors->errors[parser->errors->size++] = error;
+    }
+
+    parser->panic = true;
+    return NULL;
+}
+
+void synchronize(Parser* parser)
+{
+    advance(parser);
+    parser->panic = false;
+
+    while (!match(parser, TOKEN_EOF))
+    {
+        if (current_token(parser).type == TOKEN_SEMICOLON)
+        {
+            advance(parser);
+            return;
+        }
+
+        if (current_token(parser).type == TOKEN_IF ||
+            current_token(parser).type == TOKEN_FOR ||
+            current_token(parser).type == TOKEN_WHILE ||
+            current_token(parser).type == TOKEN_RETURN ||
+            current_token(parser).type == TOKEN_STRUCT ||
+            current_token(parser).type == TOKEN_INCLUDE)
+        {
+            return;
+        }
+
+        advance(parser);
+    }
 }

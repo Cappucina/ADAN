@@ -11,6 +11,8 @@
 #include "common.h"
 #include "diagnostic.h"
 
+void synchronize(Parser* parser);
+
 Token peek(Parser* parser);
 
 Token advance(Parser* parser);

@@ -25,12 +25,23 @@ import std.io:println;                  // Only import println
 import std.io:{println, print, puts};   // Multiple functions
 ```
 ### C/C++ Like
+
 ```adan
 include "../std/io.adn";
 ```
+
 or
+
 ```adan
 include ..std.io // ?? idk
+```
+
+### My Idea
+
+```adan
+import std/io.adn; // like C #include <iostream>
+// or
+import ../include/ast.adn; // like C "include "../include/ast.h"
 ```
 
 ## Variables
