@@ -42,5 +42,5 @@ const char* file_to_string(FILE* file, ErrorList* error_list)
 
 void free_file_string(const char* file_string)
 {
-    free((void*)file_string);
+    free(file_string);
 }

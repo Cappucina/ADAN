@@ -163,7 +163,6 @@ out:
     if (parser) free_parser(parser);
     if (lexer) free_lexer(lexer);
     if (tokens) buffer_free(tokens);
-    if (source) free_file_string(source);
     if (errors) free_errors(errors);
     if (flags) flags_free(flags);
 

@@ -29,4 +29,6 @@ void free_parser(Parser* parser);
 
 void free_ast(ASTNode* node);
 
+ASTNode* parse_declaration(Parser* parser);
+
 #endif

@@ -64,6 +64,19 @@ static ASTNode* parse_expression(Parser* parser)
     return NULL;
 }
 
+static bool is_at_end(Parser* parser)
+{
+    return parser->tokens[parser->current].type == TOKEN_EOF;
+}
+
+/*
+ * <statement> ::= <if_stmt> | <while_stmt> | <for_stmt> | <return_stmt> | <break_stmt> | <continue_stmt> | <expression_stmt> | <block> | <var_decl>
+ */
+static ASTNode* parse_statement(Parser* parser)
+{
+    return NULL;
+}
+
 /*
  * <block> ::= "{" {<statement>} "}"
  */
@@ -93,6 +106,31 @@ static ASTNode* parse_block(Parser* parser)
     node->data.block.statements = statements;
 
     return node;
+}
+
+Token* expect(Parser* parser, TokenType expected, const char* message)
+{
+    if (match(parser, expected))
+    {
+        advance(parser);
+        return &parser->tokens[parser->current];
+    }
+
+    Error error = {0};
+    error.message = message;
+    error.file = current_token(parser).file;
+    error.line = current_token(parser).line;
+    error.column = current_token(parser).column;
+    error.length = 0;
+    error.severity = ERROR;
+    error.category = GENERIC;
+    if (parser->errors->size < parser->errors->capacity)
+    {
+        parser->errors->errors[parser->errors->size++] = error;
+    }
+
+    parser->panic = true;
+    return NULL;
 }
 
 /*
@@ -183,148 +221,7 @@ static ASTNode* parse_return(Parser* parser)
     return NULL;
 }
 
-/*
- * <for_stmt> ::= "for" "(" (<var_decl> | <expression_stmt>) ";" [<expression>] ";" [<expression>] ")" <block>
- */
-static ASTNode* parse_for(Parser* parser)
-{
-    ASTNode* node = create_ast_node(AST_FOR);
-    if (!node) return NULL;
-    if (!expect(parser, TOKEN_SEMICOLON, "Expected '(' after 'for'"))
-    {
-        return NULL;
-    }
-
-    // Check if next token looks like expression or declaration and parse depending on that
-    // ASTNode* expr = parse_expression(parser);
-    // ASTNode* decl = parse_declaration(parser);
-
-    if (!expect(parser, TOKEN_SEMICOLON, "Expected ')' after 'for'"))
-    {
-        return NULL;
-    }
-
-    return node;
-}
-
-/*
- * <while_stmt> ::= "while" "(" <expression> ")" <block>
- */
-static ASTNode* parse_while(Parser* parser)
-{
-    return NULL;
-}
-
-/*
- * <if_stmt> ::= "if" "(" <expression> ")" <block> ["else" (<if_stmt> | <block>)]
- */
-static ASTNode* parse_if(Parser* parser)
-{
-    return NULL;
-}
-
-/*
- * <statement> ::= <if_stmt> | <while_stmt> | <for_stmt> | <return_stmt> | <break_stmt> | <continue_stmt> | <expression_stmt> | <block> | <var_decl>
- */
-static ASTNode* parse_statement(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_struct_member(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_struct(Parser* parser)
-{
-    Token struct_token = current_token(parser);
-    advance(parser);
-    if (!match(parser, TOKEN_IDENTIFIER))
-    {
-        expect(parser, TOKEN_IDENTIFIER, "Expected struct name after 'struct'");
-        return NULL;
-    }
-
-    Token name_token = current_token(parser);
-    advance(parser);
-    if (!expect(parser, TOKEN_LEFT_BRACE, "Expected '{' after struct name"))
-    {
-        return NULL;
-    }
-
-    size_t capacity = 8;
-    size_t count = 0;
-    ASTNode** members = (ASTNode**)malloc(sizeof(ASTNode*) * capacity);
-    if (!members) return NULL;
-    while (!match(parser, TOKEN_RIGHT_BRACE) && !match(parser, TOKEN_EOF))
-    {
-        ASTNode* member = parse_declaration(parser);
-        if (!member)
-        {
-            if (parser->panic) synchronize(parser);
-            continue;
-        }
-
-        if (count >= capacity)
-        {
-            capacity *= 2;
-            ASTNode** new_members = (ASTNode**)realloc(members, sizeof(ASTNode*) * capacity);
-            if (!new_members)
-            {
-                for (size_t i = 0; i < count; i++) free_ast(members[i]);
-                free(members);
-                return NULL;
-            }
-            members = new_members;
-        }
-
-        members[count++] = member;
-    }
-
-    if (!expect(parser, TOKEN_RIGHT_BRACE, "Expected '}' after struct body"))
-    {
-        for (size_t i = 0; i < count; i++) free_ast(members[i]);
-        free(members);
-        return NULL;
-    }
-
-    ASTNode* node = create_struct_decl_node(name_token.lexeme, members, count);
-    if (!node)
-    {
-        for (size_t i = 0; i < count; i++) free_ast(members[i]);
-        free(members);
-        return NULL;
-    }
-
-    node->line = struct_token.line;
-    node->column = struct_token.column;
-    node->file_name = struct_token.file;
-
-    return node;
-}
-
-static ASTNode* parse_variable(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_param(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_param_list(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_type(Parser* parser)
-{
-    return NULL;
-}
-
-static ASTNode* parse_function(Parser* parser)
+static ASTNode* parse_program(Parser* parser)
 {
     Token program_token = current_token(parser);
     advance(parser);
@@ -521,15 +418,93 @@ static ASTNode* parse_function(Parser* parser)
     return node;
 }
 
+static ASTNode* parse_struct_member(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_struct(Parser* parser)
+{
+    Token struct_token = current_token(parser);
+    advance(parser);
+    if (!match(parser, TOKEN_IDENTIFIER))
+    {
+        expect(parser, TOKEN_IDENTIFIER, "Expected struct name after 'struct'");
+        return NULL;
+    }
+
+    Token name_token = current_token(parser);
+    advance(parser);
+    if (!expect(parser, TOKEN_LEFT_BRACE, "Expected '{' after struct name"))
+    {
+        return NULL;
+    }
+
+    size_t capacity = 8;
+    size_t count = 0;
+    ASTNode** members = (ASTNode**)malloc(sizeof(ASTNode*) * capacity);
+    if (!members) return NULL;
+    while (!match(parser, TOKEN_RIGHT_BRACE) && !match(parser, TOKEN_EOF))
+    {
+        ASTNode* member = parse_declaration(parser);
+        if (!member)
+        {
+            if (parser->panic) synchronize(parser);
+            continue;
+        }
+
+        if (count >= capacity)
+        {
+            capacity *= 2;
+            ASTNode** new_members = (ASTNode**)realloc(members, sizeof(ASTNode*) * capacity);
+            if (!new_members)
+            {
+                for (size_t i = 0; i < count; i++) free_ast(members[i]);
+                free(members);
+                return NULL;
+            }
+            members = new_members;
+        }
+
+        members[count++] = member;
+    }
+
+    if (!expect(parser, TOKEN_RIGHT_BRACE, "Expected '}' after struct body"))
+    {
+        for (size_t i = 0; i < count; i++) free_ast(members[i]);
+        free(members);
+        return NULL;
+    }
+
+    ASTNode* node = create_struct_decl_node(name_token.lexeme, members, count);
+    if (!node)
+    {
+        for (size_t i = 0; i < count; i++) free_ast(members[i]);
+        free(members);
+        return NULL;
+    }
+
+    node->line = struct_token.line;
+    node->column = struct_token.column;
+    node->file_name = struct_token.file;
+
+    return node;
+}
+
+static ASTNode* parse_variable(Parser* parser)
+{
+    return NULL;
+}
+
 /*
  * <top_decl> ::= <fun_decl> | <struct_decl> | <var_decl>
  */
-static ASTNode* parse_declaration(Parser* parser)
+ASTNode* parse_declaration(Parser* parser)
 {
     ASTNode* node;
     if (match(parser, TOKEN_PROGRAM))
     {
-        node = parse_function(parser);
+        node = parse_program(parser);
     }
     else if (match(parser, TOKEN_STRUCT))
     {
@@ -546,6 +521,61 @@ static ASTNode* parse_declaration(Parser* parser)
         return NULL;
     }
     return node;
+}
+
+/*
+ * <for_stmt> ::= "for" "(" (<var_decl> | <expression_stmt>) ";" [<expression>] ";" [<expression>] ")" <block>
+ */
+static ASTNode* parse_for(Parser* parser)
+{
+    ASTNode* node = create_ast_node(AST_FOR);
+    if (!node) return NULL;
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected '(' after 'for'"))
+    {
+        return NULL;
+    }
+
+    // Check if next token looks like expression or declaration and parse depending on that
+    // ASTNode* expr = parse_expression(parser);
+    // ASTNode* decl = parse_declaration(parser);
+
+    if (!expect(parser, TOKEN_SEMICOLON, "Expected ')' after 'for'"))
+    {
+        return NULL;
+    }
+
+    return node;
+}
+
+/*
+ * <while_stmt> ::= "while" "(" <expression> ")" <block>
+ */
+static ASTNode* parse_while(Parser* parser)
+{
+    return NULL;
+}
+
+/*
+ * <if_stmt> ::= "if" "(" <expression> ")" <block> ["else" (<if_stmt> | <block>)]
+ */
+static ASTNode* parse_if(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_param(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_param_list(Parser* parser)
+{
+    return NULL;
+}
+
+static ASTNode* parse_type(Parser* parser)
+{
+    return NULL;
 }
 
 // <include> ::= "include" <identifier> {"." <identifier>} ";"
@@ -614,7 +644,7 @@ static ASTNode* parse_include(Parser* parser)
     return node;
 }
 
-ASTNode* parse_program(Parser* parser)
+ASTNode* parse(Parser* parser)
 {
     // <program> ::= {<include>} {<top_decl>}
     Token current = current_token(parser);
@@ -719,7 +749,6 @@ Token advance(Parser* parser)
     {
         return parser->tokens[parser->current];
     }
-
     return parser->tokens[++parser->current];
 }
 
@@ -728,43 +757,9 @@ Token current_token(Parser* parser)
     return parser->tokens[parser->current];
 }
 
-bool is_at_end(Parser* parser)
-{
-    return parser->tokens[parser->current].type == TOKEN_EOF;
-}
-
 bool match(Parser* parser, TokenType expected)
 {
     return current_token(parser).type == expected;
-}
-
-void free_parser(Parser* parser)
-{
-}
-
-Token* expect(Parser* parser, TokenType expected, const char* message)
-{
-    if (match(parser, expected))
-    {
-        advance(parser);
-        return &parser->tokens[parser->current];
-    }
-
-    Error error = {0};
-    error.message = message;
-    error.file = current_token(parser).file;
-    error.line = current_token(parser).line;
-    error.column = current_token(parser).column;
-    error.length = 0;
-    error.severity = ERROR;
-    error.category = GENERIC;
-    if (parser->errors->size < parser->errors->capacity)
-    {
-        parser->errors->errors[parser->errors->size++] = error;
-    }
-
-    parser->panic = true;
-    return NULL;
 }
 
 void synchronize(Parser* parser)
