@@ -1,98 +1,98 @@
-/* NOTATION/SYNTAX: EBNF ( Extended Backus-Naur Form ) */
-/* READ: https://ics.uci.edu/~pattis/ICS-33/lectures/ebnf.pdf */
-
-(* EBNF uses:
-   - ::= for definition
-   - | for alternatives
-   - [] for optional (0 or 1)
-   - {} for repetition (0 or more)
-   - () for grouping
-   - "..." for terminals
-   - (* ... *) for comments
-   - Non-terminals in <...>
-*)
 
 (*
-finished
----
-root
-includes
+    
+    EBNF uses:
 
-to-do
----
-declaration
-function
-struct
-variable
-types
+        ::=   for definitions.
+        |     for alternative options.
+        []    for optional. (0 or 1)
+        {}    for repetition. (0 or more)
+        "..." for terminals.
+        
 *)
 
-<program> ::= {<include>} {<top_decl>}
+<ALLOWED_TOP_LEVEL> ::= {<INCLUDE>} {<TOP_LEVEL_KEYWORDS>}
 
-<top_decl> ::= <fun_decl> | <struct_decl> | <var_decl>
+<TOP_LEVEL_KEYWORDS> ::= <FUNCTION_DEF> | <STRUCT_DEF> | <VARIABLE_DEF>
 
-<include> ::= "include" <identifier> {"." <identifier>} ";"
+<FUNCTION_DEF> ::= "program" "::" <TYPE> <IDENTIFIER> "(" [<PARAM_LIST>] ")" <CODE_BLOCK>
 
-(* PARSER PROGRESS HERE *)
+<PARAM_LIST> ::= <PARAM> {"," <PARAM>}
 
-<type> ::= <builtin_type> | <user_type> | <pointer_type> | "void"
+<PARAM> ::= <IDENTIFIER> "::" <TYPE>
 
-<builtin_type> ::= "int" | "float" | "string" | "bool" | "char"
+<VARIABLE_DEF> ::= <IDENTIFIER> "::" <TYPE> ["=" <EXPRESSION>] ";"
 
-<user_type> ::= <identifier>
+<STRUCT_DEF> ::= <STRUCT>
 
-<pointer_type> ::= <type> {"*"}
+<STRUCT> ::= "struct" <IDENTIFIER> "{" {<STRUCT_MEMBER>} "}" ";"
 
-<fun_decl> ::= "program" "::" <type> <identifier> "(" [<param_list>] ")" <block>
+<STRUCT_MEMBER> ::= <VARIABLE_DEF> | <FUNCTION_DEF>
 
-<param_list> ::= <param> {"," <param>}
+<TYPE> ::= <DEFAULT_TYPE> | <USER_TYPE> | <POINTER_TYPE> | "void"
 
-<param> ::= <identifier> "::" <type>
+<DEFAULT_TYPE> ::= "int" | "float" | "string" | "bool" | "char"
 
-<var_decl> ::= <identifier> "::" <type> ["=" <expression>] ";"
+<USER_TYPE> ::= <IDENTIFIER>
 
-<struct_decl> ::= "struct" <identifier> "{" {<struct_member>} "}" ";"
+<POINTER_TYPE> ::= <TYPE> {"*"}
 
-<struct_member> ::= <var_decl> | <fun_decl>
+<STATEMENT> ::= <IF> | <WHILE> | <FOR> | <RETURN> | <BREAK> | <CONTINUE> | <EXPRESSION_STATEMENT> | <CODE_BLOCK> | <VARIABLE_DEF>
 
-<statement> ::= <if_stmt> | <while_stmt> | <for_stmt> | <return_stmt> | <break_stmt> | <continue_stmt> | <expression_stmt> | <block> | <var_decl>
+<CODE_BLOCK> ::= "{" {<STATEMENT>} "}"
 
-<if_stmt> ::= "if" "(" <expression> ")" <block> ["else" (<if_stmt> | <block>)]
+<IF> ::= "if" "(" <EXPRESSION> ")" <CODE_BLOCK> ["else" (<IF> | <CODE_BLOCK>)]
 
-<while_stmt> ::= "while" "(" <expression> ")" <block>
+<WHILE> ::= "while" "(" <EXPRESSION> ")" <CODE_BLOCK>
 
-<for_stmt> ::= "for" "(" (<var_decl> | <expression_stmt>) ";" [<expression>] ";" [<expression>] ")" <block>
+<FOR> ::= "for" "(" (<VARIABLE_DEF> | <EXPRESSION_STATEMENT>) ";" [<EXPRESSION>] ";" [<EXPRESSION>] ")" <CODE_BLOCK>
 
-<return_stmt> ::= "return" [<expression>] ";"
+<RETURN> ::= "return" [<EXPRESSION>] ";"
 
-<break_stmt> ::= "break" ";"
+<BREAK> ::= "break" ";"
 
-<continue_stmt> ::= "continue" ";"
+<CONTINUE> ::= "continue" ";"
 
-<expression_stmt> ::= <expression> ";"
+<EXPRESSION> ::= <ASSIGNMENT>
 
-<block> ::= "{" {<statement>} "}"
+<ASSIGNMENT> ::= <LOGICAL_OR> [<ASSIGNMENT_OP> <ASSIGNMENT>]
 
-<expression> ::= <assignment>
+<LOGICAL_OR> ::= <LOGICAL_AND> {"||" <LOGICAL_AND>}
 
-<assignment> ::= <logical_or> [<assignment_op> <assignment>]
+<LOGICAL_AND> ::= <EQUALITY> {"&&" <EQUALITY>}
 
-<assignment_op> ::= "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^="
+<EQUALITY> ::= <COMPARISON> {("==" | "!=") <COMPARISON>}
 
-<logical_or> ::= <logical_and> {"||" <logical_and>}
+<ADDITIVE> ::= <MULTIPLICATIVE> {("+" | "-") <MULTIPLICATIVE>}
 
-<logical_and> ::= <equality> {"&&" <equality>}
+<UNARY> ::= {"!" | "-" | "&" | "*"} <POSTFIX>
 
-<equality> ::= <comparison> {("==" | "!=") <comparison>}
+<POSTFIX> ::= <PRIMARY> ["++" | "--"]
 
-<comparison> ::= <additive> {(">" | ">=" | "<" | "<=") <additive>}
+<PRIMARY> ::= <IDENTIFIER> | <INT_LITERAL> | <FLOAT_LITERAL> | <STRING_LITERAL> | <CHAR_LITERAL> | "true" | "false" | "null" | "(" <EXPRESSION> ")"
 
-<additive> ::= <multiplicative> {("+" | "-") <multiplicative>}
+<ASSIGNMENT_OP> ::= "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" "^="
 
-<multiplicative> ::= <unary> {("*" | "/" | "%") <unary>}
+<INCLUDE> ::= "include" <IDENTIFIER> {"." <IDENTIFIER>} ";"
 
-<unary> ::= {"!" | "-" | "&" | "*"} <postfix>
+<EXPRESSION_STATEMENT> ::= <EXPRESSION> ";"
 
-<postfix> ::= <primary> ["++" | "--"]
+<COMPARISON> ::= <ADDITIVE> { ("<" | ">" | "<=" | ">=") <ADDITIVE> }
 
-<primary> ::= <identifier> | <int_literal> | <float_literal> | <string_literal> | <char_literal> | "true" | "false" | "null" | "(" <expression> ")"
+<INT_LITERAL> ::= ["+"]? ["-"]? <DIGIT> {<DIGIT>}
+
+<FLOAT_LITERAL> ::= ["+"]? ["-"]? <DIGIT> {<DIGIT>} "." <DIGIT> {<DIGIT>} [ ("e" | "E") ["+" | "-"] <DIGIT> {<DIGIT>} ]
+
+<STRING_LITERAL> ::= '"' {<STRING_CHAR>} '"'
+
+<CHAR_LITERAL> ::= "'" <CHAR_CHAR> "'"
+
+<IDENTIFIER> ::= <LETTER> {<LETTER> | <DIGIT> | "_"}
+
+<DIGIT> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+<LETTER> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+
+<STRING_CHAR> ::= ? any character except '"' and end-of-line ?
+
+<CHAR_CHAR> ::= ? any character except '\'' and end-of-line ?

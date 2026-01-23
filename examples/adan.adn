@@ -1,8 +1,0 @@
-include adan.io;
-
-program::int main()
-{
-    println("Hello, world");    
-
-    return 0;
-}
