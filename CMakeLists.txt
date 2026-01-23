@@ -9,7 +9,6 @@ file(GLOB_RECURSE SRC_FILES source/*.c)
 add_executable(adan ${SRC_FILES})
 
 target_include_directories(adan PRIVATE include)
-
 target_compile_options(adan PRIVATE
     -g -Wall -Wextra -O2 -Wundef -Wconversion -pedantic -std=c17 -march=native -funroll-loops
 )
