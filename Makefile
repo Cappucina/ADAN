@@ -19,6 +19,7 @@ all: build
 
 build:
 	@$(MAKE) clean
+	@mkdir -p $(BUILD_DIR)
 	@cmake -B $(BUILD_DIR) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 	@cmake --build $(BUILD_DIR) --config $(BUILD_TYPE)
 
@@ -61,9 +62,9 @@ help:
 	@echo "  help          - Display this help message"
 
 ifeq ($(OS),Windows_NT)
-  INSTALL_CMD := mkdir C:\tools\adan && copy $(BUILD_DIR)\$(EXE) C:\tools\adan
+	INSTALL_CMD := mkdir C:\tools\adan && copy $(BUILD_DIR)\$(EXE) C:\tools\adan
 else ifeq ($(UNAME),Darwin)
-  INSTALL_CMD := sudo cp $(BUILD_DIR)/$(EXE) /usr/local/bin/ && \
+	INSTALL_CMD := sudo cp $(BUILD_DIR)/$(EXE) /usr/local/bin/ && \
 				 sudo mkdir -p /usr/local/share/man/{man7,man1} && \
 				 sudo cp ./man/adan.7 /usr/local/share/man/man7/ && \
 				 sudo cp ./man/adan.1 /usr/local/share/man/man1/
