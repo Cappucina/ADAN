@@ -1,8 +1,8 @@
 EXE = adan
 
 build: clean
-	@cmake -B $(BUILD_DIR) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-	@cmake -B $(BUILD_DIR)
+	@cmake -B ./build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	@cmake -B ./build
 
 clean:
-	@rm -rf build
+	@rm -rf ./build
