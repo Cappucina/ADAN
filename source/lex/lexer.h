@@ -1,4 +1,6 @@
-enum Tokens
+#include <stdio.h>
+
+typedef enum Tokens
 {
     // Special
     TOKEN_EOF,
@@ -27,37 +29,61 @@ enum Tokens
     TOKEN_VOID_LITERAL,
 
     // Symbols
-    TOKEN_OPEN_PAREN, // (
-    TOKEN_CLOSE_PAREN, // )
-    TOKEN_OPEN_BRACE, // {
-    TOKEN_CLOSE_BRACE, // }
-    TOKEN_SEMICOLON, // ;
-    TOKEN_EQUAL, // = (Used for ASSIGNMENT, not comparison!)
-    TOKEN_EQUALITY, // ==
-    TOKEN_NOT, // !
-    TOKEN_NOT_EQUALS, // !==
-    TOKEN_TYPE_DECL, // ::
-    TOKEN_MUL, // *
-    TOKEN_DIV, // /
-    TOKEN_SUB, // -
-    TOKEN_ADD, // +
-    TOKEN_MOD, // %
-    // TOKEN_POINTER, // * (Maybe?)
-    TOKEN_AND, // && 
-    TOKEN_OR, // ||
-    TOKEN_MUL_EQUALS, // *=
-    TOKEN_DIV_EQUALS, // /=
-    TOKEN_SUB_EQUALS, // -=
-    TOKEN_ADD_EQUALS, // +=
-    TOKEN_MOD_EQUALS, // %=
-    TOKEN_COMMA, // ,
-    TOKEN_PERIOD, // .
-    TOKEN_GREATER, // >
-    TOKEN_LESS, // <
-    TOKEN_GREATER_EQUALS, // >=
-    TOKEN_LESS_EQUALS, // <=
-    TOKEN_ADD_ADD, // ++
-    TOKEN_SUB_SUB, // --
-    TOKEN_OPEN_BRACKET, // [
-    TOKEN_CLOSE_BRACKET, // ]
-};
+    TOKEN_OPEN_PAREN,      // (
+    TOKEN_CLOSE_PAREN,     // )
+    TOKEN_OPEN_BRACE,      // {
+    TOKEN_CLOSE_BRACE,     // }
+    TOKEN_SEMICOLON,       // ;
+    TOKEN_EQUAL,           // = (Used for ASSIGNMENT, not comparison!)
+    TOKEN_EQUALITY,        // ==
+    TOKEN_NOT,             // !
+    TOKEN_NOT_EQUALS,      // !==
+    TOKEN_TYPE_DECL,       // ::
+    TOKEN_MUL,             // *
+    TOKEN_DIV,             // /
+    TOKEN_SUB,             // -
+    TOKEN_ADD,             // +
+    TOKEN_MOD,             // %
+                           // TOKEN_POINTER, // * (Maybe?)
+    TOKEN_AND,             // &&
+    TOKEN_OR,              // ||
+    TOKEN_MUL_EQUALS,      // *=
+    TOKEN_DIV_EQUALS,      // /=
+    TOKEN_SUB_EQUALS,      // -=
+    TOKEN_ADD_EQUALS,      // +=
+    TOKEN_MOD_EQUALS,      // %=
+    TOKEN_COMMA,           // ,
+    TOKEN_PERIOD,          // .
+    TOKEN_GREATER,         // >
+    TOKEN_LESS,            // <
+    TOKEN_GREATER_EQUALS,  // >=
+    TOKEN_LESS_EQUALS,     // <=
+    TOKEN_ADD_ADD,         // ++
+    TOKEN_SUB_SUB,         // --
+    TOKEN_OPEN_BRACKET,    // [
+    TOKEN_CLOSE_BRACKET,   // ]
+} Tokens;
+
+typedef struct Lexer
+{
+    Tokens token;
+    size_t line;
+    size_t column;
+    const char* start;
+    size_t length;
+} Lexer;
+
+typedef struct Token
+{
+    Tokens type;
+    const char* start;
+    size_t length;
+    size_t line;
+    size_t column;
+} Token;
+
+void lexer_init(Lexer* lexer);
+
+Token* lexer_advance(Lexer* lexer, const char** input); 
+
+void lexer_free(Lexer* lexer);
