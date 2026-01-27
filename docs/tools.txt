@@ -1,0 +1,2 @@
+LLVM  - Code Gen, IR, backend and language optimizations.
+Bison - Parser    and AST     generation.  (Follows `./grammer.ebnf`)
