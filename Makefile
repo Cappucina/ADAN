@@ -12,12 +12,14 @@ else
 endif
 
 UNAME := $(shell uname -s 2>/dev/null || echo UNKNOWN)
+MAKEFLAGS += --no-print-directory
 
-.PHONY: all build build-release build-debug run test debug clean format help install
-
-all: build
+.PHONY: build clean format bison-build
 
 build: clean
+	$(MAKE) format
+	$(MAKE) bison-build
+
 	@cmake -B $(BUILD_DIR) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 	@cmake --build $(BUILD_DIR) --config $(BUILD_TYPE)
 
@@ -30,3 +32,9 @@ endif
 
 format:
 	@python scripts/format.py
+
+# Utility targets
+
+bison-build:
+	@rm -rf grammar.tab.c grammar.tab.h
+	@bison -d grammar.y

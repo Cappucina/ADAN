@@ -1,0 +1,1 @@
+typedef int ir_dummy_t;

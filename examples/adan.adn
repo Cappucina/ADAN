@@ -1,0 +1,12 @@
+include adan.io;
+
+program::string language_used()
+{
+    return "ADAN";
+}
+
+program::int main()
+{
+    lang::string = language_used();
+    println(lang);
+}

@@ -146,7 +146,7 @@ int run_all_tests(void)
     // run_diagnostic_tests(suite);
     // run_flags_tests(suite);
     run_lexer_tests(suite);
-    // run_parser_tests(suite);
+    run_parser_tests(suite);
     // run_semantic_tests(suite);
     //  run_codegen_tests(suite);
 

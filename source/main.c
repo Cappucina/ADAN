@@ -1,4 +1,8 @@
-int main()
+
+#include "tests/test.h"
+
+int main(void)
 {
-    return 0;
+    int failed = run_all_tests();
+    return failed ? 1 : 0;
 }
