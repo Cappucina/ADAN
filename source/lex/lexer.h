@@ -1,9 +1,17 @@
-#include <stdio.h>
+#ifndef LEXER_H
+#define LEXER_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include "../../include/diagnostics.h"
 
 typedef enum Tokens
 {
     // Special
     TOKEN_EOF,
+    TOKEN_ERROR,
     TOKEN_IDENTIFIER,
 
     // Keywords
@@ -16,17 +24,22 @@ typedef enum Tokens
     TOKEN_RETURN,
     TOKEN_BREAK,
     TOKEN_CONTINUE,
-    TOKEN_TRUE,
-    TOKEN_FALSE,
     TOKEN_NULL,
+    TOKEN_ELSE,
 
     // Types
+    TOKEN_INT,
+    TOKEN_FLOAT,
+    TOKEN_BOOL,
+    TOKEN_STRING,
+    TOKEN_CHAR,
+    TOKEN_VOID,
+
+    // Literal types
     TOKEN_INT_LITERAL,
     TOKEN_FLOAT_LITERAL,
-    TOKEN_BOOL_LITERAL,
-    TOKEN_STRING_LITERAL,
-    TOKEN_CHAR_LITERAL,
-    TOKEN_VOID_LITERAL,
+    TOKEN_TRUE,
+    TOKEN_FALSE,
 
     // Symbols
     TOKEN_OPEN_PAREN,      // (
@@ -44,6 +57,10 @@ typedef enum Tokens
     TOKEN_SUB,             // -
     TOKEN_ADD,             // +
     TOKEN_MOD,             // %
+    TOKEN_EXPONENT,        // **
+    TOKEN_QUOTE,           // "
+    TOKEN_APOSTROPHE,      // '
+    TOKEN_ELLIPSIS,        // ...
                            // TOKEN_POINTER, // * (Maybe?)
     TOKEN_AND,             // &&
     TOKEN_OR,              // ||
@@ -62,28 +79,74 @@ typedef enum Tokens
     TOKEN_SUB_SUB,         // --
     TOKEN_OPEN_BRACKET,    // [
     TOKEN_CLOSE_BRACKET,   // ]
+
+    // Bitwise operators
+    TOKEN_BITWISE_AND,
+    TOKEN_BITWISE_OR,
+    TOKEN_BITWISE_NOT,
+    TOKEN_BITWISE_XOR,
+    TOKEN_BITWISE_NAND,
+    TOKEN_BITWISE_NOR,
+    TOKEN_BITWISE_XNOR,
+    TOKEN_BITWISE_ZERO_FILL_LEFT_SHIFT,
+    TOKEN_BITWISE_SIGNED_RIGHT_SHIFT,
+    TOKEN_BITWISE_ZERO_FILL_RIGHT_SHIFT,
 } Tokens;
 
-typedef struct Lexer
+typedef struct
 {
-    Tokens token;
-    size_t line;
-    size_t column;
-    const char* start;
-    size_t length;
-} Lexer;
-
-typedef struct Token
-{
+    const char* lexeme;
+    uint32_t start;
+    uint32_t length;
+    const char* file;
+    uint32_t line;
+    uint32_t column;
     Tokens type;
-    const char* start;
-    size_t length;
-    size_t line;
-    size_t column;
 } Token;
 
-void lexer_init(Lexer* lexer);
+typedef struct
+{
+    const char* source;
+    uint32_t position;
+    uint32_t length;
+    const char* file;
+    uint32_t line;
+    uint32_t column;
+    ErrorList* errors;
+} Lexer;
 
-Token* lexer_advance(Lexer* lexer, const char** input); 
+typedef struct
+{
+    const char* name;
+    Tokens type;
+} Keyword;
 
-void lexer_free(Lexer* lexer);
+extern Keyword keywords[];
+
+char peek_char(Lexer* lex);
+
+char peek_next(Lexer* lex, uint32_t offset);
+
+char next_char(Lexer* lex);
+
+Lexer* create_lexer(const char* source, ErrorList* error_list, const char* file);
+
+void free_lexer(Lexer* lex);
+
+Token create_token(Lexer* lex, const char* lexeme, uint32_t start, uint32_t length, Tokens type);
+
+Token lex(Lexer* lx);
+
+Token lex_identifier(Lexer* lex);
+
+Token lex_number(Lexer* lex);
+
+Token lex_string(Lexer* lex);
+
+Token lex_operator(Lexer* lex);
+
+Token lex_char(Lexer* lex);
+
+void skip_whitespace(Lexer* lex);
+
+#endif
