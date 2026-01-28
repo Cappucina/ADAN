@@ -1,13 +1,15 @@
+#include <stddef.h>
+
 #define _POSIX_C_SOURCE 200809L
 #if defined(_WIN32)
 #define strdup _strdup
 #endif
 
-#include "../../include/ast.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../../include/ast.h"
 
 ASTNode* ast_empty(void)
 {
@@ -49,6 +51,36 @@ ASTNode* ast_allowed_top_level(ASTNode* includes, ASTNode* top_levels)
     program_node->next = NULL;
 
     return program_node;
+}
+
+ASTNode* ast_type_array(ASTNode* base, int size)
+{
+    ASTNode* type_node = malloc(sizeof(ASTNode));
+    if (!type_node)
+    {
+        return NULL;
+    }
+    type_node->type = AST_TYPE;
+
+    typedef struct
+    {
+        ASTNode* base;
+        int size;
+    } ArrayTypeData;
+
+    ArrayTypeData* data = malloc(sizeof(ArrayTypeData));
+    if (!data)
+    {
+        free(type_node);
+        return NULL;
+    }
+    data->base = base;
+    data->size = size;
+
+    type_node->data = data;
+    type_node->next = NULL;
+
+    return type_node;
 }
 
 ASTNode* ast_append_include(ASTNode* list, ASTNode* include)

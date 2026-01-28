@@ -82,7 +82,7 @@ void test_suite_print_results(TestSuite* suite)
         return;
     }
 
-    printf("\n========== Test Results ==========\n");
+    printf("\n===============RESULTS===============\n");
 
     int passed_count = 0;
     int failed_count = 0;
@@ -104,10 +104,10 @@ void test_suite_print_results(TestSuite* suite)
         }
     }
 
-    printf("==================================\n");
-    printf("Total: %zu | Passed: \033[32;1m%d\033[0m | Failed: \033[31;1m%d\n\033[0m", suite->count,
+    printf("======================================\n");
+    printf("  TESTS: %zu | PASSED: \033[32;1m%d\033[0m | FAILED: \033[31;1m%d\n\033[0m", suite->count,
            passed_count, failed_count);
-    printf("==================================\n\n");
+    printf("======================================\n");
 }
 
 bool test_suite_all_passed(TestSuite* suite)
@@ -148,7 +148,7 @@ int run_all_tests(void)
     run_lexer_tests(suite);
     run_parser_tests(suite);
     // run_semantic_tests(suite);
-    //  run_codegen_tests(suite);
+    // run_codegen_tests(suite);
 
     test_suite_print_results(suite);
     bool all_passed = test_suite_all_passed(suite);

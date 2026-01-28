@@ -197,19 +197,22 @@ Token lex_operator(Lexer* lex)
         case ':':
             return match_operator(lex, ':', TOKEN_TYPE_DECL, TOKEN_ERROR, start);
         case '&':
-            if (peek_char(lex) == '=') {
+            if (peek_char(lex) == '=')
+            {
                 next_char(lex);
                 return create_token(lex, &lex->source[start], start, lex->position - start, TOKEN_BITWISE_AND);
             }
             return match_operator(lex, '&', TOKEN_AND, TOKEN_BITWISE_AND, start);
         case '|':
-            if (peek_char(lex) == '=') {
+            if (peek_char(lex) == '=')
+            {
                 next_char(lex);
                 return create_token(lex, &lex->source[start], start, lex->position - start, TOKEN_BITWISE_OR);
             }
             return match_operator(lex, '|', TOKEN_OR, TOKEN_BITWISE_OR, start);
         case '^':
-            if (peek_char(lex) == '=') {
+            if (peek_char(lex) == '=')
+            {
                 next_char(lex);
                 return create_token(lex, &lex->source[start], start, lex->position - start, TOKEN_BITWISE_XOR);
             }
@@ -217,31 +220,36 @@ Token lex_operator(Lexer* lex)
         case '=':
             return match_operator(lex, '=', TOKEN_EQUALITY, TOKEN_EQUAL, start);
         case '+':
-            if (peek_char(lex) == '=') {
+            if (peek_char(lex) == '=')
+            {
                 next_char(lex);
                 return create_token(lex, &lex->source[start], start, lex->position - start, TOKEN_ADD_EQUALS);
             }
             return match_operator(lex, '+', TOKEN_ADD_ADD, TOKEN_ADD, start);
         case '-':
-            if (peek_char(lex) == '=') {
+            if (peek_char(lex) == '=')
+            {
                 next_char(lex);
                 return create_token(lex, &lex->source[start], start, lex->position - start, TOKEN_SUB_EQUALS);
             }
             return match_operator(lex, '-', TOKEN_SUB_SUB, TOKEN_SUB, start);
         case '*':
-            if (peek_char(lex) == '=') {
+            if (peek_char(lex) == '=')
+            {
                 next_char(lex);
                 return create_token(lex, &lex->source[start], start, lex->position - start, TOKEN_MUL_EQUALS);
             }
             return match_operator(lex, '*', TOKEN_EXPONENT, TOKEN_MUL, start);
         case '/':
-            if (peek_char(lex) == '=') {
+            if (peek_char(lex) == '=')
+            {
                 next_char(lex);
                 return create_token(lex, &lex->source[start], start, lex->position - start, TOKEN_DIV_EQUALS);
             }
             return create_token(lex, &lex->source[start], start, 1, TOKEN_DIV);
         case '%':
-            if (peek_char(lex) == '=') {
+            if (peek_char(lex) == '=')
+            {
                 next_char(lex);
                 return create_token(lex, &lex->source[start], start, lex->position - start, TOKEN_MOD_EQUALS);
             }

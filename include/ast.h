@@ -85,6 +85,8 @@ ASTNode* ast_type_user(const char* name);
 
 ASTNode* ast_type_pointer(ASTNode* base, ASTNode* stars);
 
+ASTNode* ast_type_array(ASTNode* base, int size);
+
 ASTNode* ast_append_pointer_star(ASTNode* stars);
 
 ASTNode* ast_append_stmt(ASTNode* list, ASTNode* stmt);
