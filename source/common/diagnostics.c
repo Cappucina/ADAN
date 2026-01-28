@@ -10,6 +10,7 @@
 static bool __global_warnings_as_errors = false;
 static bool __global_suppress_warnings = false;
 static bool __global_verbose_mode = false;
+bool __global_silent_errors = false;
 
 ErrorList* __global_error_list = NULL;
 
@@ -26,6 +27,11 @@ void set_suppress_warnings(bool enabled)
 void set_verbose_mode(bool enabled)
 {
     __global_verbose_mode = enabled;
+}
+
+void set_silent_errors(bool enabled)
+{
+    __global_silent_errors = enabled;
 }
 
 static const char* severity_to_string(Severity severity)
@@ -156,8 +162,11 @@ void warn(ErrorList* error_list, const char* file, uint32_t line, uint32_t colum
     Severity severity = __global_warnings_as_errors ? ERROR : WARNING;
     append_error(error_list, file, buffer, line, column, severity, category);
 
-    Error error = {buffer, file, line, column, (uint32_t)strlen(buffer), severity, category};
-    print_diagnostics(&error);
+    if (!__global_silent_errors)
+    {
+        Error error = {buffer, file, line, column, (uint32_t)strlen(buffer), severity, category};
+        print_diagnostics(&error);
+    }
 }
 
 void error(ErrorList* error_list, const char* file, uint32_t line, uint32_t column, Category category, const char* format, ...)
@@ -175,8 +184,11 @@ void error(ErrorList* error_list, const char* file, uint32_t line, uint32_t colu
 
     append_error(error_list, file, buffer, line, column, ERROR, category);
 
-    Error error = {buffer, file, line, column, (uint32_t)strlen(buffer), ERROR, category};
-    print_diagnostics(&error);
+    if (!__global_silent_errors)
+    {
+        Error error = {buffer, file, line, column, (uint32_t)strlen(buffer), ERROR, category};
+        print_diagnostics(&error);
+    }
 }
 
 void verbose(ErrorList* error_list, const char* file, uint32_t line, uint32_t column, Category category, const char* format, ...)
@@ -194,6 +206,9 @@ void verbose(ErrorList* error_list, const char* file, uint32_t line, uint32_t co
 
     append_error(error_list, buffer, file, line, column, INFO, category);
 
-    Error error = {buffer, file, line, column, (uint32_t)strlen(buffer), INFO, category};
-    print_diagnostics(&error);
+    if (!__global_silent_errors)
+    {
+        Error error = {buffer, file, line, column, (uint32_t)strlen(buffer), INFO, category};
+        print_diagnostics(&error);
+    }
 }

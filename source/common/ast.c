@@ -20,6 +20,7 @@ ASTNode* ast_empty(void)
     }
     node->type = AST_EMPTY;
     node->data = NULL;
+    node->next = NULL;
     return node;
 }
 
@@ -1098,7 +1099,14 @@ void ast_free(ASTNode* node)
 }
 
 #include <stdio.h>
+#include "../../include/diagnostics.h"
+
+extern bool __global_silent_errors;
+
 void yyerror(const char* s)
 {
-    fprintf(stderr, "Parse error: %s\n", s);
+    if (!__global_silent_errors)
+    {
+        fprintf(stderr, "Parse error: %s\n", s);
+    }
 }

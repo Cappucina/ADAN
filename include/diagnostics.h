@@ -53,6 +53,8 @@ void set_warnings_as_errors(bool enabled);
 
 void set_verbose_mode(bool enabled);  // Provides details on what's currently going on during compilation.
 
+void set_silent_errors(bool enabled);  // Suppresses immediate error printing (useful for tests)
+
 void warn(ErrorList* error_list, const char* file, uint32_t line, uint32_t column, Category category, const char* format, ...);
 
 void error(ErrorList* error_list, const char* file, uint32_t line, uint32_t column, Category category, const char* format, ...);

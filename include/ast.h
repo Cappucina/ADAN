@@ -141,6 +141,8 @@ ASTNode* ast_function_def(ASTNode* type, const char* name, ASTNode* params, ASTN
 
 ASTNode* ast_single_stmt(ASTNode* stmt);
 
+ASTNode* ast_list(ASTNode* elements);
+
 void ast_print(ASTNode* root);
 
 void ast_free(ASTNode* root);
