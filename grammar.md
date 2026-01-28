@@ -15,13 +15,13 @@
 3. [Variables: How to Write Them and Why It's Different](#variables-how-to-write-them-and-why-its-different)  
 4. [Understanding Conditions and Different Operators](#understanding-conditions-and-different-operators)  
 5. [Understanding Loops and Knowing the Difference](#understanding-loops-and-knowing-the-difference)  
-   - [While Loops](#while-loops)  
-   - [For Loops](#for-loops)  
 6. [Libraries and More Files!!](#libraries-and-more-files)  
 7. [Type Casting](#type-casting)  
 8. [String Interpolation](#string-interpolation)  
 9. [Escape Sequences in Strings](#escape-sequences-in-strings)  
 10. [Bitwise Operations](#bitwise-operations)
+
+---
 
 ## Top Level
 The top level refers to the lowest possible scope and similarly to C, only a few things can legally be placed here.
@@ -344,14 +344,14 @@ Here's every available one:
 Bitwise operators are fairly more complicated and they are used for directly manipulating the individual bits of integers rather than the number itself.
 
 ```
-&     - Bitwise AND: sets each bit to 1 if both bits are 1.
-|     - Bitwise OR: sets each bit to 1 if at least one bit is 1.
-~     - Bitwise NOT: inverts all bits (1 becomes 0, 0 becomes 1).
-^     - Bitwise XOR: sets each bit to 1 if only one bit is 1.
-!&    - Bitwise NAND: NOT of AND; true unless both bits are 1.
-!|    - Bitwise NOR: NOT of OR; true only if both bits are 0.
-!^    - Bitwise XNOR: NOT of XOR; true if both bits are the same.
-<<    - Left shift: shifts bits left, filling zeros on the right (multiplies by 2 for each shift).
->>    - Signed right shift: shifts bits right, preserving the sign bit (divides by 2 for each shift).
->>>   - Zero-fill right shift: shifts bits right, filling zeros on the left (unsigned behavior).
+&     -           Bitwise AND: Sets each bit to 1 if both bits are 1.
+|     -            Bitwise OR: Sets each bit to 1 if at least one bit is 1.
+~     -           Bitwise NOT: Inverts all bits (1 becomes 0, 0 becomes 1).
+^     -           Bitwise XOR: Sets each bit to 1 if only one bit is 1.
+!&    -          Bitwise NAND: NOT of AND; true unless both bits are 1.
+!|    -           Bitwise NOR: NOT of OR; true only if both bits are 0.
+!^    -          Bitwise XNOR: NOT of XOR; true if both bits are the same.
+<<    -            Left shift: Shifts bits left, filling zeros on the right (multiplies by 2 for each shift).
+>>    -    Signed right shift: Shifts bits right, preserving the sign bit (divides by 2 for each shift).
+>>>   - Zero-fill right shift: Shifts bits right, filling zeros on the left (unsigned behavior).
 ```
