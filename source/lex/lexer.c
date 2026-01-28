@@ -11,7 +11,10 @@ Keyword keywords[] = {
     {"return", TOKEN_RETURN},
     {"else", TOKEN_ELSE},
     {"struct", TOKEN_STRUCT},
-    {"break", TOKEN_BREAK}};
+    {"break", TOKEN_BREAK},
+    {"true", TOKEN_TRUE},
+    {"false", TOKEN_FALSE},
+    {"NULL", TOKEN_NULL}};
 
 #include <ctype.h>
 #include <errno.h>

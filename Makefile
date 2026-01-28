@@ -14,7 +14,7 @@ endif
 UNAME := $(shell uname -s 2>/dev/null || echo UNKNOWN)
 MAKEFLAGS += --no-print-directory
 
-.PHONY: build clean format bison-build
+.PHONY: build clean format bison-build run
 
 build: clean
 	$(MAKE) format
@@ -22,6 +22,10 @@ build: clean
 
 	@cmake -B $(BUILD_DIR) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 	@cmake --build $(BUILD_DIR) --config $(BUILD_TYPE)
+
+run: build
+	clear
+	@$(BUILD_DIR)/$(EXE)
 
 clean:
 ifeq ($(OS),Windows_NT)

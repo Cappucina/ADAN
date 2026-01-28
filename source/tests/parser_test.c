@@ -1,4 +1,3 @@
-
 #include "../parse/parser.h"
 
 #include <stdio.h>
@@ -239,7 +238,7 @@ static int test_parse_literals(void)
 
 static int test_parse_bool_null(void)
 {
-    const char* src = "b::bool = true; b = false; b = NULL;";
+    const char* src = "program::int main() { b::bool = true; b = false; b = NULL; }";
     ErrorList* errors = NULL;
     ASTNode* root = parse_source(src, &errors);
     if (!root)
@@ -271,7 +270,7 @@ static int test_parse_pointer_type(void)
 
 static int test_parse_array_type(void)
 {
-    const char* src = "arr::int[10];";
+    const char* src = "program::int main() { arr::int[] = [3, 5, 2]; }";
     ErrorList* errors = NULL;
     ASTNode* root = parse_source(src, &errors);
     if (!root)
@@ -317,15 +316,11 @@ static int test_parse_unterminated_string(void)
 
 static int test_parse_unknown_type(void)
 {
-    const char* src = "foo x;";
+    const char* src = "program::int main() { x::foo; }";
     ErrorList* errors = NULL;
     ASTNode* root = parse_source(src, &errors);
-    if (!root)
-    {
-        free_errors(errors);
-        ASSERT_NOT_NULL(root, "Parser should accept user-defined types");
-        return 0;
-    }
+    ASSERT_NOT_NULL(root, "Parser should accept user-defined (unknown) types at parse time");
+    ASSERT_FALSE(has_parse_error(errors), "Parser should not report errors for unknown type at parse time");
     free_errors(errors);
     return 0;
 }
@@ -333,7 +328,7 @@ static int test_parse_unknown_type(void)
 int run_parser_tests(TestSuite* suite)
 {
     int fails = 0;
-    
+
     // Commented out tests are ones that cause segmentation faults. This is going to be looked into shortly.
 
     // Right now, a few tests are currently failing. I don't know why though.
@@ -346,13 +341,13 @@ int run_parser_tests(TestSuite* suite)
     fails += test_suite_run_test(suite, "parser_for", test_parse_for);
     fails += test_suite_run_test(suite, "parser_struct", test_parse_struct);
     fails += test_suite_run_test(suite, "parser_include", test_parse_include);
-    // fails += test_suite_run_test(suite, "parser_nested_blocks", test_parse_nested_blocks);
-    // fails += test_suite_run_test(suite, "parser_assignment_binary", test_parse_assignment_binary);
-    // fails += test_suite_run_test(suite, "parser_unary_postfix", test_parse_unary_postfix);
-    // fails += test_suite_run_test(suite, "parser_func_params", test_parse_func_params);
-    // fails += test_suite_run_test(suite, "parser_literals", test_parse_literals);
-    // fails += test_suite_run_test(suite, "parser_bool_null", test_parse_bool_null);
-    // fails += test_suite_run_test(suite, "parser_pointer_type", test_parse_pointer_type);
+    fails += test_suite_run_test(suite, "parser_nested_blocks", test_parse_nested_blocks);
+    fails += test_suite_run_test(suite, "parser_assignment_binary", test_parse_assignment_binary);
+    fails += test_suite_run_test(suite, "parser_unary_postfix", test_parse_unary_postfix);
+    fails += test_suite_run_test(suite, "parser_func_params", test_parse_func_params);
+    fails += test_suite_run_test(suite, "parser_literals", test_parse_literals);
+    fails += test_suite_run_test(suite, "parser_bool_null", test_parse_bool_null);
+    fails += test_suite_run_test(suite, "parser_pointer_type", test_parse_pointer_type);
     fails += test_suite_run_test(suite, "parser_array_type", test_parse_array_type);
     fails += test_suite_run_test(suite, "parser_invalid_syntax", test_parse_invalid_syntax);
     fails += test_suite_run_test(suite, "parser_missing_semicolon", test_parse_missing_semicolon);

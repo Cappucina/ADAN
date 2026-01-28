@@ -26,7 +26,7 @@ void yyerror(const char* s);
 %token OPEN_PAREN CLOSE_PAREN OPEN_BRACE CLOSE_BRACE SEMICOLON COMMA PERIOD OPEN_BRACKET CLOSE_BRACKET
 %token EQUAL EQUALITY NOT NOT_EQUALS TYPE_DECL MUL DIV SUB ADD MOD EXPONENT QUOTE APOSTROPHE ELLIPSIS AND OR MUL_EQUALS DIV_EQUALS SUB_EQUALS ADD_EQUALS MOD_EQUALS GREATER LESS GREATER_EQUALS LESS_EQUALS ADD_ADD SUB_SUB BITWISE_AND BITWISE_OR BITWISE_NOT BITWISE_XOR BITWISE_NAND BITWISE_NOR BITWISE_XNOR BITWISE_ZERO_FILL_LEFT_SHIFT BITWISE_SIGNED_RIGHT_SHIFT BITWISE_ZERO_FILL_RIGHT_SHIFT
 
-%type <node> program allowed_top_level includes include include_tail top_level_keywords_seq top_level_keywords function_def param_list_opt param_list param variable_def variable_init_opt struct_def struct struct_members struct_member type default_type user_type pointer_type pointer_stars statement code_block if_stmt else_opt while_stmt for_stmt for_init for_cond_opt for_iter_opt return_stmt break_stmt continue_stmt expression_statement expression assignment logical_or logical_and equality comparison additive multiplicative unary postfix primary stmts expression_opt assignment_op
+%type <node> program allowed_top_level includes include include_tail top_level_keywords_seq top_level_keywords function_def param_list_opt param_list param variable_def variable_def_no_semi variable_init_opt struct_def struct struct_members struct_member type array_type default_type user_type pointer_type pointer_stars statement code_block if_stmt else_opt while_stmt for_stmt for_init for_init_opt for_cond_opt for_iter_opt return_stmt break_stmt continue_stmt expression_statement expression assignment logical_or logical_and equality comparison additive multiplicative unary postfix primary array_literal expr_list stmts expression_opt assignment_op
 
 %%
 
@@ -108,11 +108,17 @@ struct_member
     | function_def                     { $$ = $1; }
     ;
 
+
 type
     : default_type                     { $$ = $1; }
     | user_type                        { $$ = $1; }
     | pointer_type                     { $$ = $1; }
+    | array_type                       { $$ = $1; }
     | VOID                             { $$ = ast_type_void(); }
+    ;
+
+array_type
+    : type OPEN_BRACKET CLOSE_BRACKET  { $$ = ast_type_array($1, -1); }
     ;
 
 default_type
@@ -171,13 +177,24 @@ while_stmt
     : WHILE OPEN_PAREN expression CLOSE_PAREN code_block { $$ = ast_while_stmt($3, $5); }
     ;
 
+
 for_stmt
-    : FOR OPEN_PAREN for_init SEMICOLON for_cond_opt SEMICOLON for_iter_opt CLOSE_PAREN code_block { $$ = ast_for_stmt($3, $5, $7, $9); }
+    : FOR OPEN_PAREN for_init_opt SEMICOLON for_cond_opt SEMICOLON for_iter_opt CLOSE_PAREN code_block { $$ = ast_for_stmt($3, $5, $7, $9); }
     ;
 
+for_init_opt
+    : for_init                          { $$ = $1; }
+    | /* empty */                       { $$ = ast_empty(); }
+    ;
+
+
 for_init
-    : variable_def                      { $$ = $1; }
+    : variable_def_no_semi              { $$ = $1; }
     | expression_statement              { $$ = $1; }
+    ;
+
+variable_def_no_semi
+    : IDENTIFIER TYPE_DECL type variable_init_opt { $$ = ast_variable_def($1, $3, $4); }
     ;
 
 for_cond_opt
@@ -269,19 +286,21 @@ multiplicative
     | unary                             { $$ = $1; }
     ;
 
+
 unary
     : NOT unary                         { $$ = ast_unary_op("!", $2); }
     | SUB unary                         { $$ = ast_unary_op("-", $2); }
     | BITWISE_AND unary                 { $$ = ast_unary_op("&", $2); }
     | MUL unary                         { $$ = ast_unary_op("*", $2); }
+    | ADD_ADD unary                     { $$ = ast_unary_op("++", $2); }
+    | SUB_SUB unary                     { $$ = ast_unary_op("--", $2); }
     | postfix                           { $$ = $1; }
     ;
 
 postfix
-    : primary ADD_ADD                   { $$ = ast_postfix_op("++", $1); }
-    | primary SUB_SUB                   { $$ = ast_postfix_op("--", $1); }
+    : postfix ADD_ADD                   { $$ = ast_postfix_op("++", $1); }
+    | postfix SUB_SUB                   { $$ = ast_postfix_op("--", $1); }
     | primary                           { $$ = $1; }
-    ;
 
 primary
     : IDENTIFIER                        { $$ = ast_identifier($1); }
@@ -293,6 +312,17 @@ primary
     | FALSE                             { $$ = ast_false(); }
     | NULL_TOKEN                        { $$ = ast_null(); }
     | OPEN_PAREN expression CLOSE_PAREN { $$ = $2; }
+    | array_literal                     { $$ = $1; }
+    ;
+
+array_literal
+    : OPEN_BRACKET expr_list CLOSE_BRACKET { $$ = ast_list($2); }
+    ;
+
+expr_list
+    : expression                        { $$ = ast_single_stmt($1); }
+    | expr_list COMMA expression         { $$ = ast_append_stmt($1, $3); }
+    | /* empty */                        { $$ = ast_empty(); }
     ;
 
 %%
