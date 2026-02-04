@@ -1,1 +1,0 @@
-/bin/cc -Wl,--dependency-file=CMakeFiles/adan.dir/link.d CMakeFiles/adan.dir/src/main.c.o -o adan

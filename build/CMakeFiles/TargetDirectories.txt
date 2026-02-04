@@ -1,3 +1,0 @@
-/home/lily/Projects/ADAN/build/CMakeFiles/adan.dir
-/home/lily/Projects/ADAN/build/CMakeFiles/edit_cache.dir
-/home/lily/Projects/ADAN/build/CMakeFiles/rebuild_cache.dir
