@@ -6,7 +6,7 @@
 </div>
 
 <p align="center">
- ADAN has been continuously maintained from between <b>November 2nd, 2025</b> to <b>Now</b>.
+ ADAN has been continuously maintained from between <b>February 4th, 2026</b> to <b>Now</b>.
 </p>
 
 <div align="center">
