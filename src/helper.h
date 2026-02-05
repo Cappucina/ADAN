@@ -3,12 +3,21 @@
 
 char* read_file(char* file_path) {
     FILE* fptr = fopen(file_path, "r");
+    if (!fptr) {
+        printf("Failed to open file! (Error)");
+        return NULL;
+    }
 
     fseek(fptr, 0, SEEK_END);
     long fsize = ftell(fptr);
     rewind(fptr);
 
     char* buffer = (char*)malloc(fsize + 1);
+    if (!buffer) {
+        printf("Failed to allocate memory for read file buffer! (Error)");
+        return NULL;
+    }
+
     fread(buffer, 1, fsize, fptr);
     buffer[fsize] = '\0';
 

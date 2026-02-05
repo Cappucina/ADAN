@@ -8,5 +8,7 @@ int main() {
     char* hello_sample = "./samples/hello.adn";
     char* hello_source = read_file(hello_sample);
 
-    SymbolTableManager* global_manager = stm_init();
+    // SymbolTableManager* global_manager = stm_init();
+
+    printf("%d\n", hash("hi"));
 }
