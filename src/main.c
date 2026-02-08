@@ -3,12 +3,11 @@
 
 #include "helper.h"
 #include "stm.h"
+#include "frontend/scanner/scanner.h"
 
 int main() {
-    char* hello_sample = "./samples/hello.adn";
-    char* hello_source = read_file(hello_sample);
+    char* source = read_file("./samples/hello.adn");
 
-    // SymbolTableManager* global_manager = stm_init();
-
-    printf("%d\n", hash("hi"));
+    SymbolTableStack* global_stack = sts_init();
+    Scanner* scanner = scanner_init(source);
 }

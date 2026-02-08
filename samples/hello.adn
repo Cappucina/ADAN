@@ -1,1 +1,7 @@
-Hello, world
+import "adan/io";
+
+const language: string = "ADAN";
+
+fun main(): i32 {
+    println(language);
+}

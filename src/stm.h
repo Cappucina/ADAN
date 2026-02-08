@@ -16,7 +16,14 @@ typedef struct SymbolEntry {
 
 typedef struct SymbolTableManager {
     SymbolEntry* buckets[TABLE_SIZE];
+    struct SymbolTableManager* parent;
+    int scope_level;
 } SymbolTableManager;
+
+typedef struct SymbolTableStack
+{
+    struct SymbolTableManager* current_scope; // Each manager refers to its own scope.
+} SymbolTableStack;
 
 SymbolTableManager* stm_init() {
     SymbolTableManager* manager = (SymbolTableManager*)calloc(1, sizeof(SymbolTableManager));
@@ -25,6 +32,19 @@ SymbolTableManager* stm_init() {
         return NULL;
     }
     return manager;
+}
+
+SymbolTableStack* sts_init() {
+    SymbolTableStack* stack = (SymbolTableStack*)calloc(1, sizeof(SymbolTableStack));
+    if (!stack) {
+        printf("No memory left to create a SymbolTableStack! (Error)");
+        return NULL;
+    }
+    SymbolTableManager* manager = stm_init();
+    manager->scope_level = 0;
+    manager->parent = NULL;
+    stack->current_scope = manager;
+    return stack;
 }
 
 void stm_free(SymbolTableManager* manager) {
@@ -45,26 +65,63 @@ void stm_free(SymbolTableManager* manager) {
     free(manager);
 }
 
-SymbolEntry* stm_lookup(SymbolTableManager* manager, char* name) {
-    unsigned int bucket = hash(name) % TABLE_SIZE;
-    SymbolEntry* entry = manager->buckets[bucket];
+void sts_free(SymbolTableStack* stack) {
+    if (!stack) return;
+    SymbolTableManager* iter = stack->current_scope;
+    while (iter != NULL) {
+        SymbolTableManager* parent = iter->parent;
+        stm_free(iter);
+        iter = parent;
+    }
+    free(stack);
+}
 
+void sts_pop_scope(SymbolTableStack* stack) {
+    if (!stack || !stack->current_scope) return;
+    SymbolTableManager* old_scope = stack->current_scope;
+    stack->current_scope = old_scope->parent;
+    stm_free(old_scope);
+}
+
+void sts_push_scope(SymbolTableStack* stack) {
+    if (!stack) return;
+    SymbolTableManager* new_scope = stm_init();
+    new_scope->parent = stack->current_scope;
+    new_scope->scope_level = stack->current_scope->scope_level + 1;
+    stack->current_scope = new_scope;
+    printf("Entered new scope (Level %d)\n", new_scope->scope_level);
+}
+
+SymbolEntry* search_buckets(SymbolEntry* buckets[], const char* name) {
+    unsigned int bucket = hash(name) % TABLE_SIZE;
+    SymbolEntry* entry = buckets[bucket];
     while (entry != NULL) {
-        if (strcmp(name, entry->name) == 0) {
+        if (strcmp(entry->name, name) == 0) {
             return entry;
         }
         entry = entry->next;
     }
-
     return NULL;
+}
+
+SymbolEntry* stm_lookup_local(SymbolTableManager* manager, const char* name) {
+    SymbolEntry* local_entry = search_buckets(manager->buckets, name);
+    return local_entry;
+}
+
+SymbolEntry* stm_lookup(SymbolTableManager* manager, const char* name) {
+    SymbolEntry* entry = search_buckets(manager->buckets, name);
+    if (entry == NULL && manager->parent != NULL) {
+        return stm_lookup(manager->parent, name);
+    }
+    return entry;
 }
 
 void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned int size,
                                              unsigned int dimension, char* decl_line, char* usage_line,
                                              char* address) {
     
-    // @important When changing from a single-level symbol table, remove and add support for various scopes.
-    if (stm_lookup(manager, name) != NULL) {
+    if (search_buckets(manager->buckets, name) != NULL) {
         // @todo Possibly write an error handler to throw custom error messages
         printf("\"%s\" was already found in the SymbolTable! (Error)");
         return;
