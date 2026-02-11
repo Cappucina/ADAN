@@ -1,7 +1,11 @@
+#ifndef TOKEN_H
+#define TOKEN_H
+
 #include <stdio.h>
 #include <stddef.h>
 
-typedef enum TokenType {
+typedef enum TokenType
+{
     // Special
     TOKEN_EOF,
     TOKEN_IDENT,
@@ -36,6 +40,10 @@ typedef struct Token
     TokenType type;
     size_t column;
     size_t line;
-    char* lexeme; // Literal value of the token.
+    char *lexeme; // Literal value of the token.
     size_t length;
 } Token;
+
+void token_stream_free(Token *tokens);
+
+#endif

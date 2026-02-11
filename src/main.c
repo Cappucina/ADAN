@@ -5,15 +5,17 @@
 #include "stm.h"
 #include "frontend/scanner/scanner.h"
 
-int main() {
-    char* source = read_file("./samples/hello.adn");
+int main()
+{
+        char *source = read_file("./samples/hello.adn");
 
-    SymbolTableStack* global_stack = sts_init();
-    Scanner* scanner = scanner_init(source);
+        SymbolTableStack *global_stack = sts_init();
+        Scanner *scanner = scanner_init(source);
 
-    Token* token_stream = scanner_scan(scanner);
+        Token *token_stream = scanner_scan(scanner);
 
-            free(source);
-    scanner_free(scanner);
+        free(source);
+        scanner_free(scanner);
         sts_free(global_stack);
+        token_stream_free(token_stream);
 }
