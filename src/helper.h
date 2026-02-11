@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 char* read_file(char* file_path) {
     FILE* fptr = fopen(file_path, "r");

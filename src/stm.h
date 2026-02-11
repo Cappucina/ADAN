@@ -1,4 +1,6 @@
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #define TABLE_SIZE 1009
 
@@ -123,7 +125,7 @@ void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned in
     
     if (search_buckets(manager->buckets, name) != NULL) {
         // @todo Possibly write an error handler to throw custom error messages
-        printf("\"%s\" was already found in the SymbolTable! (Error)");
+        printf("\"%s\" was already found in the SymbolTable! (Error)", name);
         return;
     }
 

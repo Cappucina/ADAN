@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stddef.h>
 
 typedef enum TokenType {
     // Special
@@ -32,7 +33,7 @@ typedef enum TokenType {
 
 typedef struct Token
 {
-    TokenType* type;
+    TokenType type;
     size_t column;
     size_t line;
     char* lexeme; // Literal value of the token.

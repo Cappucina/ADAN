@@ -10,4 +10,10 @@ int main() {
 
     SymbolTableStack* global_stack = sts_init();
     Scanner* scanner = scanner_init(source);
+
+    Token* token_stream = scanner_scan(scanner);
+
+            free(source);
+    scanner_free(scanner);
+        sts_free(global_stack);
 }

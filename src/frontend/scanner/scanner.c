@@ -13,6 +13,8 @@ Scanner* scanner_init(char* source) {
     scanner->source = source;
     scanner->length = strlen(source);
     scanner->start = 0;
+    scanner->column = 1;
+    scanner->line = 1;
     return scanner;
 }
 
@@ -22,4 +24,14 @@ void scanner_free(Scanner* scanner) {
         return;
     }
     free(scanner);
+}
+
+// Inline functions and stuff
+
+
+
+// Actual scanning logic
+
+Token* scanner_scan(Scanner* scanner) {
+
 }
