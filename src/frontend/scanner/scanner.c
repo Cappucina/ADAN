@@ -2,7 +2,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <ctype.h>
 
+#include "macros.h"
 #include "scanner.h"
 
 Scanner *scanner_init(char *source)
@@ -70,21 +72,49 @@ bool is_at_end(Scanner *scanner)
     return scanner->position >= scanner->length;
 }
 
-// @todo Implement `is_alpha`, `is_digit`, `is_alphanumeric`, `is_whitespace`, `make_token`, `scan_next_token`, `is_keyword`, `check_keyword`, `scan_next_token`
+// 
+// @todo Implement:
+//                  `scan_next_token`
+//                  `make_token`,    `scan_next_token`,
+// 
+
+bool is_alpha(const char c)
+{
+    return isalpha(c) != 0;
+}
+
+bool is_digit(const char c)
+{
+    return isdigit(c) != 0;
+}
+
+bool is_alphanumeric(const char c)
+{
+    return isalnum(c) != 0;
+}
+
+bool is_whitespace(const char c)
+{
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
+
+TokenType is_keyword(const char* keyword)
+{
+    for (size_t i = 0; i < ARRAY_LENGTH(keywords); i++)
+    {
+        if (strcmp(keyword, keywords[i].word) == 0)
+        {
+            return keywords[i].type;
+        }
+    }
+    return TOKEN_IDENT;
+}
 
 void skip_spaces(Scanner *scanner)
 {
-    while (1)
+    while (!is_at_end(scanner) && is_whitespace(peek(scanner)))
     {
-        char curr = peek(scanner);
-        if (curr == ' ' || curr == '\t' || curr == '\r' || curr == '\n')
-        {
-            advance(scanner);
-        }
-        else
-        {
-            break;
-        }
+        advance(scanner);
     }
 }
 

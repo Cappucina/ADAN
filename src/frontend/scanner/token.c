@@ -13,3 +13,9 @@ void token_stream_free(Token *tokens)
     }
     free(tokens);
 }
+
+Token* make_token(TokenType type, size_t column, size_t line, char *lexeme,
+    size_t length)
+{
+    // @todo Implement later.
+}
