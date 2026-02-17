@@ -8,16 +8,10 @@
 #include "scanner.h"
 
 const Keyword keywords[] = {
-    {"fun", TOKEN_FUN},
-    {"import", TOKEN_IMPORT},
-    {"const", TOKEN_CONST},
+    {"fun", TOKEN_FUN},    {"import", TOKEN_IMPORT}, {"const", TOKEN_CONST},
 
-    // Types
-    {"string", TOKEN_FUN},
-    {"i32", TOKEN_IMPORT},
-    {"i64", TOKEN_CONST},
-    {"u32", TOKEN_FUN},
-    {"u64", TOKEN_IMPORT},
+    {"string", TOKEN_STRING_TYPE}, {"i32", TOKEN_I32_TYPE},    {"i64", TOKEN_I64_TYPE},
+    {"u32", TOKEN_U32_TYPE},    {"u64", TOKEN_U64_TYPE},
 };
 
 Scanner* scanner_init(char* source)
@@ -44,8 +38,6 @@ void scanner_free(Scanner* scanner)
 	}
 	free(scanner);
 }
-
-// Inline functions and stuff
 
 char peek(Scanner* scanner)
 {
@@ -79,12 +71,6 @@ bool is_at_end(Scanner* scanner)
 {
 	return scanner->position >= scanner->length;
 }
-
-//
-// @todo Implement:
-//                  `scan_next_token`
-//                  `make_token`,    `scan_next_token`,
-//
 
 bool is_alpha(const char c)
 {
@@ -123,9 +109,180 @@ void skip_spaces(Scanner* scanner)
 	}
 }
 
-// Actual scanning logic
+Token* scan_next_token(Scanner* scanner)
+{
+	skip_spaces(scanner);
+	if (is_at_end(scanner)) {
+		return make_token(TOKEN_EOF, scanner->column, scanner->line, NULL, 0);
+	}
+
+	scanner->start = scanner->position;
+	char current = peek(scanner);
+	if (is_alpha(current) || current == '_') {
+		size_t start_pos = scanner->position;
+		size_t start_col = scanner->column;
+		size_t start_line = scanner->line;
+
+		while (is_alphanumeric(peek(scanner)) || peek(scanner) == '_') {
+			advance(scanner);
+		}
+
+		size_t length = scanner->position - start_pos;
+		char* lexeme = strndup(scanner->source + start_pos, length);
+		TokenType type = is_keyword(lexeme);
+		return make_token(type, start_col, start_line, lexeme, length);
+	}
+
+	if (is_digit(current)) {
+		size_t start_pos = scanner->position;
+		size_t start_col = scanner->column;
+		size_t start_line = scanner->line;
+
+		while (is_digit(peek(scanner))) {
+			advance(scanner);
+		}
+
+		if (peek(scanner) == '.' && is_digit(peek_next(scanner))) {
+			advance(scanner);
+			while (is_digit(peek(scanner))) {
+				advance(scanner);
+			}
+		}
+
+		size_t length = scanner->position - start_pos;
+		char* lexeme = strndup(scanner->source + start_pos, length);
+		return make_token(TOKEN_IDENT, start_col, start_line, lexeme, length);
+	}
+
+	if (current == '"') {
+		size_t start_pos = scanner->position;
+		size_t start_col = scanner->column;
+		size_t start_line = scanner->line;
+
+		advance(scanner);
+
+		while (!is_at_end(scanner) && peek(scanner) != '"') {
+			if (peek(scanner) == '\\' && !is_at_end(scanner)) {
+				advance(scanner);
+				if (!is_at_end(scanner)) {
+					advance(scanner);
+				}
+			} else {
+				advance(scanner);
+			}
+		}
+
+		if (is_at_end(scanner)) {
+			printf("Unterminated string at line %zu, column %zu\n", start_line,
+			       start_col);
+			return make_token(TOKEN_EOF, start_col, start_line, NULL, 0);
+		}
+
+		advance(scanner);
+
+		size_t length = scanner->position - start_pos;
+		char* lexeme = strndup(scanner->source + start_pos, length);
+		return make_token(TOKEN_STRING, start_col, start_line, lexeme, length);
+	}
+
+	if (current == '/' && peek_next(scanner) == '/') {
+		while (!is_at_end(scanner) && peek(scanner) != '\n') {
+			advance(scanner);
+		}
+		return scan_next_token(scanner);
+	}
+
+	if (current == '/' && peek_next(scanner) == '*') {
+		advance(scanner);
+		advance(scanner);
+
+		while (!is_at_end(scanner)) {
+			if (peek(scanner) == '*' && peek_next(scanner) == '/') {
+				advance(scanner);
+				advance(scanner);
+				break;
+			}
+			advance(scanner);
+		}
+		return scan_next_token(scanner);
+	}
+
+	size_t token_col = scanner->column;
+	size_t token_line = scanner->line;
+
+	switch (current) {
+	case '(':
+		advance(scanner);
+		return make_token(TOKEN_LPAREN, token_col, token_line, strndup("(", 1), 1);
+	case ')':
+		advance(scanner);
+		return make_token(TOKEN_RPAREN, token_col, token_line, strndup(")", 1), 1);
+	case '{':
+		advance(scanner);
+		return make_token(TOKEN_LBRACE, token_col, token_line, strndup("{", 1), 1);
+	case '}':
+		advance(scanner);
+		return make_token(TOKEN_RBRACE, token_col, token_line, strndup("}", 1), 1);
+	case ':':
+		advance(scanner);
+		return make_token(TOKEN_COLON, token_col, token_line, strndup(":", 1), 1);
+	case ';':
+		advance(scanner);
+		return make_token(TOKEN_SEMICOLON, token_col, token_line, strndup(";", 1), 1);
+	case '=':
+		advance(scanner);
+		return make_token(TOKEN_EQUALS, token_col, token_line, strndup("=", 1), 1);
+	default:
+		advance(scanner);
+		printf("Unexpected character '%c' at line %zu, column %zu\n", current, token_line,
+		       token_col);
+		return scan_next_token(scanner);
+	}
+}
 
 Token* scanner_scan(Scanner* scanner)
 {
-	return NULL;
+	size_t capacity = 16;
+	size_t count = 0;
+	Token* tokens = (Token*)malloc(sizeof(Token) * capacity);
+
+	if (!tokens) {
+		printf("Failed to allocate memory for token stream! (Error)\n");
+		return NULL;
+	}
+
+	while (true) {
+		Token* token = scan_next_token(scanner);
+
+		if (!token) {
+			tokens[count].type = TOKEN_EOF;
+			tokens[count].column = scanner->column;
+			tokens[count].line = scanner->line;
+			tokens[count].lexeme = NULL;
+			tokens[count].length = 0;
+			break;
+		}
+
+		if (count >= capacity - 1) {
+			capacity *= 2;
+			Token* new_tokens = (Token*)realloc(tokens, sizeof(Token) * capacity);
+			if (!new_tokens) {
+				printf("Failed to resize token stream! (Error)\n");
+				free(tokens);
+				free(token);
+				return NULL;
+			}
+			tokens = new_tokens;
+		}
+
+		tokens[count] = *token;
+		free(token);
+		count++;
+
+		if (tokens[count - 1].type == TOKEN_EOF) {
+			break;
+		}
+	}
+
+	return tokens;
 }

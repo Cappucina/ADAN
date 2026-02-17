@@ -15,11 +15,15 @@ typedef enum TokenType {
 	TOKEN_CONST,
 
 	// Types
-	TOKEN_STRING,
-	TOKEN_I32,
-	TOKEN_I64,
-	TOKEN_U32,
-	TOKEN_U64,
+	TOKEN_STRING_TYPE,
+	TOKEN_I32_TYPE,
+	TOKEN_I64_TYPE,
+	TOKEN_U32_TYPE,
+	TOKEN_U64_TYPE,
+
+    // Literals
+    TOKEN_STRING,
+    TOKEN_NUMBER,
 
 	// Symbols
 	TOKEN_LPAREN,
@@ -48,5 +52,7 @@ typedef struct Keyword {
 void token_stream_free(Token* tokens);
 
 Token* make_token(TokenType type, size_t column, size_t line, char* lexeme, size_t length);
+
+void print_token_stream(Token* tokens);
 
 #endif

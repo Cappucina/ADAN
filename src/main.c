@@ -14,6 +14,8 @@ int main()
 
 	Token* token_stream = scanner_scan(scanner);
 
+	// print_token_stream(token_stream);
+
 	free(source);
 	scanner_free(scanner);
 	sts_free(global_stack);
