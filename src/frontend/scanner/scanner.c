@@ -8,7 +8,7 @@
 #include "scanner.h"
 
 const Keyword keywords[] = {
-    {"fun", TOKEN_FUN},    {"import", TOKEN_IMPORT}, {"const", TOKEN_CONST},
+    {"fun", TOKEN_FUN},    {"import", TOKEN_IMPORT}, {"set", TOKEN_SET},
 
     {"string", TOKEN_STRING_TYPE}, {"i32", TOKEN_I32_TYPE},    {"i64", TOKEN_I64_TYPE},
     {"u32", TOKEN_U32_TYPE},    {"u64", TOKEN_U64_TYPE},

@@ -1,0 +1,14 @@
+ASSIGNMENT = 'set', LETTERS, '=', EXPRESSION, ';' ;
+VAR_DECL   = 'set', LETTERS, ':', TYPE, '=', VALUE, ';' ;
+
+EXPRESSION = TERM, { ('+' | '-'), TERM } ;
+
+TERM = FACTOR, { ('*' | '/'), FACTOR } ;
+
+FACTOR = VALUE | LETTERS | '(', EXPRESSION, ')' | FUNCTION_CALL ;
+
+FUNCTION_CALL = LETTERS, '(', [ ARGS ], ')' ;
+
+ARGS = EXPRESSION, { ',', EXPRESSION } ;
+
+RETURN_STMT = 'return', [ EXPRESSION ], ';' ;

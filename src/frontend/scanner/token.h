@@ -12,7 +12,7 @@ typedef enum TokenType {
 	// Keywords
 	TOKEN_FUN,
 	TOKEN_IMPORT,
-	TOKEN_CONST,
+	TOKEN_SET,
 
 	// Types
 	TOKEN_STRING_TYPE,
