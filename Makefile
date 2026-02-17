@@ -1,7 +1,7 @@
 BUILD_DIR = build
 BINARY = adan
 
-.PHONY: all build run clean
+.PHONY: all build run clean format
 
 all: run
 
@@ -16,3 +16,6 @@ run: build
 
 clean:
 	@rm -rf $(BUILD_DIR)
+
+format:
+	@find ./src -type f \( -name "*.c" -o -name "*.h" \) -exec clang-format -i {} +

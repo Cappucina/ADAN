@@ -1,10 +1,10 @@
 #ifndef HELPER_H
 #define HELPER_H
 
-char *read_file(char *file_path);
+char* read_file(char* file_path);
 
-unsigned int hash(const char *name);
+unsigned int hash(const char* name);
 
-char *clone_string(const char *string);
+char* clone_string(const char* string);
 
 #endif
