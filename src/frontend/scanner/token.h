@@ -48,19 +48,6 @@ typedef struct Keyword
     TokenType type;
 } Keyword;
 
-const Keyword keywords[] = {
-    {"fun", TOKEN_FUN},
-    {"import", TOKEN_IMPORT},
-    {"const", TOKEN_CONST},
-
-    // Types
-    {"string", TOKEN_FUN},
-    {"i32", TOKEN_IMPORT},
-    {"i64", TOKEN_CONST},
-    {"u32", TOKEN_FUN},
-    {"u64", TOKEN_IMPORT},
-};
-
 void token_stream_free(Token *tokens);
 
 Token* make_token(TokenType type, size_t column, size_t line, char *lexeme,

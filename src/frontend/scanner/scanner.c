@@ -4,8 +4,21 @@
 #include <stdbool.h>
 #include <ctype.h>
 
-#include "macros.h"
+#include "../../macros.h"
 #include "scanner.h"
+
+const Keyword keywords[] = {
+    {"fun", TOKEN_FUN},
+    {"import", TOKEN_IMPORT},
+    {"const", TOKEN_CONST},
+
+    // Types
+    {"string", TOKEN_FUN},
+    {"i32", TOKEN_IMPORT},
+    {"i64", TOKEN_CONST},
+    {"u32", TOKEN_FUN},
+    {"u64", TOKEN_IMPORT},
+};
 
 Scanner *scanner_init(char *source)
 {
@@ -122,4 +135,5 @@ void skip_spaces(Scanner *scanner)
 
 Token *scanner_scan(Scanner *scanner)
 {
+    return NULL;
 }
