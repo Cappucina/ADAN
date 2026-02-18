@@ -35,8 +35,8 @@ char* token_type_to_string(TokenType type)
 		return "FUN";
 	case TOKEN_IMPORT:
 		return "IMPORT";
-	case TOKEN_CONST:
-		return "CONST";
+	case TOKEN_SET:
+		return "SET";
 	case TOKEN_STRING_TYPE:
 		return "STRING_TYPE";
 	case TOKEN_I32_TYPE:
