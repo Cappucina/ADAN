@@ -7,7 +7,8 @@
 
 #define TABLE_SIZE 1009
 
-typedef struct SymbolEntry {
+typedef struct SymbolEntry
+{
 	char* name;
 	char* type;
 	unsigned int size;
@@ -19,13 +20,15 @@ typedef struct SymbolEntry {
 	struct SymbolEntry* next;
 } SymbolEntry;
 
-typedef struct SymbolTableManager {
+typedef struct SymbolTableManager
+{
 	SymbolEntry* buckets[TABLE_SIZE];
 	struct SymbolTableManager* parent;
 	int scope_level;
 } SymbolTableManager;
 
-typedef struct SymbolTableStack {
+typedef struct SymbolTableStack
+{
 	struct SymbolTableManager* current_scope;  // Each manager refers to its own scope.
 } SymbolTableStack;
 

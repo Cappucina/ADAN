@@ -8,7 +8,8 @@
 SymbolTableManager* stm_init()
 {
 	SymbolTableManager* manager = (SymbolTableManager*)calloc(1, sizeof(SymbolTableManager));
-	if (!manager) {
+	if (!manager)
+	{
 		printf("No memory left to create a SymbolTableManager! (Error)");
 		return NULL;
 	}
@@ -18,7 +19,8 @@ SymbolTableManager* stm_init()
 SymbolTableStack* sts_init()
 {
 	SymbolTableStack* stack = (SymbolTableStack*)calloc(1, sizeof(SymbolTableStack));
-	if (!stack) {
+	if (!stack)
+	{
 		printf("No memory left to create a SymbolTableStack! (Error)");
 		return NULL;
 	}
@@ -33,9 +35,11 @@ void stm_free(SymbolTableManager* manager)
 {
 	if (!manager)
 		return;
-	for (int i = 0; i < TABLE_SIZE; i++) {
+	for (int i = 0; i < TABLE_SIZE; i++)
+	{
 		SymbolEntry* entry = manager->buckets[i];
-		while (entry != NULL) {
+		while (entry != NULL)
+		{
 			SymbolEntry* next_entry = entry->next;
 			free(entry->name);
 			free(entry->type);
@@ -54,7 +58,8 @@ void sts_free(SymbolTableStack* stack)
 	if (!stack)
 		return;
 	SymbolTableManager* iter = stack->current_scope;
-	while (iter != NULL) {
+	while (iter != NULL)
+	{
 		SymbolTableManager* parent = iter->parent;
 		stm_free(iter);
 		iter = parent;
@@ -86,8 +91,10 @@ SymbolEntry* search_buckets(SymbolEntry* buckets[], const char* name)
 {
 	unsigned int bucket = hash(name) % TABLE_SIZE;
 	SymbolEntry* entry = buckets[bucket];
-	while (entry != NULL) {
-		if (strcmp(entry->name, name) == 0) {
+	while (entry != NULL)
+	{
+		if (strcmp(entry->name, name) == 0)
+		{
 			return entry;
 		}
 		entry = entry->next;
@@ -104,7 +111,8 @@ SymbolEntry* stm_lookup_local(SymbolTableManager* manager, const char* name)
 SymbolEntry* stm_lookup(SymbolTableManager* manager, const char* name)
 {
 	SymbolEntry* entry = search_buckets(manager->buckets, name);
-	if (entry == NULL && manager->parent != NULL) {
+	if (entry == NULL && manager->parent != NULL)
+	{
 		return stm_lookup(manager->parent, name);
 	}
 	return entry;
@@ -113,7 +121,8 @@ SymbolEntry* stm_lookup(SymbolTableManager* manager, const char* name)
 void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned int size,
                 unsigned int dimension, char* decl_line, char* usage_line, char* address)
 {
-	if (search_buckets(manager->buckets, name) != NULL) {
+	if (search_buckets(manager->buckets, name) != NULL)
+	{
 		// @todo Possibly write an error handler to throw custom error messages
 		printf("\"%s\" was already found in the SymbolTable! (Error)", name);
 		return;
@@ -121,7 +130,8 @@ void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned in
 
 	unsigned int bucket = hash(name) % TABLE_SIZE;
 	SymbolEntry* node = (SymbolEntry*)malloc(sizeof(SymbolEntry));
-	if (!node) {
+	if (!node)
+	{
 		printf("No memory left to allocate for a symbol entry! (Error)");
 		return;
 	}

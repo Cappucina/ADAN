@@ -4,7 +4,7 @@ IndentWidth: 8
 UseTab: ForIndentation
 TabWidth: 8
 ColumnLimit: 100
-BreakBeforeBraces: Linux
+BreakBeforeBraces: Allman
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None

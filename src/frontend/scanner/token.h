@@ -4,7 +4,8 @@
 #include <stdio.h>
 #include <stddef.h>
 
-typedef enum TokenType {
+typedef enum TokenType
+{
 	// Special
 	TOKEN_EOF,
 	TOKEN_IDENT,
@@ -21,9 +22,9 @@ typedef enum TokenType {
 	TOKEN_U32_TYPE,
 	TOKEN_U64_TYPE,
 
-    // Literals
-    TOKEN_STRING,
-    TOKEN_NUMBER,
+	// Literals
+	TOKEN_STRING,
+	TOKEN_NUMBER,
 
 	// Symbols
 	TOKEN_LPAREN,
@@ -36,7 +37,8 @@ typedef enum TokenType {
 	TOKEN_QUOTE,
 } TokenType;
 
-typedef struct Token {
+typedef struct Token
+{
 	TokenType type;
 	size_t column;
 	size_t line;
@@ -44,7 +46,8 @@ typedef struct Token {
 	size_t length;
 } Token;
 
-typedef struct Keyword {
+typedef struct Keyword
+{
 	const char* word;
 	TokenType type;
 } Keyword;

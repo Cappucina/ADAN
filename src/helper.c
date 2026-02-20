@@ -5,7 +5,8 @@
 char* read_file(char* file_path)
 {
 	FILE* fptr = fopen(file_path, "r");
-	if (!fptr) {
+	if (!fptr)
+	{
 		printf("Failed to open file! (Error)");
 		return NULL;
 	}
@@ -15,7 +16,8 @@ char* read_file(char* file_path)
 	rewind(fptr);
 
 	char* buffer = (char*)malloc(fsize + 1);
-	if (!buffer) {
+	if (!buffer)
+	{
 		printf("Failed to allocate memory for read file buffer! (Error)");
 		return NULL;
 	}
@@ -31,7 +33,8 @@ unsigned int hash(const char* name)
 {
 	unsigned int hash_value = 5531;
 
-	for (int i = 0; name[i] != '\0'; i++) {
+	for (int i = 0; name[i] != '\0'; i++)
+	{
 		hash_value = (hash_value * 33) + name[i];
 	}
 
@@ -43,7 +46,8 @@ char* clone_string(const char* string)
 {
 	size_t total = strlen(string);
 	char* alloc = (char*)malloc(total + 1);
-	if (!alloc) {
+	if (!alloc)
+	{
 		printf("Failed to clone string during memory allocation segment! (Error)");
 		return NULL;
 	}
