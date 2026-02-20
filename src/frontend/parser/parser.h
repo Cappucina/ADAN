@@ -28,4 +28,4 @@ Parser* parser_init(Scanner* scanner);
 
 void parser_free(Parser* parser);
 
-#endif PARSER_H
+#endif

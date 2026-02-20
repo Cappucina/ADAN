@@ -3,6 +3,7 @@
 
 #include "parser.h"
 #include "../scanner/scanner.h"
+#include "../../stm.h"
 
 Parser* parser_init(Scanner* scanner)
 {
@@ -16,7 +17,7 @@ Parser* parser_init(Scanner* scanner)
 	parser->current = NULL;
 	parser->ahead1 = NULL;
 	parser->ahead2 = NULL;
-	parser->symbol_table_stack = stm_init();
+	parser->symbol_table_stack = sts_init();
 	parser->error_count = 0;
 	parser->panic = false;
 	parser->token_position = 0;
@@ -47,7 +48,7 @@ void parser_free(Parser* parser)
 			free(parser->ahead2->lexeme);
 			free(parser->ahead2);
 		}
-		stm_free_stack(parser->symbol_table_stack);
+		sts_free(parser->symbol_table_stack);
 		free(parser);
 	}
 	else
