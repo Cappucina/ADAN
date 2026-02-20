@@ -11,7 +11,8 @@
 
 <div align="center">
   <img src="https://github.com/Cappucina/ADAN/actions/workflows/build.yml/badge.svg" alt="Build Status"/>
-  <img src="https://img.shields.io/badge/Stars-0-yellow?style=flat&logo=github" alt="Stars"/>
+
+  <img src="https://img.shields.io/github/v/release/Cappucina/ADAN?style=flat&label=Releases&color=blue" alt="Releases"/>
 </div>
 
 ## Compiling the Compiler
