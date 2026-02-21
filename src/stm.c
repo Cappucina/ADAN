@@ -119,11 +119,10 @@ SymbolEntry* stm_lookup(SymbolTableManager* manager, const char* name)
 }
 
 void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned int size,
-                unsigned int dimension, char* decl_line, char* usage_line, char* address)
+                char* decl_line, char* usage_line, char* address)
 {
 	if (search_buckets(manager->buckets, name) != NULL)
 	{
-		// @todo Possibly write an error handler to throw custom error messages
 		printf("\"%s\" was already found in the SymbolTable! (Error)", name);
 		return;
 	}
@@ -139,7 +138,6 @@ void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned in
 	node->name = clone_string(name);
 	node->type = clone_string(type);
 	node->size = size;
-	node->dimension = dimension;
 	node->decl_line = clone_string(decl_line);
 	node->usage_line = clone_string(usage_line);
 	node->address = clone_string(address);

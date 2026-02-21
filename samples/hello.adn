@@ -1,12 +1,7 @@
-// IMPORT STRING SEMICOLON
 import "adan/io";
 
-// SET IDENT COLON STRING_TYPE EQUALS STRING SEMICOLON
 set language: string = "ADAN";
 
-// FUN IDENT LPAREN RPAREN COLON I32 LBRACE
 fun main(): i32 {
-    // IDENT LPAREN IDENT RPAREN SEMICOLON
     println(language);
-// RBRACE
 }

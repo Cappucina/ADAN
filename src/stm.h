@@ -12,7 +12,6 @@ typedef struct SymbolEntry
 	char* name;
 	char* type;
 	unsigned int size;
-	unsigned int dimension;
 	char* decl_line;
 	char* usage_line;
 	char* address;
@@ -49,6 +48,6 @@ SymbolEntry* stm_lookup_local(SymbolTableManager* manager, const char* name);
 SymbolEntry* stm_lookup(SymbolTableManager* manager, const char* name);
 
 void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned int size,
-                unsigned int dimension, char* decl_line, char* usage_line, char* address);
+                char* decl_line, char* usage_line, char* address);
 
 #endif

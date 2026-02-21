@@ -59,37 +59,82 @@ void parser_free(Parser* parser)
 
 // Symbol Table stuff
 
-void parser_declare_variable(Parser* parser, const char* name, const char* type, unsigned int size,
-                             unsigned int dimension);
+void parser_declare_variable(Parser* parser, const char* name, const char* type, unsigned int size)
+{
+	if (!parser)
+	{
+		printf("An empty Parser pointer was provided; could not declare variable. (Error)");
+		return;
+	}
 
-void parser_declare_function(Parser* parser, const char* name, const char* return_type);
+	SymbolEntry* var_entry = (SymbolEntry*)malloc(sizeof(SymbolEntry));
+	if (!var_entry)
+	{
+		printf(
+		    "Failed to allocate enough memory for a new SymbolEntry in the parser. "
+		    "(Error)");
+		return;
+	}
 
-void parser_use_symbol(Parser* parser, const char* name);
+	// @todo implement later
+}
 
-void parser_enter_scope(Parser* parser);
+void parser_declare_function(Parser* parser, const char* name, const char* return_type)
+{
+}
 
-void parser_exit_scope(Parser* parser);
+void parser_use_symbol(Parser* parser, const char* name)
+{
+}
 
-bool parser_symbol_exists(Parser* parser, const char* name);
+void parser_enter_scope(Parser* parser)
+{
+}
+
+void parser_exit_scope(Parser* parser)
+{
+}
+
+bool parser_symbol_exists(Parser* parser, const char* name)
+{
+}
 
 // Token lookahead stuff
 
-void advance_token(Parser* parser);
+void advance_token(Parser* parser)
+{
+}
 
-Token* peek_current(Parser* parser);
+Token* peek_current(Parser* parser)
+{
+}
 
-Token* peek_lookahead1(Parser* parser);
+Token* peek_lookahead1(Parser* parser)
+{
+}
 
-Token* peek_lookahead2(Parser* parser);
+Token* peek_lookahead2(Parser* parser)
+{
+}
 
-bool match_current(Parser* parser, TokenType type);
+bool match_current(Parser* parser, TokenType type)
+{
+}
 
 // Error handling and recovery stuff
 
-void error_expected(Parser* parser, const char* expected);
+void error_expected(Parser* parser, const char* expected)
+{
+}
 
-void error_undefined_symbol(Parser* parser, const char* name);
+void error_undefined_symbol(Parser* parser, const char* name)
+{
+}
 
-void enter_recovery_mode(Parser* parser);
+void enter_recovery_mode(Parser* parser)
+{
+}
 
-void exit_recovery_mode(Parser* parser);
+void exit_recovery_mode(Parser* parser)
+{
+}
