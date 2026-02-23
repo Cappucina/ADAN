@@ -131,7 +131,9 @@ static void synchronize(Parser* parser)
 	}
 
 	if (peek_current(parser) && peek_current(parser)->type == TOKEN_SEMICOLON)
+	{
 		advance_token(parser);
+	}
 }
 
 static void parse_type(Parser* parser)
@@ -191,7 +193,9 @@ static void parse_call_statement(Parser* parser)
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after call statement.");
 
 	if (name)
+	{
 		parser_use_symbol(parser, name);
+	}
 	free(name);
 }
 
@@ -241,7 +245,9 @@ static void parse_block(Parser* parser)
 	}
 
 	if (parser->recovery_mode)
+	{
 		exit_recovery_mode(parser);
+	}
 
 	consume(parser, TOKEN_RBRACE, "Expected '}' to end block.");
 	parser_exit_scope(parser);
@@ -271,8 +277,9 @@ static void parse_variable_declaration(Parser* parser)
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after variable declaration.");
 
 	if (name && type && !parser->recovery_mode)
+	{
 		parser_declare_variable(parser, name, type, 0);
-
+	}
 	free(name);
 	free(type);
 }
@@ -294,8 +301,9 @@ static void parse_function_declaration(Parser* parser)
 	parse_type(parser);
 
 	if (name && return_type && !parser->recovery_mode)
+	{
 		parser_declare_function(parser, name, return_type);
-
+	}
 	free(name);
 	free(return_type);
 
@@ -305,8 +313,9 @@ static void parse_function_declaration(Parser* parser)
 static void parse_statement(Parser* parser)
 {
 	if (parser->recovery_mode)
+	{
 		return;
-
+	}
 	switch (peek_current(parser)->type)
 	{
 	case TOKEN_FUN:
@@ -338,6 +347,8 @@ void parser_parse_program(Parser* parser)
 		parse_statement(parser);
 
 		if (parser->recovery_mode)
+		{
 			exit_recovery_mode(parser);
+		}
 	}
 }

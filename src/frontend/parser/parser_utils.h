@@ -1,3 +1,6 @@
+#ifndef PARSER_UTILS_H
+#define PARSER_UTILS_H
+
 #include "parser.h"
 
 // Symbol Table stuff
@@ -35,3 +38,5 @@ void error_undefined_symbol(Parser* parser, const char* name);
 void enter_recovery_mode(Parser* parser);
 
 void exit_recovery_mode(Parser* parser);
+
+#endif
