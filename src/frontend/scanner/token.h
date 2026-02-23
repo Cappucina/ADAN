@@ -35,6 +35,7 @@ typedef enum TokenType
 	TOKEN_SEMICOLON,
 	TOKEN_EQUALS,
 	TOKEN_QUOTE,
+	TOKEN_COMMA,
 } TokenType;
 
 typedef struct Token
