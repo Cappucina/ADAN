@@ -9,7 +9,7 @@
 
 typedef struct Parser
 {
-	// Tokens (LL(2) requires 2 lookahead tokens).
+	// Tokens (LL(2) require	s 2 lookahead tokens).
 	Token* current;
 	Token* ahead1;
 	Token* ahead2;
@@ -27,5 +27,7 @@ typedef struct Parser
 Parser* parser_init(Scanner* scanner);
 
 void parser_free(Parser* parser);
+
+void parser_parse_program(Parser* parser);
 
 #endif

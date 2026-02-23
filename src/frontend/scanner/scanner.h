@@ -19,6 +19,4 @@ void scanner_free(Scanner* scanner);
 
 Token* scan_next_token(Scanner* scanner);
 
-Token* scanner_scan(Scanner* scanner);
-
 #endif

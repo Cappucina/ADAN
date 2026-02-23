@@ -171,7 +171,7 @@ Token* scan_next_token(Scanner* scanner)
 
 		size_t length = scanner->position - start_pos;
 		char* lexeme = strndup(scanner->source + start_pos, length);
-		return make_token(TOKEN_IDENT, start_col, start_line, lexeme, length);
+		return make_token(TOKEN_NUMBER, start_col, start_line, lexeme, length);
 	}
 
 	if (current == '"')
@@ -271,57 +271,4 @@ Token* scan_next_token(Scanner* scanner)
 		       token_col);
 		return scan_next_token(scanner);
 	}
-}
-
-Token* scanner_scan(Scanner* scanner)
-{
-	size_t capacity = 16;
-	size_t count = 0;
-	Token* tokens = (Token*)malloc(sizeof(Token) * capacity);
-
-	if (!tokens)
-	{
-		printf("Failed to allocate memory for token stream! (Error)\n");
-		return NULL;
-	}
-
-	while (true)
-	{
-		Token* token = scan_next_token(scanner);
-
-		if (!token)
-		{
-			tokens[count].type = TOKEN_EOF;
-			tokens[count].column = scanner->column;
-			tokens[count].line = scanner->line;
-			tokens[count].lexeme = NULL;
-			tokens[count].length = 0;
-			break;
-		}
-
-		if (count >= capacity - 1)
-		{
-			capacity *= 2;
-			Token* new_tokens = (Token*)realloc(tokens, sizeof(Token) * capacity);
-			if (!new_tokens)
-			{
-				printf("Failed to resize token stream! (Error)\n");
-				free(tokens);
-				free(token);
-				return NULL;
-			}
-			tokens = new_tokens;
-		}
-
-		tokens[count] = *token;
-		free(token);
-		count++;
-
-		if (tokens[count - 1].type == TOKEN_EOF)
-		{
-			break;
-		}
-	}
-
-	return tokens;
 }

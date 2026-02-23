@@ -44,6 +44,9 @@ unsigned int hash(const char* name)
 // `strdup` is a POSIX addition and not a standard C function.
 char* clone_string(const char* string)
 {
+	if (!string)
+		return NULL;
+
 	size_t total = strlen(string);
 	char* alloc = (char*)malloc(total + 1);
 	if (!alloc)

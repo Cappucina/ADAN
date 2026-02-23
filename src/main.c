@@ -4,6 +4,7 @@
 #include "helper.h"
 #include "stm.h"
 #include "frontend/scanner/scanner.h"
+#include "frontend/parser/parser.h"
 
 int main()
 {
@@ -11,14 +12,13 @@ int main()
 
 	SymbolTableStack* global_stack = sts_init();
 	Scanner* scanner = scanner_init(source);
+	Parser* parser = parser_init(scanner);
 
-	Token* token_stream = scanner_scan(scanner);
+	parser_parse_program(parser);
 
-	// @debug
-	print_token_stream(token_stream);
-
-	free(source);
+	parser_free(parser);
 	scanner_free(scanner);
-	sts_free(global_stack);
-	token_stream_free(token_stream);
+	free(source);
+
+	return 0;
 }
