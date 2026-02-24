@@ -108,7 +108,7 @@ struct ASTNode
 		ASTIdentifier identifier;
 		ASTStringLiteral string_literal;
 		ASTNumberLiteral number_literal;
-		ASTType type;
+		ASTType type_node;
 	};
 };
 
