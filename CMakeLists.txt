@@ -6,6 +6,7 @@ project(ADAN LANGUAGES C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-file(GLOB_RECURSE SOURCES "src/*.c")
+file(GLOB_RECURSE SOURCES "src/*.c" "libs/*.c")
 
 add_executable(adan ${SOURCES})
+target_include_directories(adan PRIVATE src libs)

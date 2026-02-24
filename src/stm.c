@@ -10,7 +10,7 @@ SymbolTableManager* stm_init()
 	SymbolTableManager* manager = (SymbolTableManager*)calloc(1, sizeof(SymbolTableManager));
 	if (!manager)
 	{
-		printf("No memory left to create a SymbolTableManager! (Error)\n");
+		fprintf(stderr, "No memory left to create a SymbolTableManager! (Error)\n");
 		return NULL;
 	}
 	return manager;
@@ -21,13 +21,14 @@ SymbolTableStack* sts_init()
 	SymbolTableStack* stack = (SymbolTableStack*)calloc(1, sizeof(SymbolTableStack));
 	if (!stack)
 	{
-		printf("No memory left to create a SymbolTableStack! (Error)\n");
+		fprintf(stderr, "No memory left to create a SymbolTableStack! (Error)\n");
 		return NULL;
 	}
 	SymbolTableManager* manager = stm_init();
 	if (!manager)
 	{
-		printf("No memory left to create a SymbolTableManager for the stack! (Error)\n");
+		fprintf(stderr,
+		        "No memory left to create a SymbolTableManager for the stack! (Error)\n");
 		free(stack);
 		return NULL;
 	}
@@ -89,7 +90,7 @@ void sts_push_scope(SymbolTableStack* stack)
 	SymbolTableManager* new_scope = stm_init();
 	if (!new_scope)
 	{
-		printf("Failed to create new scope! (Error)\n");
+		fprintf(stderr, "Failed to create new scope! (Error)\n");
 		return;
 	}
 
@@ -109,11 +110,14 @@ void sts_push_scope(SymbolTableStack* stack)
 
 SymbolEntry* search_buckets(SymbolEntry* buckets[], const char* name)
 {
+	if (!name)
+		return NULL;
+
 	unsigned int bucket = hash(name) % TABLE_SIZE;
 	SymbolEntry* entry = buckets[bucket];
 	while (entry != NULL)
 	{
-		if (strcmp(entry->name, name) == 0)
+		if (entry->name && strcmp(entry->name, name) == 0)
 		{
 			return entry;
 		}
@@ -142,7 +146,7 @@ void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned in
 {
 	if (search_buckets(manager->buckets, name) != NULL)
 	{
-		printf("\"%s\" was already found in the SymbolTable! (Error)\n", name);
+		fprintf(stderr, "\"%s\" was already found in the SymbolTable! (Error)\n", name);
 		return;
 	}
 
@@ -150,33 +154,33 @@ void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned in
 	SymbolEntry* node = (SymbolEntry*)malloc(sizeof(SymbolEntry));
 	if (!node)
 	{
-		printf("No memory left to allocate for a symbol entry! (Error)\n");
+		fprintf(stderr, "No memory left to allocate for a symbol entry! (Error)\n");
 		return;
 	}
 
-	node->name = clone_string(name);
+	node->name = name ? clone_string(name, strlen(name)) : NULL;
 	if (!node->name)
 	{
 		goto cleanup_node;
 	}
-	node->type = clone_string(type);
+	node->type = type ? clone_string(type, strlen(type)) : NULL;
 	if (!node->type)
 	{
 		goto cleanup_node;
 	}
 	node->size = size;
-	node->decl_line = clone_string(decl_line);
+	node->decl_line = decl_line ? clone_string(decl_line, strlen(decl_line)) : NULL;
 	if (!node->decl_line)
 	{
 		goto cleanup_node;
 	}
-	node->usage_line = clone_string(usage_line);
-	if (!node->usage_line)
+	node->usage_line = usage_line ? clone_string(usage_line, strlen(usage_line)) : NULL;
+	if (usage_line && !node->usage_line)
 	{
 		goto cleanup_node;
 	}
-	node->address = clone_string(address);
-	if (!node->address)
+	node->address = address ? clone_string(address, strlen(address)) : NULL;
+	if (address && !node->address)
 	{
 		goto cleanup_node;
 	}

@@ -5,18 +5,21 @@
 #include <ctype.h>
 
 #include "../../macros.h"
+#include "../../helper.h"
 #include "scanner.h"
 
 const Keyword keywords[] = {
     {"fun", TOKEN_FUN},
     {"import", TOKEN_IMPORT},
     {"set", TOKEN_SET},
+    {"return", TOKEN_RETURN},
 
     {"string", TOKEN_STRING_TYPE},
     {"i32", TOKEN_I32_TYPE},
     {"i64", TOKEN_I64_TYPE},
     {"u32", TOKEN_U32_TYPE},
     {"u64", TOKEN_U64_TYPE},
+    {"void", TOKEN_VOID_TYPE},
 };
 
 Scanner* scanner_init(char* source)
@@ -24,7 +27,7 @@ Scanner* scanner_init(char* source)
 	Scanner* scanner = (Scanner*)calloc(1, sizeof(Scanner));
 	if (!scanner)
 	{
-		printf("No memory left to allocate for a new scanner! (Error)\n");
+		fprintf(stderr, "No memory left to allocate for a new scanner! (Error)\n");
 		return NULL;
 	}
 	scanner->position = 0;
@@ -40,7 +43,7 @@ void scanner_free(Scanner* scanner)
 {
 	if (!scanner)
 	{
-		printf("No scanner provided; nothing to free! (Error)\n");
+		fprintf(stderr, "No scanner provided; nothing to free! (Error)\n");
 		return;
 	}
 	free(scanner);
@@ -84,17 +87,17 @@ bool is_at_end(Scanner* scanner)
 
 bool is_alpha(const char c)
 {
-	return isalpha(c) != 0;
+	return isalpha((unsigned char)c) != 0;
 }
 
 bool is_digit(const char c)
 {
-	return isdigit(c) != 0;
+	return isdigit((unsigned char)c) != 0;
 }
 
 bool is_alphanumeric(const char c)
 {
-	return isalnum(c) != 0;
+	return isalnum((unsigned char)c) != 0;
 }
 
 bool is_whitespace(const char c)
@@ -144,7 +147,7 @@ Token* scan_next_token(Scanner* scanner)
 		}
 
 		size_t length = scanner->position - start_pos;
-		char* lexeme = strndup(scanner->source + start_pos, length);
+		char* lexeme = clone_string(scanner->source + start_pos, length);
 		TokenType type = is_keyword(lexeme);
 		return make_token(type, start_col, start_line, lexeme, length);
 	}
@@ -170,7 +173,7 @@ Token* scan_next_token(Scanner* scanner)
 		}
 
 		size_t length = scanner->position - start_pos;
-		char* lexeme = strndup(scanner->source + start_pos, length);
+		char* lexeme = clone_string(scanner->source + start_pos, length);
 		return make_token(TOKEN_NUMBER, start_col, start_line, lexeme, length);
 	}
 
@@ -208,7 +211,7 @@ Token* scan_next_token(Scanner* scanner)
 		advance(scanner);
 
 		size_t length = scanner->position - start_pos;
-		char* lexeme = strndup(scanner->source + start_pos, length);
+		char* lexeme = clone_string(scanner->source + start_pos, length);
 		return make_token(TOKEN_STRING, start_col, start_line, lexeme, length);
 	}
 
@@ -244,31 +247,42 @@ Token* scan_next_token(Scanner* scanner)
 
 	switch (current)
 	{
-	case '(':
-		advance(scanner);
-		return make_token(TOKEN_LPAREN, token_col, token_line, strndup("(", 1), 1);
-	case ')':
-		advance(scanner);
-		return make_token(TOKEN_RPAREN, token_col, token_line, strndup(")", 1), 1);
-	case '{':
-		advance(scanner);
-		return make_token(TOKEN_LBRACE, token_col, token_line, strndup("{", 1), 1);
-	case '}':
-		advance(scanner);
-		return make_token(TOKEN_RBRACE, token_col, token_line, strndup("}", 1), 1);
-	case ':':
-		advance(scanner);
-		return make_token(TOKEN_COLON, token_col, token_line, strndup(":", 1), 1);
-	case ';':
-		advance(scanner);
-		return make_token(TOKEN_SEMICOLON, token_col, token_line, strndup(";", 1), 1);
-	case '=':
-		advance(scanner);
-		return make_token(TOKEN_EQUALS, token_col, token_line, strndup("=", 1), 1);
-	default:
-		advance(scanner);
-		printf("Unexpected character '%c' at line %zu, column %zu\n", current, token_line,
-		       token_col);
-		return scan_next_token(scanner);
+		case '(':
+			advance(scanner);
+			return make_token(TOKEN_LPAREN, token_col, token_line, clone_string("(", 1),
+			                  1);
+		case ')':
+			advance(scanner);
+			return make_token(TOKEN_RPAREN, token_col, token_line, clone_string(")", 1),
+			                  1);
+		case '{':
+			advance(scanner);
+			return make_token(TOKEN_LBRACE, token_col, token_line, clone_string("{", 1),
+			                  1);
+		case '}':
+			advance(scanner);
+			return make_token(TOKEN_RBRACE, token_col, token_line, clone_string("}", 1),
+			                  1);
+		case ':':
+			advance(scanner);
+			return make_token(TOKEN_COLON, token_col, token_line, clone_string(":", 1),
+			                  1);
+		case ';':
+			advance(scanner);
+			return make_token(TOKEN_SEMICOLON, token_col, token_line,
+			                  clone_string(";", 1), 1);
+		case '=':
+			advance(scanner);
+			return make_token(TOKEN_EQUALS, token_col, token_line, clone_string("=", 1),
+			                  1);
+		case ',':
+			advance(scanner);
+			return make_token(TOKEN_COMMA, token_col, token_line, clone_string(",", 1),
+			                  1);
+		default:
+			advance(scanner);
+			printf("Unexpected character '%c' at line %zu, column %zu\n", current,
+			       token_line, token_col);
+			return scan_next_token(scanner);
 	}
 }

@@ -12,7 +12,8 @@ void parser_declare_variable(Parser* parser, const char* name, const char* type,
 {
 	if (!parser)
 	{
-		printf(
+		fprintf(
+		    stderr,
 		    "An empty Parser pointer was provided; could not declare variable. (Error)\n");
 		return;
 	}
@@ -34,7 +35,8 @@ void parser_declare_function(Parser* parser, const char* name, const char* retur
 {
 	if (!parser)
 	{
-		printf(
+		fprintf(
+		    stderr,
 		    "An empty Parser pointer was provided; could not declare function. (Error)\n");
 		return;
 	}
@@ -57,14 +59,20 @@ void parser_use_symbol(Parser* parser, const char* name)
 {
 	if (!parser)
 	{
-		printf("An empty Parser pointer was provided; could not use symbol. (Error)\n");
+		fprintf(stderr,
+		        "An empty Parser pointer was provided; could not use symbol. (Error)\n");
+		return;
+	}
+
+	if (parser->allow_undefined_symbols)
+	{
 		return;
 	}
 
 	SymbolEntry* entry = stm_lookup(parser->symbol_table_stack->current_scope, name);
 	if (!entry)
 	{
-		printf("Undefined symbol '%s' used. (Error)\n", name);
+		fprintf(stderr, "Undefined symbol '%s' used. (Error)\n", name);
 		parser->error_count++;
 	}
 }
@@ -73,7 +81,8 @@ void parser_enter_scope(Parser* parser)
 {
 	if (!parser)
 	{
-		printf("An empty Parser pointer was provided; could not enter scope. (Error)\n");
+		fprintf(stderr,
+		        "An empty Parser pointer was provided; could not enter scope. (Error)\n");
 		return;
 	}
 
@@ -86,7 +95,8 @@ void parser_exit_scope(Parser* parser)
 {
 	if (!parser)
 	{
-		printf(
+		fprintf(
+		    stderr,
 		    "An empty Parser pointer was provided; could not declare variable. (Error)\n");
 		return;
 	}
@@ -100,9 +110,9 @@ bool parser_symbol_exists(Parser* parser, const char* name)
 {
 	if (!parser)
 	{
-		printf(
-		    "An empty Parser pointer was provided; could not check symbol existence. "
-		    "(Error)\n");
+		fprintf(stderr,
+		        "An empty Parser pointer was provided; could not check symbol existence. "
+		        "(Error)\n");
 		return false;
 	}
 
@@ -135,9 +145,9 @@ Token* peek_current(Parser* parser)
 {
 	if (!parser)
 	{
-		printf(
-		    "An empty Parser pointer was provided; could not peek current token. "
-		    "(Error)\n");
+		fprintf(stderr,
+		        "An empty Parser pointer was provided; could not peek current token. "
+		        "(Error)\n");
 		return NULL;
 	}
 
@@ -148,7 +158,8 @@ Token* peek_lookahead1(Parser* parser)
 {
 	if (!parser)
 	{
-		printf(
+		fprintf(
+		    stderr,
 		    "An empty Parser pointer was provided; could not declare variable. (Error)\n");
 		return NULL;
 	}
@@ -160,7 +171,8 @@ Token* peek_lookahead2(Parser* parser)
 {
 	if (!parser)
 	{
-		printf(
+		fprintf(
+		    stderr,
 		    "An empty Parser pointer was provided; could not declare variable. (Error)\n");
 		return NULL;
 	}
@@ -172,7 +184,8 @@ bool match_current(Parser* parser, TokenType type)
 {
 	if (!parser)
 	{
-		printf(
+		fprintf(
+		    stderr,
 		    "An empty Parser pointer was provided; could not declare variable. (Error)\n");
 		return false;
 	}
@@ -188,13 +201,14 @@ void error_expected(Parser* parser, const char* expected)
 {
 	if (!parser)
 	{
-		printf(
+		fprintf(
+		    stderr,
 		    "An empty Parser pointer was provided; could not declare variable. (Error)\n");
 		return;
 	}
 
-	printf("Expected %s but found '%s'. (Error)\n", expected,
-	       parser->current ? parser->current->lexeme : "NULL");
+	fprintf(stderr, "Expected %s but found '%s'. (Error)\n", expected,
+	        parser->current ? parser->current->lexeme : "NULL");
 	parser->error_count++;
 }
 
@@ -202,7 +216,8 @@ void error_undefined_symbol(Parser* parser, const char* name)
 {
 	if (!parser)
 	{
-		printf(
+		fprintf(
+		    stderr,
 		    "An empty Parser pointer was provided; could not declare variable. (Error)\n");
 		return;
 	}
@@ -210,7 +225,7 @@ void error_undefined_symbol(Parser* parser, const char* name)
 	SymbolEntry* entry = stm_lookup_local(parser->symbol_table_stack->current_scope, name);
 	if (!entry)
 	{
-		printf("Undefined symbol '%s' used. (Error)\n", name);
+		fprintf(stderr, "Undefined symbol '%s' used. (Error)\n", name);
 		parser->error_count++;
 	}
 }
@@ -219,20 +234,22 @@ void enter_recovery_mode(Parser* parser)
 {
 	if (!parser)
 	{
-		printf(
+		fprintf(
+		    stderr,
 		    "An empty Parser pointer was provided; could not declare variable. (Error)\n");
 		return;
 	}
 
 	parser->recovery_mode = true;
-	printf("Critical error found during parsing; entering recovery mode. (Warning)\n");
+	fprintf(stderr, "Critical error found during parsing; entering recovery mode. (Warning)\n");
 }
 
 void exit_recovery_mode(Parser* parser)
 {
 	if (!parser)
 	{
-		printf(
+		fprintf(
+		    stderr,
 		    "An empty Parser pointer was provided; could not declare variable. (Error)\n");
 		return;
 	}

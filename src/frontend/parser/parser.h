@@ -23,6 +23,7 @@ typedef struct Parser
 	int token_position;
 	int scope_depth;
 	bool recovery_mode;
+	bool allow_undefined_symbols;
 } Parser;
 
 Parser* parser_init(Scanner* scanner);

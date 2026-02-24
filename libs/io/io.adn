@@ -1,0 +1,4 @@
+fun println(message: string): i32
+{
+	adn_println(message);
+}

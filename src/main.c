@@ -8,6 +8,7 @@
 #include "frontend/scanner/scanner.h"
 #include "frontend/parser/parser.h"
 #include "frontend/ast/tree.h"
+#include "frontend/semantics/semantic.h"
 
 bool has_valid_extension(const char* filename)
 {
@@ -50,39 +51,66 @@ int main(int argc, char* argv[])
 
 	if (!file_path)
 	{
-		printf("Error: No file specified\n");
+		fprintf(stderr, "Error: No file specified\n");
 		print_usage(argv[0]);
 		return 1;
 	}
 
 	if (!has_valid_extension(file_path))
 	{
-		printf("Error: File must have .adn or .adan extension\n");
+		fprintf(stderr, "Error: File must have .adn or .adan extension\n");
 		return 1;
 	}
 
 	char* source = read_file(file_path);
 	if (!source)
 	{
-		printf("Failed to read source file! (Error)\n");
+		fprintf(stderr, "Failed to read source file! (Error)\n");
 		return 1;
 	}
 
 	SymbolTableStack* global_stack = sts_init();
 	Scanner* scanner = scanner_init(source);
 	Parser* parser = parser_init(scanner);
+	if (parser)
+	{
+		parser->allow_undefined_symbols = true;
+	}
 
 	ASTNode* ast = parser_parse_program(parser);
+
+	parser_free(parser);
+	scanner_free(scanner);
 
 	if (ast)
 	{
 		printf("AST created successfully! (Info)\n");
 		// ast_print(ast, 0);
+
+		SemanticAnalyzer* analyzer = semantic_init(ast, global_stack);
+		if (analyzer)
+		{
+			if (!semantic_analyze(analyzer))
+			{
+				fprintf(stderr,
+				        "Semantic analysis failed with %d error(s). (Error)\n",
+				        analyzer->error_count);
+			}
+			else
+			{
+				printf("Semantic analysis completed successfully! (Info)\n");
+			}
+			semantic_free(analyzer);
+		}
+		else
+		{
+			fprintf(stderr, "Failed to initialize semantic analyzer! (Error)\n");
+		}
+
 		ast_free(ast);
 	}
 
-	parser_free(parser);
-	scanner_free(scanner);
+	sts_free(global_stack);
 	free(source);
 
 	return 0;

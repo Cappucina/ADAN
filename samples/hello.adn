@@ -4,4 +4,5 @@ set language: string = "ADAN";
 
 fun main(): i32 {
     println(language);
+    return 0;
 }

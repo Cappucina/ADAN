@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "parser.h"
 #include "parser_utils.h"
@@ -23,6 +24,7 @@ Parser* parser_init(Scanner* scanner)
 	parser->token_position = 0;
 	parser->scope_depth = 0;
 	parser->recovery_mode = false;
+	parser->allow_undefined_symbols = false;
 	parser->current = NULL;
 	parser->ahead1 = NULL;
 	parser->ahead2 = NULL;
@@ -118,14 +120,15 @@ static void synchronize(Parser* parser)
 	{
 		switch (peek_current(parser)->type)
 		{
-		case TOKEN_FUN:
-		case TOKEN_IMPORT:
-		case TOKEN_SET:
-		case TOKEN_RBRACE:
-		case TOKEN_EOF:
-			return;
-		default:
-			break;
+			case TOKEN_FUN:
+			case TOKEN_IMPORT:
+			case TOKEN_SET:
+			case TOKEN_RETURN:
+			case TOKEN_RBRACE:
+			case TOKEN_EOF:
+				return;
+			default:
+				break;
 		}
 
 		advance_token(parser);
@@ -141,11 +144,14 @@ static ASTNode* parse_type(Parser* parser)
 {
 	if (match(parser, TOKEN_STRING_TYPE) || match(parser, TOKEN_I32_TYPE) ||
 	    match(parser, TOKEN_I64_TYPE) || match(parser, TOKEN_U32_TYPE) ||
-	    match(parser, TOKEN_U64_TYPE))
+	    match(parser, TOKEN_U64_TYPE) || match(parser, TOKEN_VOID_TYPE))
 	{
-		char* type_name = clone_string(peek_current(parser)->lexeme);
+		size_t tok_line = peek_current(parser)->line;
+		size_t tok_column = peek_current(parser)->column;
+		char* type_name = clone_string(peek_current(parser)->lexeme,
+		                               strlen(peek_current(parser)->lexeme));
 		advance_token(parser);
-		ASTNode* node = ast_create_type(type_name);
+		ASTNode* node = ast_create_type(type_name, tok_line, tok_column);
 		free(type_name);
 		return node;
 	}
@@ -162,25 +168,34 @@ static ASTNode* parse_primary(Parser* parser)
 {
 	if (match(parser, TOKEN_IDENT))
 	{
-		char* name = clone_string(peek_current(parser)->lexeme);
+		size_t tok_line = peek_current(parser)->line;
+		size_t tok_column = peek_current(parser)->column;
+		char* name = clone_string(peek_current(parser)->lexeme,
+		                          strlen(peek_current(parser)->lexeme));
 		advance_token(parser);
-		ASTNode* node = ast_create_identifier(name);
+		ASTNode* node = ast_create_identifier(name, tok_line, tok_column);
 		free(name);
 		return node;
 	}
 	else if (match(parser, TOKEN_STRING))
 	{
-		char* value = clone_string(peek_current(parser)->lexeme);
+		size_t tok_line = peek_current(parser)->line;
+		size_t tok_column = peek_current(parser)->column;
+		char* value = clone_string(peek_current(parser)->lexeme,
+		                           strlen(peek_current(parser)->lexeme));
 		advance_token(parser);
-		ASTNode* node = ast_create_string_literal(value);
+		ASTNode* node = ast_create_string_literal(value, tok_line, tok_column);
 		free(value);
 		return node;
 	}
 	else if (match(parser, TOKEN_NUMBER))
 	{
-		char* value = clone_string(peek_current(parser)->lexeme);
+		size_t tok_line = peek_current(parser)->line;
+		size_t tok_column = peek_current(parser)->column;
+		char* value = clone_string(peek_current(parser)->lexeme,
+		                           strlen(peek_current(parser)->lexeme));
 		advance_token(parser);
-		ASTNode* node = ast_create_number_literal(value);
+		ASTNode* node = ast_create_number_literal(value, tok_line, tok_column);
 		free(value);
 		return node;
 	}
@@ -195,7 +210,8 @@ static ASTNode* parse_primary(Parser* parser)
 
 static ASTNode* parse_call(Parser* parser)
 {
-	char* callee = clone_string(peek_current(parser)->lexeme);
+	char* callee =
+	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 	consume(parser, TOKEN_IDENT, "Expected function name for call expression.");
 	consume(parser, TOKEN_LPAREN, "Expected '(' after function name in call expression.");
 
@@ -222,14 +238,16 @@ static ASTNode* parse_call(Parser* parser)
 	}
 
 	consume(parser, TOKEN_RPAREN, "Expected ')' after arguments in call expression.");
-	ASTNode* call = ast_create_call(callee, args, arg_count);
+	ASTNode* call = ast_create_call(callee, args, arg_count, peek_lookahead1(parser)->line,
+	                                peek_lookahead1(parser)->column);
 	free(callee);
 	return call;
 }
 
 static ASTNode* parse_call_statement(Parser* parser)
 {
-	char* name = clone_string(peek_current(parser)->lexeme);
+	char* name =
+	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 
 	ASTNode* call = parse_call(parser);
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after call statement.");
@@ -260,11 +278,14 @@ static ASTNode* parse_expression(Parser* parser)
 
 static ASTNode* parse_parameter(Parser* parser)
 {
-	char* name = clone_string(peek_current(parser)->lexeme);
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	char* name =
+	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 	consume(parser, TOKEN_IDENT, "Expected parameter name.");
 	consume(parser, TOKEN_COLON, "Expected ':' after parameter name.");
 	ASTNode* type = parse_type(parser);
-	ASTNode* param = ast_create_parameter(name, type);
+	ASTNode* param = ast_create_parameter(name, type, tok_line, tok_column);
 	free(name);
 	return param;
 }
@@ -322,16 +343,20 @@ static ASTNode* parse_block(Parser* parser)
 
 	consume(parser, TOKEN_RBRACE, "Expected '}' to end block.");
 	parser_exit_scope(parser);
-	return ast_create_block(statements, count);
+	return ast_create_block(statements, count, peek_current(parser)->line,
+	                        peek_current(parser)->column);
 }
 
 static ASTNode* parse_import_statement(Parser* parser)
 {
 	consume(parser, TOKEN_IMPORT, "Expected 'import' keyword for import statement.");
-	char* path = clone_string(peek_current(parser)->lexeme);
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	char* path =
+	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 	consume(parser, TOKEN_STRING, "Expected string literal after 'import' keyword.");
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after import statement.");
-	ASTNode* import = ast_create_import(path);
+	ASTNode* import = ast_create_import(path, tok_line, tok_column);
 	free(path);
 	return import;
 }
@@ -340,12 +365,16 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 {
 	consume(parser, TOKEN_SET, "Expected 'set' keyword for variable declaration.");
 
-	char* name = clone_string(peek_current(parser)->lexeme);
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	char* name =
+	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 	consume(parser, TOKEN_IDENT, "Expected variable name after 'set' keyword.");
 
 	consume(parser, TOKEN_COLON, "Expected ':' after variable name.");
 
-	char* type_name = clone_string(peek_current(parser)->lexeme);
+	char* type_name =
+	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 	ASTNode* type = parse_type(parser);
 
 	consume(parser, TOKEN_EQUALS, "Expected '=' after variable type.");
@@ -358,7 +387,8 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 	}
 	free(type_name);
 
-	ASTNode* var_decl = ast_create_variable_declaration(name, type, initializer);
+	ASTNode* var_decl =
+	    ast_create_variable_declaration(name, type, initializer, tok_line, tok_column);
 	free(name);
 	return var_decl;
 }
@@ -367,7 +397,10 @@ static ASTNode* parse_function_declaration(Parser* parser)
 {
 	consume(parser, TOKEN_FUN, "Expected 'fun' keyword for function declaration.");
 
-	char* name = clone_string(peek_current(parser)->lexeme);
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	char* name =
+	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 	consume(parser, TOKEN_IDENT, "Expected function name after 'fun' keyword.");
 
 	consume(parser, TOKEN_LPAREN, "Expected '(' after function name.");
@@ -377,7 +410,8 @@ static ASTNode* parse_function_declaration(Parser* parser)
 
 	consume(parser, TOKEN_COLON, "Expected ':' after parameter list for return type.");
 
-	char* return_type_name = clone_string(peek_current(parser)->lexeme);
+	char* return_type_name =
+	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 	ASTNode* return_type = parse_type(parser);
 
 	if (name && return_type_name && !parser->recovery_mode)
@@ -387,10 +421,25 @@ static ASTNode* parse_function_declaration(Parser* parser)
 	free(return_type_name);
 
 	ASTNode* body = parse_block(parser);
-	ASTNode* func_decl =
-	    ast_create_function_declaration(name, params, param_count, return_type, body);
+	ASTNode* func_decl = ast_create_function_declaration(name, params, param_count, return_type,
+	                                                     body, tok_line, tok_column);
 	free(name);
 	return func_decl;
+}
+
+static ASTNode* parse_return_statement(Parser* parser)
+{
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	consume(parser, TOKEN_RETURN, "Expected 'return' keyword.");
+
+	ASTNode* expr = NULL;
+	if (!match(parser, TOKEN_SEMICOLON))
+	{
+		expr = parse_expression(parser);
+	}
+	consume(parser, TOKEN_SEMICOLON, "Expected ';' after return statement.");
+	return ast_create_return(expr, tok_line, tok_column);
 }
 
 static ASTNode* parse_statement(Parser* parser)
@@ -401,19 +450,21 @@ static ASTNode* parse_statement(Parser* parser)
 	}
 	switch (peek_current(parser)->type)
 	{
-	case TOKEN_FUN:
-		return parse_function_declaration(parser);
-	case TOKEN_IMPORT:
-		return parse_import_statement(parser);
-	case TOKEN_SET:
-		return parse_variable_declaration(parser);
-	case TOKEN_IDENT:
-		return parse_call_statement(parser);
-	default:
-		error_expected(parser, "statement");
-		enter_recovery_mode(parser);
-		synchronize(parser);
-		return NULL;
+		case TOKEN_FUN:
+			return parse_function_declaration(parser);
+		case TOKEN_IMPORT:
+			return parse_import_statement(parser);
+		case TOKEN_SET:
+			return parse_variable_declaration(parser);
+		case TOKEN_RETURN:
+			return parse_return_statement(parser);
+		case TOKEN_IDENT:
+			return parse_call_statement(parser);
+		default:
+			error_expected(parser, "statement");
+			enter_recovery_mode(parser);
+			synchronize(parser);
+			return NULL;
 	}
 }
 
@@ -445,5 +496,6 @@ ASTNode* parser_parse_program(Parser* parser)
 		}
 	}
 
-	return ast_create_program(decls, count);
+	return ast_create_program(decls, count, peek_current(parser)->line,
+	                          peek_current(parser)->column);
 }

@@ -8,7 +8,7 @@ BreakBeforeBraces: Allman
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
-IndentCaseLabels: false
+IndentCaseLabels: true
 PointerAlignment: Left
 AlignConsecutiveMacros: true
 AlignConsecutiveDeclarations: false
