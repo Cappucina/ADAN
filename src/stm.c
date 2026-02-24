@@ -25,6 +25,12 @@ SymbolTableStack* sts_init()
 		return NULL;
 	}
 	SymbolTableManager* manager = stm_init();
+	if (!manager)
+	{
+		printf("No memory left to create a SymbolTableManager for the stack! (Error)\n");
+		free(stack);
+		return NULL;
+	}
 	manager->scope_level = 0;
 	manager->parent = NULL;
 	stack->current_scope = manager;
@@ -81,8 +87,22 @@ void sts_push_scope(SymbolTableStack* stack)
 	if (!stack)
 		return;
 	SymbolTableManager* new_scope = stm_init();
-	new_scope->parent = stack->current_scope;
-	new_scope->scope_level = stack->current_scope->scope_level + 1;
+	if (!new_scope)
+	{
+		printf("Failed to create new scope! (Error)\n");
+		return;
+	}
+
+	if (stack->current_scope)
+	{
+		new_scope->parent = stack->current_scope;
+		new_scope->scope_level = stack->current_scope->scope_level + 1;
+	}
+	else
+	{
+		new_scope->parent = NULL;
+		new_scope->scope_level = 0;
+	}
 	stack->current_scope = new_scope;
 	printf("Entered new scope (Level %d)\n", new_scope->scope_level);
 }
