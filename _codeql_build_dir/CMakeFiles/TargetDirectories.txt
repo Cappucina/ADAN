@@ -1,0 +1,3 @@
+/home/runner/work/ADAN/ADAN/_codeql_build_dir/CMakeFiles/adan.dir
+/home/runner/work/ADAN/ADAN/_codeql_build_dir/CMakeFiles/edit_cache.dir
+/home/runner/work/ADAN/ADAN/_codeql_build_dir/CMakeFiles/rebuild_cache.dir
