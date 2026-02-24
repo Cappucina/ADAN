@@ -124,8 +124,7 @@ SymbolEntry* search_buckets(SymbolEntry* buckets[], const char* name)
 
 SymbolEntry* stm_lookup_local(SymbolTableManager* manager, const char* name)
 {
-	SymbolEntry* local_entry = search_buckets(manager->buckets, name);
-	return local_entry;
+	return search_buckets(manager->buckets, name);
 }
 
 SymbolEntry* stm_lookup(SymbolTableManager* manager, const char* name)
@@ -156,11 +155,56 @@ void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned in
 	}
 
 	node->name = clone_string(name);
+	if (!node->name)
+	{
+		goto cleanup_node;
+	}
 	node->type = clone_string(type);
+	if (!node->type)
+	{
+		goto cleanup_node;
+	}
 	node->size = size;
 	node->decl_line = clone_string(decl_line);
+	if (!node->decl_line)
+	{
+		goto cleanup_node;
+	}
 	node->usage_line = clone_string(usage_line);
+	if (!node->usage_line)
+	{
+		goto cleanup_node;
+	}
 	node->address = clone_string(address);
+	if (!node->address)
+	{
+		goto cleanup_node;
+	}
+
 	node->next = manager->buckets[bucket];
 	manager->buckets[bucket] = node;
+	return;
+
+cleanup_node:
+	if (node->name)
+	{
+		free(node->name);
+	}
+	if (node->type)
+	{
+		free(node->type);
+	}
+	if (node->decl_line)
+	{
+		free(node->decl_line);
+	}
+	if (node->usage_line)
+	{
+		free(node->usage_line);
+	}
+	if (node->address)
+	{
+		free(node->address);
+	}
+	free(node);
 }
