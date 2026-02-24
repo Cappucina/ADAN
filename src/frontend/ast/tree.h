@@ -9,7 +9,7 @@ typedef enum ASTNodeType
 	AST_FUNCTION_DECLARATION,
 	AST_VARIABLE_DECLARATION,
 	AST_IMPORT_STATEMENT,
-	AST_PARAMETER,  // Goes inside of a param. list.
+	AST_PARAMETER,  // Goes inside of a parameter list.
 	AST_BLOCK,
 	AST_CALL_STATEMENT,  // Expression-call used as a statement.
 	AST_CALL,            // Function call. `callee(arg, ...)`.
