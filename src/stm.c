@@ -10,7 +10,7 @@ SymbolTableManager* stm_init()
 	SymbolTableManager* manager = (SymbolTableManager*)calloc(1, sizeof(SymbolTableManager));
 	if (!manager)
 	{
-		printf("No memory left to create a SymbolTableManager! (Error)");
+		printf("No memory left to create a SymbolTableManager! (Error)\n");
 		return NULL;
 	}
 	return manager;
@@ -21,7 +21,7 @@ SymbolTableStack* sts_init()
 	SymbolTableStack* stack = (SymbolTableStack*)calloc(1, sizeof(SymbolTableStack));
 	if (!stack)
 	{
-		printf("No memory left to create a SymbolTableStack! (Error)");
+		printf("No memory left to create a SymbolTableStack! (Error)\n");
 		return NULL;
 	}
 	SymbolTableManager* manager = stm_init();
@@ -123,7 +123,7 @@ void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned in
 {
 	if (search_buckets(manager->buckets, name) != NULL)
 	{
-		printf("\"%s\" was already found in the SymbolTable! (Error)", name);
+		printf("\"%s\" was already found in the SymbolTable! (Error)\n", name);
 		return;
 	}
 
@@ -131,7 +131,7 @@ void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned in
 	SymbolEntry* node = (SymbolEntry*)malloc(sizeof(SymbolEntry));
 	if (!node)
 	{
-		printf("No memory left to allocate for a symbol entry! (Error)");
+		printf("No memory left to allocate for a symbol entry! (Error)\n");
 		return;
 	}
 

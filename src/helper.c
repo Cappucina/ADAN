@@ -7,7 +7,7 @@ char* read_file(char* file_path)
 	FILE* fptr = fopen(file_path, "r");
 	if (!fptr)
 	{
-		printf("Failed to open file! (Error)");
+		printf("Failed to open file! (Error)\n");
 		return NULL;
 	}
 
@@ -18,7 +18,7 @@ char* read_file(char* file_path)
 	char* buffer = (char*)malloc(fsize + 1);
 	if (!buffer)
 	{
-		printf("Failed to allocate memory for read file buffer! (Error)");
+		printf("Failed to allocate memory for read file buffer! (Error)\n");
 		return NULL;
 	}
 
@@ -51,7 +51,7 @@ char* clone_string(const char* string)
 	char* alloc = (char*)malloc(total + 1);
 	if (!alloc)
 	{
-		printf("Failed to clone string during memory allocation segment! (Error)");
+		printf("Failed to clone string during memory allocation segment! (Error)\n");
 		return NULL;
 	}
 

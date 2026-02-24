@@ -238,5 +238,5 @@ void exit_recovery_mode(Parser* parser)
 	}
 
 	parser->recovery_mode = false;
-	printf("Exiting recovery mode. (Info)");
+	printf("Exiting recovery mode. (Info)\n");
 }

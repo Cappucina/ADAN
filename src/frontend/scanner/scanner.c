@@ -24,7 +24,7 @@ Scanner* scanner_init(char* source)
 	Scanner* scanner = (Scanner*)calloc(1, sizeof(Scanner));
 	if (!scanner)
 	{
-		printf("No memory left to allocate for a new scanner! (Error)");
+		printf("No memory left to allocate for a new scanner! (Error)\n");
 		return NULL;
 	}
 	scanner->position = 0;
@@ -40,7 +40,7 @@ void scanner_free(Scanner* scanner)
 {
 	if (!scanner)
 	{
-		printf("No scanner provided; nothing to free! (Error)");
+		printf("No scanner provided; nothing to free! (Error)\n");
 		return;
 	}
 	free(scanner);

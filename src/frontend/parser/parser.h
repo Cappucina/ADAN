@@ -6,6 +6,7 @@
 #include "../../stm.h"
 #include "../scanner/scanner.h"
 #include "../scanner/token.h"
+#include "../ast/tree.h"
 
 typedef struct Parser
 {
@@ -28,6 +29,6 @@ Parser* parser_init(Scanner* scanner);
 
 void parser_free(Parser* parser);
 
-void parser_parse_program(Parser* parser);
+ASTNode* parser_parse_program(Parser* parser);
 
 #endif

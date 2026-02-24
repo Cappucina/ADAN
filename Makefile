@@ -12,7 +12,7 @@ build: clean
 
 run: build
 	clear
-	@./$(BUILD_DIR)/$(BINARY)
+	@./$(BUILD_DIR)/$(BINARY) -f ./samples/hello.adn
 
 clean:
 	@rm -rf $(BUILD_DIR)

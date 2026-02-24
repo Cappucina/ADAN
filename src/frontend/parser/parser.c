@@ -5,6 +5,7 @@
 #include "parser_utils.h"
 #include "../../helper.h"
 #include "../../stm.h"
+#include "../ast/tree.h"
 
 Parser* parser_init(Scanner* scanner)
 {
@@ -66,29 +67,29 @@ static bool consume(Parser* parser, TokenType type, const char* error_message);
 
 static void synchronize(Parser* parser);
 
-static void parse_statement(Parser* parser);
+static ASTNode* parse_statement(Parser* parser);
 
-static void parse_function_declaration(Parser* parser);
+static ASTNode* parse_function_declaration(Parser* parser);
 
-static void parse_variable_declaration(Parser* parser);
+static ASTNode* parse_variable_declaration(Parser* parser);
 
-static void parse_import_statement(Parser* parser);
+static ASTNode* parse_import_statement(Parser* parser);
 
-static void parse_expression(Parser* parser);
+static ASTNode* parse_expression(Parser* parser);
 
-static void parse_primary(Parser* parser);
+static ASTNode* parse_primary(Parser* parser);
 
-static void parse_call(Parser* parser);
+static ASTNode* parse_call(Parser* parser);
 
-static void parse_call_statement(Parser* parser);
+static ASTNode* parse_call_statement(Parser* parser);
 
-static void parse_type(Parser* parser);
+static ASTNode* parse_type(Parser* parser);
 
-static void parse_parameter_list(Parser* parser);
+static ASTNode** parse_parameter_list(Parser* parser, size_t* count);
 
-static void parse_parameter(Parser* parser);
+static ASTNode* parse_parameter(Parser* parser);
 
-static void parse_block(Parser* parser);
+static ASTNode* parse_block(Parser* parser);
 
 // Helper implementations
 
@@ -136,60 +137,101 @@ static void synchronize(Parser* parser)
 	}
 }
 
-static void parse_type(Parser* parser)
+static ASTNode* parse_type(Parser* parser)
 {
 	if (match(parser, TOKEN_STRING_TYPE) || match(parser, TOKEN_I32_TYPE) ||
 	    match(parser, TOKEN_I64_TYPE) || match(parser, TOKEN_U32_TYPE) ||
 	    match(parser, TOKEN_U64_TYPE))
 	{
+		char* type_name = clone_string(peek_current(parser)->lexeme);
 		advance_token(parser);
+		ASTNode* node = ast_create_type(type_name);
+		free(type_name);
+		return node;
 	}
 	else
 	{
 		error_expected(parser, "type");
 		enter_recovery_mode(parser);
 		synchronize(parser);
+		return NULL;
 	}
 }
 
-static void parse_primary(Parser* parser)
+static ASTNode* parse_primary(Parser* parser)
 {
-	if (match(parser, TOKEN_IDENT) || match(parser, TOKEN_STRING) ||
-	    match(parser, TOKEN_NUMBER))
+	if (match(parser, TOKEN_IDENT))
 	{
+		char* name = clone_string(peek_current(parser)->lexeme);
 		advance_token(parser);
+		ASTNode* node = ast_create_identifier(name);
+		free(name);
+		return node;
+	}
+	else if (match(parser, TOKEN_STRING))
+	{
+		char* value = clone_string(peek_current(parser)->lexeme);
+		advance_token(parser);
+		ASTNode* node = ast_create_string_literal(value);
+		free(value);
+		return node;
+	}
+	else if (match(parser, TOKEN_NUMBER))
+	{
+		char* value = clone_string(peek_current(parser)->lexeme);
+		advance_token(parser);
+		ASTNode* node = ast_create_number_literal(value);
+		free(value);
+		return node;
 	}
 	else
 	{
 		error_expected(parser, "primary expression");
 		enter_recovery_mode(parser);
 		synchronize(parser);
+		return NULL;
 	}
 }
 
-static void parse_call(Parser* parser)
+static ASTNode* parse_call(Parser* parser)
 {
+	char* callee = clone_string(peek_current(parser)->lexeme);
 	consume(parser, TOKEN_IDENT, "Expected function name for call expression.");
 	consume(parser, TOKEN_LPAREN, "Expected '(' after function name in call expression.");
 
+	ASTNode** args = NULL;
+	size_t arg_count = 0;
+	size_t arg_capacity = 0;
+
 	if (!match(parser, TOKEN_RPAREN))
 	{
-		parse_expression(parser);
+		arg_capacity = 4;
+		args = malloc(sizeof(ASTNode*) * arg_capacity);
+		args[arg_count++] = parse_expression(parser);
+
 		while (match(parser, TOKEN_COMMA))
 		{
 			advance_token(parser);
-			parse_expression(parser);
+			if (arg_count >= arg_capacity)
+			{
+				arg_capacity *= 2;
+				args = realloc(args, sizeof(ASTNode*) * arg_capacity);
+			}
+			args[arg_count++] = parse_expression(parser);
 		}
 	}
 
 	consume(parser, TOKEN_RPAREN, "Expected ')' after arguments in call expression.");
+	ASTNode* call = ast_create_call(callee, args, arg_count);
+	free(callee);
+	return call;
 }
 
-static void parse_call_statement(Parser* parser)
+static ASTNode* parse_call_statement(Parser* parser)
 {
 	char* name = clone_string(peek_current(parser)->lexeme);
 
-	parse_call(parser);
+	ASTNode* call = parse_call(parser);
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after call statement.");
 
 	if (name)
@@ -197,51 +239,80 @@ static void parse_call_statement(Parser* parser)
 		parser_use_symbol(parser, name);
 	}
 	free(name);
+	return call;
 }
 
-static void parse_expression(Parser* parser)
+static ASTNode* parse_expression(Parser* parser)
 {
 	if (match(parser, TOKEN_IDENT) && peek_lookahead1(parser)->type == TOKEN_LPAREN)
-		parse_call(parser);
+		return parse_call(parser);
 	else if (match(parser, TOKEN_IDENT) || match(parser, TOKEN_STRING) ||
 	         match(parser, TOKEN_NUMBER))
-		parse_primary(parser);
+		return parse_primary(parser);
 	else
 	{
 		error_expected(parser, "expression");
 		enter_recovery_mode(parser);
 		synchronize(parser);
+		return NULL;
 	}
 }
 
-static void parse_parameter(Parser* parser)
+static ASTNode* parse_parameter(Parser* parser)
 {
+	char* name = clone_string(peek_current(parser)->lexeme);
 	consume(parser, TOKEN_IDENT, "Expected parameter name.");
 	consume(parser, TOKEN_COLON, "Expected ':' after parameter name.");
-	parse_type(parser);
+	ASTNode* type = parse_type(parser);
+	ASTNode* param = ast_create_parameter(name, type);
+	free(name);
+	return param;
 }
 
-static void parse_parameter_list(Parser* parser)
+static ASTNode** parse_parameter_list(Parser* parser, size_t* count)
 {
+	*count = 0;
+	ASTNode** params = NULL;
+	size_t capacity = 0;
+
 	if (!match(parser, TOKEN_RPAREN))
 	{
-		parse_parameter(parser);
+		capacity = 4;
+		params = malloc(sizeof(ASTNode*) * capacity);
+		params[(*count)++] = parse_parameter(parser);
+
 		while (match(parser, TOKEN_COMMA))
 		{
 			advance_token(parser);
-			parse_parameter(parser);
+			if (*count >= capacity)
+			{
+				capacity *= 2;
+				params = realloc(params, sizeof(ASTNode*) * capacity);
+			}
+			params[(*count)++] = parse_parameter(parser);
 		}
 	}
+
+	return params;
 }
 
-static void parse_block(Parser* parser)
+static ASTNode* parse_block(Parser* parser)
 {
 	parser_enter_scope(parser);
 	consume(parser, TOKEN_LBRACE, "Expected '{' to start block.");
 
+	ASTNode** statements = NULL;
+	size_t count = 0;
+	size_t capacity = 0;
+
 	while (!match(parser, TOKEN_RBRACE) && !match(parser, TOKEN_EOF) && !parser->recovery_mode)
 	{
-		parse_statement(parser);
+		if (count >= capacity)
+		{
+			capacity = capacity == 0 ? 4 : capacity * 2;
+			statements = realloc(statements, sizeof(ASTNode*) * capacity);
+		}
+		statements[count++] = parse_statement(parser);
 	}
 
 	if (parser->recovery_mode)
@@ -251,16 +322,21 @@ static void parse_block(Parser* parser)
 
 	consume(parser, TOKEN_RBRACE, "Expected '}' to end block.");
 	parser_exit_scope(parser);
+	return ast_create_block(statements, count);
 }
 
-static void parse_import_statement(Parser* parser)
+static ASTNode* parse_import_statement(Parser* parser)
 {
 	consume(parser, TOKEN_IMPORT, "Expected 'import' keyword for import statement.");
+	char* path = clone_string(peek_current(parser)->lexeme);
 	consume(parser, TOKEN_STRING, "Expected string literal after 'import' keyword.");
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after import statement.");
+	ASTNode* import = ast_create_import(path);
+	free(path);
+	return import;
 }
 
-static void parse_variable_declaration(Parser* parser)
+static ASTNode* parse_variable_declaration(Parser* parser)
 {
 	consume(parser, TOKEN_SET, "Expected 'set' keyword for variable declaration.");
 
@@ -269,22 +345,25 @@ static void parse_variable_declaration(Parser* parser)
 
 	consume(parser, TOKEN_COLON, "Expected ':' after variable name.");
 
-	char* type = clone_string(peek_current(parser)->lexeme);
-	parse_type(parser);
+	char* type_name = clone_string(peek_current(parser)->lexeme);
+	ASTNode* type = parse_type(parser);
 
 	consume(parser, TOKEN_EQUALS, "Expected '=' after variable type.");
-	parse_expression(parser);
+	ASTNode* initializer = parse_expression(parser);
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after variable declaration.");
 
-	if (name && type && !parser->recovery_mode)
+	if (name && type_name && !parser->recovery_mode)
 	{
-		parser_declare_variable(parser, name, type, 0);
+		parser_declare_variable(parser, name, type_name, 0);
 	}
+	free(type_name);
+
+	ASTNode* var_decl = ast_create_variable_declaration(name, type, initializer);
 	free(name);
-	free(type);
+	return var_decl;
 }
 
-static void parse_function_declaration(Parser* parser)
+static ASTNode* parse_function_declaration(Parser* parser)
 {
 	consume(parser, TOKEN_FUN, "Expected 'fun' keyword for function declaration.");
 
@@ -292,63 +371,79 @@ static void parse_function_declaration(Parser* parser)
 	consume(parser, TOKEN_IDENT, "Expected function name after 'fun' keyword.");
 
 	consume(parser, TOKEN_LPAREN, "Expected '(' after function name.");
-	parse_parameter_list(parser);
+	size_t param_count = 0;
+	ASTNode** params = parse_parameter_list(parser, &param_count);
 	consume(parser, TOKEN_RPAREN, "Expected ')' after parameter list.");
 
 	consume(parser, TOKEN_COLON, "Expected ':' after parameter list for return type.");
 
-	char* return_type = clone_string(peek_current(parser)->lexeme);
-	parse_type(parser);
+	char* return_type_name = clone_string(peek_current(parser)->lexeme);
+	ASTNode* return_type = parse_type(parser);
 
-	if (name && return_type && !parser->recovery_mode)
+	if (name && return_type_name && !parser->recovery_mode)
 	{
-		parser_declare_function(parser, name, return_type);
+		parser_declare_function(parser, name, return_type_name);
 	}
-	free(name);
-	free(return_type);
+	free(return_type_name);
 
-	parse_block(parser);
+	ASTNode* body = parse_block(parser);
+	ASTNode* func_decl =
+	    ast_create_function_declaration(name, params, param_count, return_type, body);
+	free(name);
+	return func_decl;
 }
 
-static void parse_statement(Parser* parser)
+static ASTNode* parse_statement(Parser* parser)
 {
 	if (parser->recovery_mode)
 	{
-		return;
+		return NULL;
 	}
 	switch (peek_current(parser)->type)
 	{
 	case TOKEN_FUN:
-		parse_function_declaration(parser);
-		break;
+		return parse_function_declaration(parser);
 	case TOKEN_IMPORT:
-		parse_import_statement(parser);
-		break;
+		return parse_import_statement(parser);
 	case TOKEN_SET:
-		parse_variable_declaration(parser);
-		break;
+		return parse_variable_declaration(parser);
 	case TOKEN_IDENT:
-		parse_call_statement(parser);
-		break;
+		return parse_call_statement(parser);
 	default:
 		error_expected(parser, "statement");
 		enter_recovery_mode(parser);
 		synchronize(parser);
-		break;
+		return NULL;
 	}
 }
 
 // Primary parsing function
 
-void parser_parse_program(Parser* parser)
+ASTNode* parser_parse_program(Parser* parser)
 {
+	ASTNode** decls = NULL;
+	size_t count = 0;
+	size_t capacity = 0;
+
 	while (peek_current(parser) && peek_current(parser)->type != TOKEN_EOF)
 	{
-		parse_statement(parser);
+		if (count >= capacity)
+		{
+			capacity = capacity == 0 ? 8 : capacity * 2;
+			decls = realloc(decls, sizeof(ASTNode*) * capacity);
+		}
+
+		ASTNode* stmt = parse_statement(parser);
+		if (stmt)
+		{
+			decls[count++] = stmt;
+		}
 
 		if (parser->recovery_mode)
 		{
 			exit_recovery_mode(parser);
 		}
 	}
+
+	return ast_create_program(decls, count);
 }
