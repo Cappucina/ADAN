@@ -25,11 +25,11 @@ void ir_emitter_destroy(IREmitterContext *ctx)
 	free(ctx);
 }
 
-int ir_emite_module_to_lltext(IRModule *m, FILE *out)
+int ir_emit_module_to_lltext(IRModule *m, FILE *out)
 {
 	if (!m || !out)
 	{
-		fprintf(stderr, "Invalid arguments to ir_emite_module_to_lltext. (Error)\n");
+		fprintf(stderr, "Invalid arguments to ir_emit_module_to_lltext. (Error)\n");
 		return -1;
 	}
 	ir_print_module(m, out);
