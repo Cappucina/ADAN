@@ -1,6 +1,12 @@
 #ifndef BACKEND_IR_OPT_H
 #define BACKEND_IR_OPT_H
 
-/* Placeholder for IR optimization pass interfaces (const-fold, dce, etc.) */
+void ir_opt_const_fold(void *module);
+
+void ir_opt_dead_code_elim(void *module);
+
+void ir_opt_simplify(void *module);
+
+void ir_opt_run_all(void *module);
 
 #endif
