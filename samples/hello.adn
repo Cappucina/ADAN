@@ -1,8 +1,12 @@
 import "adan/io";
 
-set language: string = "ADAN";
+fun language(): string
+{
+    set adan: string = "ADAN";
+    return adan;
+}
 
-fun main(): i32 {
-    println(language);
-    return 0;
+fun main(): i32
+{
+    println(language());
 }
