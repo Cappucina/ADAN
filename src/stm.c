@@ -128,6 +128,11 @@ SymbolEntry* search_buckets(SymbolEntry* buckets[], const char* name)
 
 SymbolEntry* stm_lookup_local(SymbolTableManager* manager, const char* name)
 {
+	if (!manager)
+	{
+		fprintf(stderr, "stm_lookup_local called with NULL manager. (Warning)\n");
+		return NULL;
+	}
 	return search_buckets(manager->buckets, name);
 }
 
