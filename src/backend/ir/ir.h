@@ -31,7 +31,7 @@ typedef enum
 typedef struct IRType
 {
 	IRTypeKind kind;
-	struct IRType *pointee;  // for IR_T_PTR
+	struct IRType* pointee;  // for IR_T_PTR
 } IRType;
 
 typedef struct IRValue
@@ -43,7 +43,7 @@ typedef struct IRValue
 		int64_t i64;
 		double f64;
 	} u;
-	struct IRType *type;
+	struct IRType* type;
 } IRValue;
 
 typedef enum
@@ -57,100 +57,100 @@ typedef enum
 typedef struct IRInstruction
 {
 	IrInstrKind kind;
-	IRValue *dest;
-	IRValue *operands[3];
+	IRValue* dest;
+	IRValue* operands[3];
 	int opcode;
-	struct IRInstruction *next;
+	struct IRInstruction* next;
 } IRInstruction;
 
 typedef struct IRBlock
 {
-	char *name;
+	char* name;
 	IRInstruction *first, *last;
-	struct IRBlock *next;
+	struct IRBlock* next;
 } IRBlock;
 
 typedef struct IRFunction
 {
-	char *name;
-	IRType *return_type;
-	IRBlock *blocks;
-	struct IRFunction *next;
+	char* name;
+	IRType* return_type;
+	IRBlock* blocks;
+	struct IRFunction* next;
 } IRFunction;
 
 typedef struct IRModule
 {
-	IRFunction *functions;
+	IRFunction* functions;
 } IRModule;
 
 // Builder functions
 
-IRModule *ir_module_create();
+IRModule* ir_module_create();
 
-void ir_module_destroy(IRModule *m);
+void ir_module_destroy(IRModule* m);
 
-void ir_module_add_function(IRModule *m, IRFunction *f);
+void ir_module_add_function(IRModule* m, IRFunction* f);
 
-void ir_function_add_block(IRFunction *fn, IRBlock *b);
+void ir_function_add_block(IRFunction* fn, IRBlock* b);
 
-void ir_print_module(IRModule *m, FILE *out);
+void ir_print_module(IRModule* m, FILE* out);
 
-IRType *ir_type_i64(void);
+IRType* ir_type_i64(void);
 
-IRType *ir_type_f64(void);
+IRType* ir_type_f64(void);
 
-IRType *ir_type_void(void);
+IRType* ir_type_void(void);
 
-IRType *ir_type_ptr(IRType *pointee);
+IRType* ir_type_ptr(IRType* pointee);
 
-IRFunction *ir_function_create(const char *name, IRType *return_type);
+IRFunction* ir_function_create(const char* name, IRType* return_type);
 
-IRBlock *ir_block_create(const char *name);
+IRBlock* ir_block_create(const char* name);
 
-IRFunction *ir_function_create_in_module(IRModule *m, const char *name, IRType *return_type);
+IRFunction* ir_function_create_in_module(IRModule* m, const char* name, IRType* return_type);
 
-IRBlock *ir_block_create_in_function(IRFunction *f, const char *name);
+IRBlock* ir_block_create_in_function(IRFunction* f, const char* name);
 
-IRValue *ir_param_create(IRFunction *f, const char *name, IRType *type);
+IRValue* ir_param_create(IRFunction* f, const char* name, IRType* type);
 
-IRValue *ir_global_create(IRModule *m, const char *name, IRType *type, IRValue *initial);
+IRValue* ir_global_create(IRModule* m, const char* name, IRType* type, IRValue* initial);
 
-IRValue *ir_emit_alloca(IRBlock *b, IRType *type);
+IRValue* ir_emit_alloca(IRBlock* b, IRType* type);
 
-IRValue *ir_emit_load(IRBlock *b, IRValue *ptr);
+IRValue* ir_emit_load(IRBlock* b, IRValue* ptr);
 
-void ir_emit_store(IRBlock *b, IRValue *ptr, IRValue *val);
+void ir_emit_store(IRBlock* b, IRValue* ptr, IRValue* val);
 
-IRValue *ir_emit_call(IRBlock *b, IRFunction *callee, IRValue **args, size_t nargs);
+IRValue* ir_emit_call(IRBlock* b, IRFunction* callee, IRValue** args, size_t nargs);
 
-void ir_emit_br(IRBlock *b, IRBlock *target);
+void ir_emit_br(IRBlock* b, IRBlock* target);
 
-void ir_emit_cbr(IRBlock *b, IRValue *cond, IRBlock *true_b, IRBlock *false_b);
+void ir_emit_cbr(IRBlock* b, IRValue* cond, IRBlock* true_b, IRBlock* false_b);
 
-IRValue *ir_emit_phi(IRBlock *b, IRType *t, IRValue **values, IRBlock **blocks, size_t n);
+IRValue* ir_emit_phi(IRBlock* b, IRType* t, IRValue** values, IRBlock** blocks, size_t n);
 
-int ir_validate_module(IRModule *m);
+int ir_validate_module(IRModule* m);
 
-void ir_replace_value(IRModule *m, IRValue *oldv, IRValue *newv);
+void ir_replace_value(IRModule* m, IRValue* oldv, IRValue* newv);
 
-void ir_remove_instruction(IRBlock *b, IRInstruction *i);
+void ir_remove_instruction(IRBlock* b, IRInstruction* i);
 
-void ir_instr_append(IRBlock *b, IRInstruction *i);
+void ir_instr_append(IRBlock* b, IRInstruction* i);
 
-char *ir_strdup(IRModule *m, const char *s);
+char* ir_strdup(IRModule* m, const char* s);
 
-int ir_dump_module_to_file(IRModule *m, const char *path);
+int ir_dump_module_to_file(IRModule* m, const char* path);
 
-void ir_walk_module(IRModule *m, void (*fn)(IRFunction *, void *), void *user);
+void ir_walk_module(IRModule* m, void (*fn)(IRFunction*, void*), void* user);
 
-void ir_walk_function(IRFunction *f, void (*fn)(IRBlock *, void *), void *user);
+void ir_walk_function(IRFunction* f, void (*fn)(IRBlock*, void*), void* user);
 
-IRValue *ir_emit_binop(IRBlock *block, const char *op, IRValue *lhs, IRValue *rhs);
+IRValue* ir_emit_binop(IRBlock* block, const char* op, IRValue* lhs, IRValue* rhs);
 
-void ir_emit_ret(IRBlock *block, IRValue *value);
+void ir_emit_ret(IRBlock* block, IRValue* value);
 
-IRValue *ir_const_i64(int64_t value);
+IRValue* ir_const_i64(int64_t value);
 
-IRValue *ir_temp(IRBlock *block, IRType *type);
+IRValue* ir_temp(IRBlock* block, IRType* type);
 
 #endif

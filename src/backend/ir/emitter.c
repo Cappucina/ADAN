@@ -2,9 +2,9 @@
 
 #include "emitter.h"
 
-IREmitterContext *ir_emitter_create(void)
+IREmitterContext* ir_emitter_create(void)
 {
-	IREmitterContext *ctx = (IREmitterContext *)malloc(sizeof(IREmitterContext));
+	IREmitterContext* ctx = (IREmitterContext*)malloc(sizeof(IREmitterContext));
 	if (!ctx)
 	{
 		fprintf(stderr, "Failed to allocate IREmitterContext. (Error)\n");
@@ -14,7 +14,7 @@ IREmitterContext *ir_emitter_create(void)
 	return ctx;
 }
 
-void ir_emitter_destroy(IREmitterContext *ctx)
+void ir_emitter_destroy(IREmitterContext* ctx)
 {
 	if (!ctx)
 	{
@@ -25,7 +25,7 @@ void ir_emitter_destroy(IREmitterContext *ctx)
 	free(ctx);
 }
 
-int ir_emit_module_to_lltext(IRModule *m, FILE *out)
+int ir_emit_module_to_lltext(IRModule* m, FILE* out)
 {
 	if (!m || !out)
 	{
@@ -36,14 +36,14 @@ int ir_emit_module_to_lltext(IRModule *m, FILE *out)
 	return 0;
 }
 
-int ir_emit_module_to_llvm(IRModule *m, const char *out_path)
+int ir_emit_module_to_llvm(IRModule* m, const char* out_path)
 {
 	if (!m || !out_path)
 	{
 		fprintf(stderr, "Invalid arguments to ir_emit_module_to_llvm. (Error)\n");
 		return -1;
 	}
-	FILE *f = fopen(out_path, "w");
+	FILE* f = fopen(out_path, "w");
 	if (!f)
 	{
 		fprintf(stderr, "Failed to open output file '%s' for writing. (Error)\n", out_path);

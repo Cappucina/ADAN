@@ -4,9 +4,9 @@
 
 #include "ir.h"
 
-IRModule *ir_module_create()
+IRModule* ir_module_create()
 {
-	IRModule *mod = malloc(sizeof(IRModule));
+	IRModule* mod = malloc(sizeof(IRModule));
 	if (!mod)
 	{
 		fprintf(stderr, "Failed to allocate IRModule. (Error)\n");
@@ -17,27 +17,27 @@ IRModule *ir_module_create()
 	return mod;
 }
 
-void ir_module_destroy(IRModule *mod)
+void ir_module_destroy(IRModule* mod)
 {
 	if (!mod)
 	{
 		fprintf(stderr, "Attempted to destroy a NULL IRModule. (Warning)\n");
 		return;
 	}
-	IRFunction *f = mod->functions;
+	IRFunction* f = mod->functions;
 	while (f)
 	{
-		IRFunction *fnext = f->next;
+		IRFunction* fnext = f->next;
 		free(f->name);
-		IRBlock *b = f->blocks;
+		IRBlock* b = f->blocks;
 		while (b)
 		{
-			IRBlock *bnext = b->next;
+			IRBlock* bnext = b->next;
 			free(b->name);
-			IRInstruction *i = b->first;
+			IRInstruction* i = b->first;
 			while (i)
 			{
-				IRInstruction *inext = i->next;
+				IRInstruction* inext = i->next;
 				free(i);
 				i = inext;
 			}
@@ -51,7 +51,7 @@ void ir_module_destroy(IRModule *mod)
 	free(mod);
 }
 
-void ir_module_add_function(IRModule *mod, IRFunction *func)
+void ir_module_add_function(IRModule* mod, IRFunction* func)
 {
 	if (!mod || !func)
 	{
@@ -64,7 +64,7 @@ void ir_module_add_function(IRModule *mod, IRFunction *func)
 		mod->functions = func;
 		return;
 	}
-	IRFunction *it = mod->functions;
+	IRFunction* it = mod->functions;
 	while (it->next)
 		it = it->next;
 	it->next = func;
@@ -72,7 +72,7 @@ void ir_module_add_function(IRModule *mod, IRFunction *func)
 	        func->name ? func->name : "<anon>");
 }
 
-void ir_function_add_block(IRFunction *func, IRBlock *block)
+void ir_function_add_block(IRFunction* func, IRBlock* block)
 {
 	if (!func || !block)
 	{
@@ -85,7 +85,7 @@ void ir_function_add_block(IRFunction *func, IRBlock *block)
 		func->blocks = block;
 		return;
 	}
-	IRBlock *it = func->blocks;
+	IRBlock* it = func->blocks;
 	while (it->next)
 		it = it->next;
 	it->next = block;
@@ -93,22 +93,22 @@ void ir_function_add_block(IRFunction *func, IRBlock *block)
 	        block->name ? block->name : "<anon>", func->name ? func->name : "<anon>");
 }
 
-void ir_print_module(IRModule *mod, FILE *out)
+void ir_print_module(IRModule* mod, FILE* out)
 {
 	if (!mod || !out)
 	{
 		fprintf(stderr, "Invalid arguments to ir_print_module. (Error)\n");
 		return;
 	}
-	IRFunction *f = mod->functions;
+	IRFunction* f = mod->functions;
 	while (f)
 	{
 		fprintf(out, "function %s\n", f->name);
-		IRBlock *b = f->blocks;
+		IRBlock* b = f->blocks;
 		while (b)
 		{
 			fprintf(out, "  block %s:\n", b->name);
-			IRInstruction *ins = b->first;
+			IRInstruction* ins = b->first;
 			while (ins)
 			{
 				switch (ins->kind)
@@ -132,9 +132,9 @@ void ir_print_module(IRModule *mod, FILE *out)
 	fprintf(stderr, "Module printed to output. (Info)\n");
 }
 
-IRType *ir_type_i64(void)
+IRType* ir_type_i64(void)
 {
-	IRType *t = malloc(sizeof(IRType));
+	IRType* t = malloc(sizeof(IRType));
 	if (!t)
 	{
 		fprintf(stderr, "Failed to allocate IRType (i64). (Error)\n");
@@ -146,9 +146,9 @@ IRType *ir_type_i64(void)
 	return t;
 }
 
-IRType *ir_type_f64(void)
+IRType* ir_type_f64(void)
 {
-	IRType *t = malloc(sizeof(IRType));
+	IRType* t = malloc(sizeof(IRType));
 	if (!t)
 	{
 		fprintf(stderr, "Failed to allocate IRType (f64). (Error)\n");
@@ -160,9 +160,9 @@ IRType *ir_type_f64(void)
 	return t;
 }
 
-IRType *ir_type_void(void)
+IRType* ir_type_void(void)
 {
-	IRType *t = malloc(sizeof(IRType));
+	IRType* t = malloc(sizeof(IRType));
 	if (!t)
 	{
 		fprintf(stderr, "Failed to allocate IRType (void). (Error)\n");
@@ -174,9 +174,9 @@ IRType *ir_type_void(void)
 	return t;
 }
 
-IRType *ir_type_ptr(IRType *pointee)
+IRType* ir_type_ptr(IRType* pointee)
 {
-	IRType *t = malloc(sizeof(IRType));
+	IRType* t = malloc(sizeof(IRType));
 	if (!t)
 	{
 		fprintf(stderr, "Failed to allocate IRType (ptr). (Error)\n");
@@ -188,14 +188,14 @@ IRType *ir_type_ptr(IRType *pointee)
 	return t;
 }
 
-IRFunction *ir_function_create(const char *name, IRType *return_type)
+IRFunction* ir_function_create(const char* name, IRType* return_type)
 {
 	if (!name)
 	{
 		fprintf(stderr, "ir_function_create called without a name. (Error)\n");
 		return NULL;
 	}
-	IRFunction *f = malloc(sizeof(IRFunction));
+	IRFunction* f = malloc(sizeof(IRFunction));
 	if (!f)
 	{
 		fprintf(stderr, "Failed to allocate IRFunction. (Error)\n");
@@ -209,14 +209,14 @@ IRFunction *ir_function_create(const char *name, IRType *return_type)
 	return f;
 }
 
-IRBlock *ir_block_create(const char *name)
+IRBlock* ir_block_create(const char* name)
 {
 	if (!name)
 	{
 		fprintf(stderr, "ir_block_create called without a name. (Error)\n");
 		return NULL;
 	}
-	IRBlock *b = malloc(sizeof(IRBlock));
+	IRBlock* b = malloc(sizeof(IRBlock));
 	if (!b)
 	{
 		fprintf(stderr, "Failed to allocate IRBlock. (Error)\n");
@@ -230,18 +230,18 @@ IRBlock *ir_block_create(const char *name)
 	return b;
 }
 
-IRValue *ir_emit_binop(IRBlock *block, const char *op, IRValue *lhs, IRValue *rhs)
+IRValue* ir_emit_binop(IRBlock* block, const char* op, IRValue* lhs, IRValue* rhs)
 {
 	if (!block || !lhs || !rhs)
 	{
 		fprintf(stderr, "Invalid arguments to ir_emit_binop. (Error)\n");
 		return NULL;
 	}
-	IRInstruction *ins = malloc(sizeof(IRInstruction));
+	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
 		return NULL;
 	ins->kind = IR_BINOP;
-	IRValue *dst = ir_temp(block, lhs->type);
+	IRValue* dst = ir_temp(block, lhs->type);
 	ins->dest = dst;
 	ins->operands[0] = lhs;
 	ins->operands[1] = rhs;
@@ -259,14 +259,14 @@ IRValue *ir_emit_binop(IRBlock *block, const char *op, IRValue *lhs, IRValue *rh
 	return dst;
 }
 
-void ir_emit_ret(IRBlock *block, IRValue *value)
+void ir_emit_ret(IRBlock* block, IRValue* value)
 {
 	if (!block)
 	{
 		fprintf(stderr, "Attempted to emit return into a NULL block. (Warning)\n");
 		return;
 	}
-	IRInstruction *ins = malloc(sizeof(IRInstruction));
+	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
 		return;
 	ins->kind = IR_RET;
@@ -286,9 +286,9 @@ void ir_emit_ret(IRBlock *block, IRValue *value)
 	}
 }
 
-IRValue *ir_const_i64(int64_t value)
+IRValue* ir_const_i64(int64_t value)
 {
-	IRValue *v = malloc(sizeof(IRValue));
+	IRValue* v = malloc(sizeof(IRValue));
 	if (!v)
 	{
 		fprintf(stderr, "Failed to allocate IRValue (const i64). (Error)\n");
@@ -301,7 +301,7 @@ IRValue *ir_const_i64(int64_t value)
 	return v;
 }
 
-IRValue *ir_temp(IRBlock *block, IRType *type)
+IRValue* ir_temp(IRBlock* block, IRType* type)
 {
 	if (!block || !type)
 	{
@@ -309,7 +309,7 @@ IRValue *ir_temp(IRBlock *block, IRType *type)
 		return NULL;
 	}
 	static int next_temp = 1;
-	IRValue *v = malloc(sizeof(IRValue));
+	IRValue* v = malloc(sizeof(IRValue));
 	if (!v)
 		return NULL;
 	v->kind = IRV_TEMP;
@@ -319,14 +319,14 @@ IRValue *ir_temp(IRBlock *block, IRType *type)
 	return v;
 }
 
-IRFunction *ir_function_create_in_module(IRModule *m, const char *name, IRType *return_type)
+IRFunction* ir_function_create_in_module(IRModule* m, const char* name, IRType* return_type)
 {
 	if (!m || !name)
 	{
 		fprintf(stderr, "Invalid arguments to ir_function_create_in_module. (Error)\n");
 		return NULL;
 	}
-	IRFunction *f = ir_function_create(name, return_type);
+	IRFunction* f = ir_function_create(name, return_type);
 	if (!f)
 		return NULL;
 	ir_module_add_function(m, f);
@@ -334,14 +334,14 @@ IRFunction *ir_function_create_in_module(IRModule *m, const char *name, IRType *
 	return f;
 }
 
-IRBlock *ir_block_create_in_function(IRFunction *f, const char *name)
+IRBlock* ir_block_create_in_function(IRFunction* f, const char* name)
 {
 	if (!f || !name)
 	{
 		fprintf(stderr, "Invalid arguments to ir_block_create_in_function. (Error)\n");
 		return NULL;
 	}
-	IRBlock *b = ir_block_create(name);
+	IRBlock* b = ir_block_create(name);
 	if (!b)
 		return NULL;
 	ir_function_add_block(f, b);
@@ -350,14 +350,14 @@ IRBlock *ir_block_create_in_function(IRFunction *f, const char *name)
 	return b;
 }
 
-IRValue *ir_param_create(IRFunction *f, const char *name, IRType *type)
+IRValue* ir_param_create(IRFunction* f, const char* name, IRType* type)
 {
 	if (!f || !type)
 	{
 		fprintf(stderr, "Invalid arguments to ir_param_create. (Error)\n");
 		return NULL;
 	}
-	IRValue *v = malloc(sizeof(IRValue));
+	IRValue* v = malloc(sizeof(IRValue));
 	if (!v)
 	{
 		fprintf(stderr, "Failed to allocate IRValue for param. (Error)\n");
@@ -372,14 +372,14 @@ IRValue *ir_param_create(IRFunction *f, const char *name, IRType *type)
 	return v;
 }
 
-IRValue *ir_global_create(IRModule *m, const char *name, IRType *type, IRValue *initial)
+IRValue* ir_global_create(IRModule* m, const char* name, IRType* type, IRValue* initial)
 {
 	if (!m || !name || !type)
 	{
 		fprintf(stderr, "Invalid arguments to ir_global_create. (Error)\n");
 		return NULL;
 	}
-	IRValue *v = malloc(sizeof(IRValue));
+	IRValue* v = malloc(sizeof(IRValue));
 	if (!v)
 	{
 		fprintf(stderr, "Failed to allocate IRValue for global. (Error)\n");
@@ -393,18 +393,18 @@ IRValue *ir_global_create(IRModule *m, const char *name, IRType *type, IRValue *
 	return v;
 }
 
-IRValue *ir_emit_alloca(IRBlock *b, IRType *type)
+IRValue* ir_emit_alloca(IRBlock* b, IRType* type)
 {
 	if (!b || !type)
 	{
 		fprintf(stderr, "Invalid arguments to ir_emit_alloca. (Error)\n");
 		return NULL;
 	}
-	IRInstruction *ins = malloc(sizeof(IRInstruction));
+	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
 		return NULL;
 	ins->kind = IR_ALLOCA;
-	IRValue *dst = ir_temp(b, type);
+	IRValue* dst = ir_temp(b, type);
 	ins->dest = dst;
 	ins->operands[0] = NULL;
 	ins->operands[1] = NULL;
@@ -422,18 +422,18 @@ IRValue *ir_emit_alloca(IRBlock *b, IRType *type)
 	return dst;
 }
 
-IRValue *ir_emit_load(IRBlock *b, IRValue *ptr)
+IRValue* ir_emit_load(IRBlock* b, IRValue* ptr)
 {
 	if (!b || !ptr)
 	{
 		fprintf(stderr, "Invalid arguments to ir_emit_load. (Error)\n");
 		return NULL;
 	}
-	IRInstruction *ins = malloc(sizeof(IRInstruction));
+	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
 		return NULL;
 	ins->kind = IR_LOAD;
-	IRValue *dst = ir_temp(b, ptr->type ? ptr->type->pointee : NULL);
+	IRValue* dst = ir_temp(b, ptr->type ? ptr->type->pointee : NULL);
 	ins->dest = dst;
 	ins->operands[0] = ptr;
 	ins->operands[1] = NULL;
@@ -451,14 +451,14 @@ IRValue *ir_emit_load(IRBlock *b, IRValue *ptr)
 	return dst;
 }
 
-void ir_emit_store(IRBlock *b, IRValue *ptr, IRValue *val)
+void ir_emit_store(IRBlock* b, IRValue* ptr, IRValue* val)
 {
 	if (!b || !ptr || !val)
 	{
 		fprintf(stderr, "Invalid arguments to ir_emit_store. (Error)\n");
 		return;
 	}
-	IRInstruction *ins = malloc(sizeof(IRInstruction));
+	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
 		return;
 	ins->kind = IR_STORE;
@@ -478,18 +478,18 @@ void ir_emit_store(IRBlock *b, IRValue *ptr, IRValue *val)
 	}
 }
 
-IRValue *ir_emit_call(IRBlock *b, IRFunction *callee, IRValue **args, size_t nargs)
+IRValue* ir_emit_call(IRBlock* b, IRFunction* callee, IRValue** args, size_t nargs)
 {
 	if (!b || !callee)
 	{
 		fprintf(stderr, "Invalid arguments to ir_emit_call. (Error)\n");
 		return NULL;
 	}
-	IRInstruction *ins = malloc(sizeof(IRInstruction));
+	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
 		return NULL;
 	ins->kind = IR_CALL;
-	IRValue *dst = NULL;
+	IRValue* dst = NULL;
 	if (callee->return_type && callee->return_type->kind != IR_T_VOID)
 	{
 		dst = ir_temp(b, callee->return_type);
@@ -497,7 +497,7 @@ IRValue *ir_emit_call(IRBlock *b, IRFunction *callee, IRValue **args, size_t nar
 	}
 	ins->operands[0] = (nargs > 0) ? args[0] : NULL;
 	ins->operands[1] = (nargs > 1) ? args[1] : NULL;
-	ins->operands[2] = (IRValue *)(void *)callee;
+	ins->operands[2] = (IRValue*)(void*)callee;
 	ins->next = NULL;
 	if (b->last)
 	{
@@ -511,19 +511,19 @@ IRValue *ir_emit_call(IRBlock *b, IRFunction *callee, IRValue **args, size_t nar
 	return dst;
 }
 
-void ir_emit_br(IRBlock *b, IRBlock *target)
+void ir_emit_br(IRBlock* b, IRBlock* target)
 {
 	if (!b || !target)
 	{
 		fprintf(stderr, "Invalid arguments to ir_emit_br. (Error)\n");
 		return;
 	}
-	IRInstruction *ins = malloc(sizeof(IRInstruction));
+	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
 		return;
 	ins->kind = IR_BR;
 	ins->dest = NULL;
-	ins->operands[0] = (IRValue *)(void *)target;
+	ins->operands[0] = (IRValue*)(void*)target;
 	ins->operands[1] = NULL;
 	ins->operands[2] = NULL;
 	ins->next = NULL;
@@ -538,21 +538,21 @@ void ir_emit_br(IRBlock *b, IRBlock *target)
 	}
 }
 
-void ir_emit_cbr(IRBlock *b, IRValue *cond, IRBlock *true_b, IRBlock *false_b)
+void ir_emit_cbr(IRBlock* b, IRValue* cond, IRBlock* true_b, IRBlock* false_b)
 {
 	if (!b || !cond || !true_b || !false_b)
 	{
 		fprintf(stderr, "Invalid arguments to ir_emit_cbr. (Error)\n");
 		return;
 	}
-	IRInstruction *ins = malloc(sizeof(IRInstruction));
+	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
 		return;
 	ins->kind = IR_CBR;
 	ins->dest = NULL;
 	ins->operands[0] = cond;
-	ins->operands[1] = (IRValue *)(void *)true_b;
-	ins->operands[2] = (IRValue *)(void *)false_b;
+	ins->operands[1] = (IRValue*)(void*)true_b;
+	ins->operands[2] = (IRValue*)(void*)false_b;
 	ins->next = NULL;
 	if (b->last)
 	{
@@ -565,18 +565,18 @@ void ir_emit_cbr(IRBlock *b, IRValue *cond, IRBlock *true_b, IRBlock *false_b)
 	}
 }
 
-IRValue *ir_emit_phi(IRBlock *b, IRType *t, IRValue **values, IRBlock **blocks, size_t n)
+IRValue* ir_emit_phi(IRBlock* b, IRType* t, IRValue** values, IRBlock** blocks, size_t n)
 {
 	if (!b || !t || (n && (!values || !blocks)))
 	{
 		fprintf(stderr, "Invalid arguments to ir_emit_phi. (Error)\n");
 		return NULL;
 	}
-	IRInstruction *ins = malloc(sizeof(IRInstruction));
+	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
 		return NULL;
 	ins->kind = IR_PHI;
-	IRValue *dst = ir_temp(b, t);
+	IRValue* dst = ir_temp(b, t);
 	ins->dest = dst;
 	ins->operands[0] = (n > 0) ? values[0] : NULL;
 	ins->operands[1] = (n > 1) ? values[1] : NULL;
@@ -594,22 +594,22 @@ IRValue *ir_emit_phi(IRBlock *b, IRType *t, IRValue **values, IRBlock **blocks, 
 	return dst;
 }
 
-int ir_validate_module(IRModule *m)
+int ir_validate_module(IRModule* m)
 {
 	if (!m)
 	{
 		fprintf(stderr, "ir_validate_module called with NULL module. (Error)\n");
 		return 0;
 	}
-	IRFunction *f = m->functions;
+	IRFunction* f = m->functions;
 	while (f)
 	{
-		IRBlock *b = f->blocks;
+		IRBlock* b = f->blocks;
 		while (b)
 		{
 			if (!b->last)
 				return 0;
-			IRInstruction *t = b->last;
+			IRInstruction* t = b->last;
 			if (!(t->kind == IR_RET || t->kind == IR_BR || t->kind == IR_CBR))
 				return 0;
 			b = b->next;
@@ -619,20 +619,20 @@ int ir_validate_module(IRModule *m)
 	return 1;
 }
 
-void ir_replace_value(IRModule *m, IRValue *oldv, IRValue *newv)
+void ir_replace_value(IRModule* m, IRValue* oldv, IRValue* newv)
 {
 	if (!m || !oldv || !newv)
 	{
 		fprintf(stderr, "Invalid arguments to ir_replace_value. (Error)\n");
 		return;
 	}
-	IRFunction *f = m->functions;
+	IRFunction* f = m->functions;
 	while (f)
 	{
-		IRBlock *b = f->blocks;
+		IRBlock* b = f->blocks;
 		while (b)
 		{
-			IRInstruction *ins = b->first;
+			IRInstruction* ins = b->first;
 			while (ins)
 			{
 				for (int i = 0; i < 3; ++i)
@@ -648,15 +648,15 @@ void ir_replace_value(IRModule *m, IRValue *oldv, IRValue *newv)
 	}
 }
 
-void ir_remove_instruction(IRBlock *b, IRInstruction *i)
+void ir_remove_instruction(IRBlock* b, IRInstruction* i)
 {
 	if (!b || !i)
 	{
 		fprintf(stderr, "Invalid arguments to ir_remove_instruction. (Error)\n");
 		return;
 	}
-	IRInstruction *prev = NULL;
-	IRInstruction *cur = b->first;
+	IRInstruction* prev = NULL;
+	IRInstruction* cur = b->first;
 	while (cur)
 	{
 		if (cur == i)
@@ -675,7 +675,7 @@ void ir_remove_instruction(IRBlock *b, IRInstruction *i)
 	}
 }
 
-void ir_instr_append(IRBlock *b, IRInstruction *i)
+void ir_instr_append(IRBlock* b, IRInstruction* i)
 {
 	if (!b || !i)
 	{
@@ -694,7 +694,7 @@ void ir_instr_append(IRBlock *b, IRInstruction *i)
 	}
 }
 
-char *ir_strdup(IRModule *m, const char *s)
+char* ir_strdup(IRModule* m, const char* s)
 {
 	(void)m;
 	if (!s)
@@ -706,14 +706,14 @@ char *ir_strdup(IRModule *m, const char *s)
 	return strdup(s);
 }
 
-int ir_dump_module_to_file(IRModule *m, const char *path)
+int ir_dump_module_to_file(IRModule* m, const char* path)
 {
 	if (!m || !path)
 	{
 		fprintf(stderr, "Invalid arguments to ir_dump_module_to_file. (Error)\n");
 		return 0;
 	}
-	FILE *f = fopen(path, "w");
+	FILE* f = fopen(path, "w");
 	if (!f)
 	{
 		fprintf(stderr, "Failed to open file '%s' for writing. (Error)\n", path);
@@ -725,14 +725,14 @@ int ir_dump_module_to_file(IRModule *m, const char *path)
 	return 1;
 }
 
-void ir_walk_module(IRModule *m, void (*fn)(IRFunction *, void *), void *user)
+void ir_walk_module(IRModule* m, void (*fn)(IRFunction*, void*), void* user)
 {
 	if (!m || !fn)
 	{
 		fprintf(stderr, "Invalid arguments to ir_walk_module. (Error)\n");
 		return;
 	}
-	IRFunction *f = m->functions;
+	IRFunction* f = m->functions;
 	while (f)
 	{
 		fn(f, user);
@@ -740,14 +740,14 @@ void ir_walk_module(IRModule *m, void (*fn)(IRFunction *, void *), void *user)
 	}
 }
 
-void ir_walk_function(IRFunction *f, void (*fn)(IRBlock *, void *), void *user)
+void ir_walk_function(IRFunction* f, void (*fn)(IRBlock*, void*), void* user)
 {
 	if (!f || !fn)
 	{
 		fprintf(stderr, "Invalid arguments to ir_walk_function. (Error)\n");
 		return;
 	}
-	IRBlock *b = f->blocks;
+	IRBlock* b = f->blocks;
 	while (b)
 	{
 		fn(b, user);
