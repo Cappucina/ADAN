@@ -300,12 +300,11 @@ IRValue* ir_const_i64(int64_t value)
 	fprintf(stderr, "IR constant (i64) created: %lld. (Info)\n", (long long)value);
 	return v;
 }
-
-IRValue* ir_const_string(const char* str)
+IRValue* ir_const_string(IRModule* m, const char* str)
 {
-	if (!str)
+	if (!m || !str)
 	{
-		fprintf(stderr, "ir_const_string called with NULL string. (Error)\n");
+		fprintf(stderr, "ir_const_string called with NULL module or string. (Error)\n");
 		return NULL;
 	}
 
@@ -316,20 +315,23 @@ IRValue* ir_const_string(const char* str)
 		return NULL;
 	}
 
-	IRValue* v = malloc(sizeof(IRValue));
-	if (!v)
+	static int next_str_idx = 1;
+	char gname[64];
+	snprintf(gname, sizeof(gname), ".str%d", next_str_idx++);
+
+	IRType* t = ir_type_ptr(ir_type_i64());
+	IRValue* g = ir_global_create(m, gname, t, NULL);
+	if (!g)
 	{
-		fprintf(stderr, "Failed to allocate IRValue (const string). (Error)\n");
+		fprintf(stderr, "Failed to create global for string constant. (Error)\n");
 		free(copy);
 		return NULL;
 	}
 
-	v->kind = IRV_GLOBAL;
-	// Store the pointer into the i64 slot using intptr_t cast.
-	v->u.i64 = (int64_t)(intptr_t)copy;
-	v->type = ir_type_ptr(ir_type_i64());
-	fprintf(stderr, "IR constant (string) created: %s at %p. (Info)\n", str, (void*)copy);
-	return v;
+	g->u.i64 = (int64_t)(intptr_t)copy;
+	fprintf(stderr, "IR constant (string) created: \"%s\" as %s at %p. (Info)\n",
+			str, gname, (void*)copy);
+	return g;
 }
 
 IRValue* ir_temp(IRBlock* block, IRType* type)
@@ -446,11 +448,11 @@ IRValue* ir_emit_alloca(IRBlock* b, IRType* type)
 		b->last->next = ins;
 		b->last = ins;
 	}
-	else
-	{
-		b->first = b->last = ins;
-	}
-	return dst;
+		else
+		{
+			b->first = b->last = ins;
+		}
+		return dst;
 }
 
 IRValue* ir_emit_load(IRBlock* b, IRValue* ptr)

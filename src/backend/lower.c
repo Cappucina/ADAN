@@ -94,17 +94,7 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				fprintf(stderr, "Empty string literal. (Error)\n");
 				return NULL;
 			}
-			size_t len = strlen(s);
-			char* heap_str = (char*)malloc(len + 1);
-			if (!heap_str)
-			{
-				fprintf(stderr,
-				        "Out of memory while lowering string literal. (Error)\n");
-				return NULL;
-			}
-			strcpy(heap_str, s);
-			IRValue* str_val = ir_const_string(heap_str);
-			free(heap_str);
+			IRValue* str_val = ir_const_string(program->ir, s);
 			return str_val;
 		}
 		case AST_IDENTIFIER:
@@ -583,6 +573,36 @@ void lower_program(Program* program)
 				}
 
 				fprintf(stderr, "Import: %s (Info)\n", import_path);
+
+				/* Create known stubs for standard library imports so calls lower correctly. */
+				if (strcmp(import_path, "adan/io") == 0)
+				{
+					/* Only create stub if it does not already exist in the module. */
+					int exists = 0;
+					if (program->ir)
+					{
+						IRFunction* it = program->ir->functions;
+						while (it)
+						{
+							if (it->name && strcmp(it->name, "println") == 0)
+							{
+								exists = 1;
+								break;
+							}
+							it = it->next;
+						}
+					}
+					if (!exists)
+					{
+						IRType* ret_t = ir_type_void();
+						IRFunction* fn = ir_function_create_in_module(program->ir, "println", ret_t);
+						if (fn)
+						{
+							IRType* str_t = ir_type_ptr(ir_type_i64());
+							ir_param_create(fn, "s", str_t);
+						}
+					}
+				}
 				break;
 			}
 
