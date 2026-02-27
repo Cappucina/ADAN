@@ -301,6 +301,37 @@ IRValue* ir_const_i64(int64_t value)
 	return v;
 }
 
+IRValue* ir_const_string(const char* str)
+{
+	if (!str)
+	{
+		fprintf(stderr, "ir_const_string called with NULL string. (Error)\n");
+		return NULL;
+	}
+
+	char* copy = strdup(str);
+	if (!copy)
+	{
+		fprintf(stderr, "Failed to allocate memory for string constant. (Error)\n");
+		return NULL;
+	}
+
+	IRValue* v = malloc(sizeof(IRValue));
+	if (!v)
+	{
+		fprintf(stderr, "Failed to allocate IRValue (const string). (Error)\n");
+		free(copy);
+		return NULL;
+	}
+
+	v->kind = IRV_GLOBAL;
+	// Store the pointer into the i64 slot using intptr_t cast.
+	v->u.i64 = (int64_t)(intptr_t)copy;
+	v->type = ir_type_ptr(ir_type_i64());
+	fprintf(stderr, "IR constant (string) created: %s at %p. (Info)\n", str, (void*)copy);
+	return v;
+}
+
 IRValue* ir_temp(IRBlock* block, IRType* type)
 {
 	if (!block || !type)

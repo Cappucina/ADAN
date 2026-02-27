@@ -250,6 +250,10 @@ static ASTNode* parse_call_statement(Parser* parser)
 	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 
 	ASTNode* call = parse_call(parser);
+
+	size_t stmt_line = call ? call->line : peek_current(parser)->line;
+	size_t stmt_column = call ? call->column : peek_current(parser)->column;
+
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after call statement.");
 
 	if (name)
@@ -257,7 +261,12 @@ static ASTNode* parse_call_statement(Parser* parser)
 		parser_use_symbol(parser, name);
 	}
 	free(name);
-	return call;
+
+	if (call)
+	{
+		return ast_create_expression_statement(call, stmt_line, stmt_column);
+	}
+	return NULL;
 }
 
 static ASTNode* parse_expression(Parser* parser)

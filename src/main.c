@@ -9,6 +9,8 @@
 #include "frontend/parser/parser.h"
 #include "frontend/ast/tree.h"
 #include "frontend/semantics/semantic.h"
+#include "backend/lower.h"
+#include "backend/ir/ir.h"
 
 bool has_valid_extension(const char* filename)
 {
@@ -99,6 +101,20 @@ int main(int argc, char* argv[])
 			else
 			{
 				printf("Semantic analysis completed successfully! (Info)\n");
+
+				IRModule* ir = ir_module_create();
+				if (!ir)
+				{
+					fprintf(stderr, "Failed to create IR module. (Error)\n");
+				}
+				else
+				{
+					Program program = {.ast_root = ast, .ir = ir};
+					lower_program(&program);
+					printf("IR generation completed! (Info)\n");
+					// ir_print_module(ir, stdout);
+					ir_module_destroy(ir);
+				}
 			}
 			semantic_free(analyzer);
 		}

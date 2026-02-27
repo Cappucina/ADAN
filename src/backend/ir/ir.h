@@ -151,6 +151,8 @@ void ir_emit_ret(IRBlock* block, IRValue* value);
 
 IRValue* ir_const_i64(int64_t value);
 
+IRValue* ir_const_string(const char* str);
+
 IRValue* ir_temp(IRBlock* block, IRType* type);
 
 #endif
