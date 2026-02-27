@@ -5,8 +5,8 @@
 
 typedef struct LLVMContext
 {
-    unsigned long label_counter;
-    unsigned long tmp_counter;
+	unsigned long label_counter;
+	unsigned long tmp_counter;
 } LLVMContext;
 
 LLVMContext* llvm_utils_create_context(void);

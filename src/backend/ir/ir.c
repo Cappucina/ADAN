@@ -329,8 +329,8 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 	}
 
 	g->u.i64 = (int64_t)(intptr_t)copy;
-	fprintf(stderr, "IR constant (string) created: \"%s\" as %s at %p. (Info)\n",
-			str, gname, (void*)copy);
+	fprintf(stderr, "IR constant (string) created: \"%s\" as %s at %p. (Info)\n", str, gname,
+	        (void*)copy);
 	return g;
 }
 
@@ -448,11 +448,11 @@ IRValue* ir_emit_alloca(IRBlock* b, IRType* type)
 		b->last->next = ins;
 		b->last = ins;
 	}
-		else
-		{
-			b->first = b->last = ins;
-		}
-		return dst;
+	else
+	{
+		b->first = b->last = ins;
+	}
+	return dst;
 }
 
 IRValue* ir_emit_load(IRBlock* b, IRValue* ptr)

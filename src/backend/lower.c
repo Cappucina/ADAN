@@ -574,17 +574,20 @@ void lower_program(Program* program)
 
 				fprintf(stderr, "Import: %s (Info)\n", import_path);
 
-				/* Create known stubs for standard library imports so calls lower correctly. */
+				/* Create known stubs for standard library imports so calls lower
+				 * correctly. */
 				if (strcmp(import_path, "adan/io") == 0)
 				{
-					/* Only create stub if it does not already exist in the module. */
+					/* Only create stub if it does not already exist in the
+					 * module. */
 					int exists = 0;
 					if (program->ir)
 					{
 						IRFunction* it = program->ir->functions;
 						while (it)
 						{
-							if (it->name && strcmp(it->name, "println") == 0)
+							if (it->name &&
+							    strcmp(it->name, "println") == 0)
 							{
 								exists = 1;
 								break;
@@ -595,7 +598,8 @@ void lower_program(Program* program)
 					if (!exists)
 					{
 						IRType* ret_t = ir_type_void();
-						IRFunction* fn = ir_function_create_in_module(program->ir, "println", ret_t);
+						IRFunction* fn = ir_function_create_in_module(
+						    program->ir, "println", ret_t);
 						if (fn)
 						{
 							IRType* str_t = ir_type_ptr(ir_type_i64());

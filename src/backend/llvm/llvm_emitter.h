@@ -8,7 +8,7 @@
 
 typedef struct LLVMEEmitter
 {
-    LLVMContext* ctx;
+	LLVMContext* ctx;
 } LLVMEEmitter;
 
 LLVMEEmitter* llvm_emitter_create(void);
@@ -17,7 +17,6 @@ void llvm_emitter_destroy(LLVMEEmitter* e);
 
 int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out);
 
-int llvm_emitter_emit_module_to_file(LLVMEEmitter* e, IRModule* m,
-                                     const char* path);
+int llvm_emitter_emit_module_to_file(LLVMEEmitter* e, IRModule* m, const char* path);
 
 #endif
