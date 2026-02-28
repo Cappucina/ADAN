@@ -44,6 +44,8 @@ typedef struct IRValue
 		double f64;
 	} u;
 	struct IRType* type;
+	char* name;
+	struct IRValue* next;
 } IRValue;
 
 typedef enum
@@ -59,6 +61,8 @@ typedef struct IRInstruction
 	IrInstrKind kind;
 	IRValue* dest;
 	IRValue* operands[3];
+	IRValue** call_args;
+	size_t call_nargs;
 	int opcode;
 	struct IRInstruction* next;
 } IRInstruction;
@@ -75,13 +79,22 @@ typedef struct IRFunction
 	char* name;
 	IRType* return_type;
 	IRBlock* blocks;
+	IRValue* params;
 	struct IRFunction* next;
 } IRFunction;
 
 typedef struct IRModule
 {
 	IRFunction* functions;
+	struct IRGlobal* globals;
 } IRModule;
+
+typedef struct IRGlobal
+{
+	char* name;
+	IRValue* value;
+	struct IRGlobal* next;
+} IRGlobal;
 
 // Builder functions
 

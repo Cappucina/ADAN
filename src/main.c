@@ -11,6 +11,7 @@
 #include "frontend/semantics/semantic.h"
 #include "backend/lower.h"
 #include "backend/ir/ir.h"
+#include "backend/backend.h"
 
 bool has_valid_extension(const char* filename)
 {
@@ -113,6 +114,7 @@ int main(int argc, char* argv[])
 					lower_program(&program);
 					printf("IR generation completed! (Info)\n");
 					// ir_print_module(ir, stdout);
+					ir_print_module(ir, stdout);
 					ir_module_destroy(ir);
 				}
 			}
@@ -125,7 +127,6 @@ int main(int argc, char* argv[])
 
 		ast_free(ast);
 	}
-
 	sts_free(global_stack);
 	free(source);
 

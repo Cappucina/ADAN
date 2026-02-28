@@ -11,6 +11,19 @@ typedef struct LLVMEEmitter
 	LLVMContext* ctx;
 } LLVMEEmitter;
 
+typedef struct ValMap
+{
+	IRValue* v;
+	char* name;
+	struct ValMap* next;
+} ValMap;
+
+typedef struct EmitterState
+{
+	ValMap* vmap;
+	unsigned long tmp_counter;
+} EmitterState;
+
 LLVMEEmitter* llvm_emitter_create(void);
 
 void llvm_emitter_destroy(LLVMEEmitter* e);

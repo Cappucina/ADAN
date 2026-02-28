@@ -1,8 +1,10 @@
 #ifndef BACKEND_BACKEND_H
 #define BACKEND_BACKEND_H
 
-/* High-level backend compile pipeline public API (placeholders).
- * Example: compile_program_to_ll(...)
- */
+#include "../frontend/ast/tree.h"
+
+int backend_compile_ast_to_lltext(ASTNode* ast, FILE* out);
+
+int backend_compile_ast_to_llvm_file(ASTNode* ast, const char* path);
 
 #endif

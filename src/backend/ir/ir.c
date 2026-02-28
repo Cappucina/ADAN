@@ -13,6 +13,7 @@ IRModule* ir_module_create()
 		return NULL;
 	}
 	mod->functions = NULL;
+	mod->globals = NULL;
 	fprintf(stderr, "IRModule created successfully. (Info)\n");
 	return mod;
 }
@@ -24,30 +25,69 @@ void ir_module_destroy(IRModule* mod)
 		fprintf(stderr, "Attempted to destroy a NULL IRModule. (Warning)\n");
 		return;
 	}
+	fprintf(stderr, "ir_module_destroy: start (mod=%p)\n", (void*)mod);
+	/* Conservative destructor: many IR objects (IRValue, IRInstruction,
+	 * IRBlock, IRFunction) are referenced in multiple places and ownership
+	 * is not fully tracked. Freeing them aggressively previously caused
+	 * double-free / corruption. To keep teardown safe, only free owned
+	 * heap allocations we can guarantee: call-arg arrays attached to
+	 * instructions and module-level global nodes and their string data.
+	 * This intentionally leaves IRFunction/IRBlock/IRInstruction/IRValue
+	 * structs alive (minor leak) but avoids crashes while we stabilize
+	 * ownership semantics.
+	 */
+
 	IRFunction* f = mod->functions;
 	while (f)
 	{
-		IRFunction* fnext = f->next;
-		free(f->name);
+		fprintf(stderr, "ir_module_destroy: function %p name=%p\n", (void*)f, (void*)f->name);
 		IRBlock* b = f->blocks;
 		while (b)
 		{
-			IRBlock* bnext = b->next;
-			free(b->name);
+			fprintf(stderr, "ir_module_destroy: block %p name=%p\n", (void*)b, (void*)b->name);
 			IRInstruction* i = b->first;
 			while (i)
 			{
-				IRInstruction* inext = i->next;
-				free(i);
-				i = inext;
+				if (i->call_args)
+				{
+					fprintf(stderr, "ir_module_destroy: free call_args for instr %p\n", (void*)i);
+					free(i->call_args);
+					i->call_args = NULL;
+					i->call_nargs = 0;
+				}
+				i = i->next;
 			}
-			free(b);
-			b = bnext;
+			b = b->next;
 		}
-		free(f);
-		f = fnext;
+		f = f->next;
 	}
-	fprintf(stderr, "IRModule destroyed. (Info)\n");
+
+	/* free module-level globals and their associated string data */
+	fprintf(stderr, "ir_module_destroy: free globals start (mod->globals=%p)\n", (void*)mod->globals);
+	IRGlobal* gg = mod->globals;
+	while (gg)
+	{
+		fprintf(stderr, "ir_module_destroy: freeing global %p name=%p\n", (void*)gg, (void*)gg->name);
+		IRGlobal* gnext = gg->next;
+		if (gg->value)
+		{
+			/* If the global value holds a strdup'd string in u.i64, free it. */
+			if (gg->value->kind == IRV_GLOBAL && gg->value->u.i64)
+			{
+				const char* s = (const char*)(intptr_t)gg->value->u.i64;
+				fprintf(stderr, "ir_module_destroy: global value string ptr=%p\n", (void*)s);
+				if (s)
+					free((void*)s);
+			}
+		}
+		if (gg->name)
+			free(gg->name);
+		free(gg);
+		gg = gnext;
+	}
+
+	/* Finally free the module container only. */
+	fprintf(stderr, "ir_module_destroy: free(mod=%p)\n", (void*)mod);
 	free(mod);
 }
 
@@ -204,6 +244,7 @@ IRFunction* ir_function_create(const char* name, IRType* return_type)
 	f->name = strdup(name);
 	f->return_type = return_type;
 	f->blocks = NULL;
+	f->params = NULL;
 	f->next = NULL;
 	fprintf(stderr, "IRFunction '%s' created. (Info)\n", name);
 	return f;
@@ -246,7 +287,35 @@ IRValue* ir_emit_binop(IRBlock* block, const char* op, IRValue* lhs, IRValue* rh
 	ins->operands[0] = lhs;
 	ins->operands[1] = rhs;
 	ins->operands[2] = NULL;
+	if (!op)
+		ins->opcode = 0;
+	else if (strcmp(op, "+") == 0)
+		ins->opcode = 1;
+	else if (strcmp(op, "-") == 0)
+		ins->opcode = 2;
+	else if (strcmp(op, "*") == 0)
+		ins->opcode = 3;
+	else if (strcmp(op, "/") == 0)
+		ins->opcode = 4;
+	else if (strcmp(op, "%") == 0)
+		ins->opcode = 5;
+	else if (strcmp(op, "==") == 0)
+		ins->opcode = 6;
+	else if (strcmp(op, "!=") == 0)
+		ins->opcode = 7;
+	else if (strcmp(op, "<") == 0)
+		ins->opcode = 8;
+	else if (strcmp(op, ">") == 0)
+		ins->opcode = 9;
+	else if (strcmp(op, "<=") == 0)
+		ins->opcode = 10;
+	else if (strcmp(op, ">=") == 0)
+		ins->opcode = 11;
+	else
+		ins->opcode = 0;
 	ins->next = NULL;
+	ins->call_args = NULL;
+	ins->call_nargs = 0;
 	if (block->last)
 	{
 		block->last->next = ins;
@@ -275,6 +344,8 @@ void ir_emit_ret(IRBlock* block, IRValue* value)
 	ins->operands[1] = NULL;
 	ins->operands[2] = NULL;
 	ins->next = NULL;
+	ins->call_args = NULL;
+	ins->call_nargs = 0;
 	if (block->last)
 	{
 		block->last->next = ins;
@@ -318,6 +389,7 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 	static int next_str_idx = 1;
 	char gname[64];
 	snprintf(gname, sizeof(gname), ".str%d", next_str_idx++);
+	fprintf(stderr, "ir_const_string: creating global %s for string '%s'\n", gname, str);
 
 	IRType* t = ir_type_ptr(ir_type_i64());
 	IRValue* g = ir_global_create(m, gname, t, NULL);
@@ -400,6 +472,17 @@ IRValue* ir_param_create(IRFunction* f, const char* name, IRType* type)
 	v->kind = IRV_PARAM;
 	v->u.temp_id = next_param++;
 	v->type = type;
+	v->name = name ? strdup(name) : NULL;
+	v->next = NULL;
+	if (!f->params)
+		f->params = v;
+	else
+	{
+		IRValue* it = f->params;
+		while (it->next)
+			it = it->next;
+		it->next = v;
+	}
 	fprintf(stderr, "Parameter created t%d for function '%s'. (Info)\n", v->u.temp_id,
 	        f->name ? f->name : "<anon>");
 	return v;
@@ -412,7 +495,9 @@ IRValue* ir_global_create(IRModule* m, const char* name, IRType* type, IRValue* 
 		fprintf(stderr, "Invalid arguments to ir_global_create. (Error)\n");
 		return NULL;
 	}
+	fprintf(stderr, "ir_global_create: creating global '%s'\n", name);
 	IRValue* v = malloc(sizeof(IRValue));
+	fprintf(stderr, "ir_global_create: malloc IRValue -> %p\n", (void*)v);
 	if (!v)
 	{
 		fprintf(stderr, "Failed to allocate IRValue for global. (Error)\n");
@@ -421,8 +506,34 @@ IRValue* ir_global_create(IRModule* m, const char* name, IRType* type, IRValue* 
 	v->kind = IRV_GLOBAL;
 	v->u.temp_id = 0;
 	v->type = type;
+	v->name = strdup(name);
+	fprintf(stderr, "ir_global_create: strdup for v->name -> %p\n", (void*)v->name);
+	v->next = NULL;
 	(void)initial;
-	fprintf(stderr, "Global '%s' created. (Info)\n", name);
+	IRGlobal* g = (IRGlobal*)malloc(sizeof(IRGlobal));
+	fprintf(stderr, "ir_global_create: malloc IRGlobal -> %p\n", (void*)g);
+	if (!g)
+	{
+		free(v->name);
+		free(v);
+		fprintf(stderr, "Failed to allocate IRGlobal. (Error)\n");
+		return NULL;
+	}
+	g->name = strdup(name);
+	fprintf(stderr, "ir_global_create: strdup for g->name -> %p\n", (void*)g->name);
+	g->value = v;
+	g->next = NULL;
+	fprintf(stderr, "ir_global_create: current m->globals = %p\n", (void*)m->globals);
+	if (!m->globals)
+		m->globals = g;
+	else
+	{
+		IRGlobal* it = m->globals;
+		while (it->next)
+			it = it->next;
+		it->next = g;
+	}
+	fprintf(stderr, "ir_global_create: Global '%s' created and linked. (Info)\n", name);
 	return v;
 }
 
@@ -434,6 +545,7 @@ IRValue* ir_emit_alloca(IRBlock* b, IRType* type)
 		return NULL;
 	}
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
+	fprintf(stderr, "ir_emit_alloca: malloc IRInstruction -> %p\n", (void*)ins);
 	if (!ins)
 		return NULL;
 	ins->kind = IR_ALLOCA;
@@ -442,6 +554,8 @@ IRValue* ir_emit_alloca(IRBlock* b, IRType* type)
 	ins->operands[0] = NULL;
 	ins->operands[1] = NULL;
 	ins->operands[2] = NULL;
+	ins->call_args = NULL;
+	ins->call_nargs = 0;
 	ins->next = NULL;
 	if (b->last)
 	{
@@ -463,6 +577,7 @@ IRValue* ir_emit_load(IRBlock* b, IRValue* ptr)
 		return NULL;
 	}
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
+	fprintf(stderr, "ir_emit_load: malloc IRInstruction -> %p\n", (void*)ins);
 	if (!ins)
 		return NULL;
 	ins->kind = IR_LOAD;
@@ -471,6 +586,8 @@ IRValue* ir_emit_load(IRBlock* b, IRValue* ptr)
 	ins->operands[0] = ptr;
 	ins->operands[1] = NULL;
 	ins->operands[2] = NULL;
+	ins->call_args = NULL;
+	ins->call_nargs = 0;
 	ins->next = NULL;
 	if (b->last)
 	{
@@ -492,6 +609,7 @@ void ir_emit_store(IRBlock* b, IRValue* ptr, IRValue* val)
 		return;
 	}
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
+	fprintf(stderr, "ir_emit_store: malloc IRInstruction -> %p\n", (void*)ins);
 	if (!ins)
 		return;
 	ins->kind = IR_STORE;
@@ -499,6 +617,8 @@ void ir_emit_store(IRBlock* b, IRValue* ptr, IRValue* val)
 	ins->operands[0] = ptr;
 	ins->operands[1] = val;
 	ins->operands[2] = NULL;
+	ins->call_args = NULL;
+	ins->call_nargs = 0;
 	ins->next = NULL;
 	if (b->last)
 	{
@@ -519,6 +639,7 @@ IRValue* ir_emit_call(IRBlock* b, IRFunction* callee, IRValue** args, size_t nar
 		return NULL;
 	}
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
+	fprintf(stderr, "ir_emit_call: malloc IRInstruction -> %p\n", (void*)ins);
 	if (!ins)
 		return NULL;
 	ins->kind = IR_CALL;
@@ -528,9 +649,27 @@ IRValue* ir_emit_call(IRBlock* b, IRFunction* callee, IRValue** args, size_t nar
 		dst = ir_temp(b, callee->return_type);
 		ins->dest = dst;
 	}
-	ins->operands[0] = (nargs > 0) ? args[0] : NULL;
-	ins->operands[1] = (nargs > 1) ? args[1] : NULL;
+	ins->operands[0] = NULL;
+	ins->operands[1] = NULL;
 	ins->operands[2] = (IRValue*)(void*)callee;
+	/* copy args into a dynamic array for arbitrary arity */
+	ins->call_args = NULL;
+	ins->call_nargs = 0;
+	if (nargs > 0 && args)
+	{
+		ins->call_args = (IRValue**)malloc(sizeof(IRValue*) * nargs);
+		fprintf(stderr, "ir_emit_call: allocated call_args -> %p for instr %p\n", (void*)ins->call_args, (void*)ins);
+		if (ins->call_args)
+		{
+			for (size_t i = 0; i < nargs; ++i)
+				ins->call_args[i] = args[i];
+			ins->call_nargs = nargs;
+		}
+		else
+		{
+			ins->call_nargs = 0;
+		}
+	}
 	ins->next = NULL;
 	if (b->last)
 	{
@@ -559,6 +698,8 @@ void ir_emit_br(IRBlock* b, IRBlock* target)
 	ins->operands[0] = (IRValue*)(void*)target;
 	ins->operands[1] = NULL;
 	ins->operands[2] = NULL;
+	ins->call_args = NULL;
+	ins->call_nargs = 0;
 	ins->next = NULL;
 	if (b->last)
 	{
@@ -586,6 +727,8 @@ void ir_emit_cbr(IRBlock* b, IRValue* cond, IRBlock* true_b, IRBlock* false_b)
 	ins->operands[0] = cond;
 	ins->operands[1] = (IRValue*)(void*)true_b;
 	ins->operands[2] = (IRValue*)(void*)false_b;
+	ins->call_args = NULL;
+	ins->call_nargs = 0;
 	ins->next = NULL;
 	if (b->last)
 	{
@@ -614,6 +757,8 @@ IRValue* ir_emit_phi(IRBlock* b, IRType* t, IRValue** values, IRBlock** blocks, 
 	ins->operands[0] = (n > 0) ? values[0] : NULL;
 	ins->operands[1] = (n > 1) ? values[1] : NULL;
 	ins->operands[2] = NULL;
+	ins->call_args = NULL;
+	ins->call_nargs = 0;
 	ins->next = NULL;
 	if (b->last)
 	{
@@ -671,6 +816,13 @@ void ir_replace_value(IRModule* m, IRValue* oldv, IRValue* newv)
 				for (int i = 0; i < 3; ++i)
 					if (ins->operands[i] == oldv)
 						ins->operands[i] = newv;
+				/* replace in call args array if present */
+				if (ins->call_args && ins->call_nargs)
+				{
+					for (size_t ci = 0; ci < ins->call_nargs; ++ci)
+						if (ins->call_args[ci] == oldv)
+							ins->call_args[ci] = newv;
+				}
 				if (ins->dest == oldv)
 					ins->dest = newv;
 				ins = ins->next;
@@ -700,6 +852,8 @@ void ir_remove_instruction(IRBlock* b, IRInstruction* i)
 				b->first = cur->next;
 			if (b->last == cur)
 				b->last = prev;
+			if (cur->call_args)
+				free(cur->call_args);
 			free(cur);
 			return;
 		}

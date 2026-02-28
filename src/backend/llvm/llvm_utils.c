@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "llvm_utils.h"
 
@@ -11,6 +13,19 @@ void llvm_utils_destroy_context(LLVMContext* ctx)
 	}
 	fprintf(stderr, "LLVMContext destroyed successfully. (Info)\n");
 	free(ctx);
+}
+
+LLVMContext* llvm_utils_create_context(void)
+{
+	LLVMContext* ctx = (LLVMContext*)malloc(sizeof(LLVMContext));
+	if (!ctx)
+	{
+		fprintf(stderr, "Failed to allocate LLVMContext. (Error)\n");
+		return NULL;
+	}
+	ctx->label_counter = 0;
+	ctx->tmp_counter = 0;
+	return ctx;
 }
 
 // The purpose of this function is kinda to create a unique

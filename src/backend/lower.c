@@ -73,6 +73,7 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 		return NULL;
 	}
 
+	fprintf(stderr, "lower_expression: node type=%d\n", (int)node->type);
 	switch (node->type)
 	{
 		case AST_NUMBER_LITERAL:
@@ -89,6 +90,7 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 		case AST_STRING_LITERAL:
 		{
 			const char* s = node->string_literal.value;
+			fprintf(stderr, "lower_expression: string literal '%s'\n", s);
 			if (!s)
 			{
 				fprintf(stderr, "Empty string literal. (Error)\n");
@@ -100,6 +102,7 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 		case AST_IDENTIFIER:
 		{
 			const char* name = node->identifier.name;
+			fprintf(stderr, "lower_expression: identifier '%s'\n", name);
 			if (!name)
 			{
 				fprintf(stderr, "Encountered identifier with no name. (Error)\n");
@@ -173,6 +176,7 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 
 		case AST_CALL:
 		{
+			fprintf(stderr, "lower_expression: call to '%s' with %zu args\n", node->call.callee ? node->call.callee : "<null>", node->call.arg_count);
 			if (!current_block)
 			{
 				fprintf(
@@ -252,6 +256,7 @@ void lower_statement(Program* program, ASTNode* node)
 		return;
 	}
 
+	fprintf(stderr, "lower_statement: node type=%d\n", (int)node->type);
 	switch (node->type)
 	{
 		case AST_EXPRESSION_STATEMENT:
@@ -259,6 +264,7 @@ void lower_statement(Program* program, ASTNode* node)
 			break;
 		case AST_RETURN_STATEMENT:
 		{
+			fprintf(stderr, "lower_statement: return\n");
 			IRValue* ret_val = NULL;
 			if (node->ret.expr)
 			{
@@ -278,6 +284,7 @@ void lower_statement(Program* program, ASTNode* node)
 		}
 		case AST_BLOCK:
 		{
+			fprintf(stderr, "lower_statement: block with %zu statements\n", node->block.count);
 			for (size_t i = 0; i < node->block.count; i++)
 			{
 				lower_statement(program, node->block.statements[i]);
@@ -286,6 +293,7 @@ void lower_statement(Program* program, ASTNode* node)
 		}
 		case AST_VARIABLE_DECLARATION:
 		{
+			fprintf(stderr, "lower_statement: var decl '%s'\n", node->var_decl.name ? node->var_decl.name : "<anon>");
 			if (!current_block)
 			{
 				fprintf(stderr,
@@ -307,7 +315,10 @@ void lower_statement(Program* program, ASTNode* node)
 				        var_name);
 				return;
 			}
-			IRValue* alloca = ir_emit_alloca(current_block, var_type);
+			IRBlock* entry_block_for_alloc = current_function->blocks;
+			if (!entry_block_for_alloc)
+				entry_block_for_alloc = ir_block_create_in_function(current_function, "entry");
+			IRValue* alloca = ir_emit_alloca(entry_block_for_alloc, var_type);
 			sym_put(var_name, alloca, 1);
 
 			if (node->var_decl.initializer)
@@ -419,6 +430,7 @@ void lower_program(Program* program)
 	for (size_t i = 0; i < root->program.count; i++)
 	{
 		ASTNode* decl = root->program.decls[i];
+		fprintf(stderr, "lower_program: processing decl %zu type=%d\n", i, decl ? (int)decl->type : -1);
 		if (!decl)
 		{
 			continue;
@@ -493,11 +505,22 @@ void lower_program(Program* program)
 						continue;
 					}
 
-					IRValue* param_val =
-					    ir_param_create(ir_func, param_name, param_type);
+					IRValue* param_val = ir_param_create(ir_func, param_name, param_type);
 					if (param_val)
 					{
-						sym_put(param_name, param_val, 0);
+						IRBlock* entry_alloc_block = ir_func->blocks;
+						if (!entry_alloc_block)
+							entry_alloc_block = ir_block_create_in_function(ir_func, "entry");
+						IRValue* alloca = ir_emit_alloca(entry_alloc_block, param_type);
+						if (alloca)
+						{
+							ir_emit_store(entry_alloc_block, alloca, param_val);
+							sym_put(param_name, alloca, 1);
+						}
+						else
+						{
+							sym_put(param_name, param_val, 0);
+						}
 					}
 				}
 
