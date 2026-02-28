@@ -72,11 +72,15 @@ void ir_module_destroy(IRModule* mod)
 				fprintf(stderr, "ir_module_destroy: global value string ptr=%p\n",
 				        (void*)s);
 				if (s)
+				{
 					free((void*)s);
+				}
 			}
 		}
 		if (gg->name)
+		{
 			free(gg->name);
+		}
 		free(gg);
 		gg = gnext;
 	}
@@ -100,7 +104,9 @@ void ir_module_add_function(IRModule* mod, IRFunction* func)
 	}
 	IRFunction* it = mod->functions;
 	while (it->next)
+	{
 		it = it->next;
+	}
 	it->next = func;
 	fprintf(stderr, "Function '%s' added to module. (Info)\n",
 	        func->name ? func->name : "<anon>");
@@ -121,7 +127,9 @@ void ir_function_add_block(IRFunction* func, IRBlock* block)
 	}
 	IRBlock* it = func->blocks;
 	while (it->next)
+	{
 		it = it->next;
+	}
 	it->next = block;
 	fprintf(stderr, "Block '%s' added to function '%s'. (Info)\n",
 	        block->name ? block->name : "<anon>", func->name ? func->name : "<anon>");
@@ -274,7 +282,9 @@ IRValue* ir_emit_binop(IRBlock* block, const char* op, IRValue* lhs, IRValue* rh
 	}
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
+	{
 		return NULL;
+	}
 	ins->kind = IR_BINOP;
 	IRValue* dst = ir_temp(block, lhs->type);
 	ins->dest = dst;
@@ -282,31 +292,57 @@ IRValue* ir_emit_binop(IRBlock* block, const char* op, IRValue* lhs, IRValue* rh
 	ins->operands[1] = rhs;
 	ins->operands[2] = NULL;
 	if (!op)
+	{
 		ins->opcode = 0;
+	}
 	else if (strcmp(op, "+") == 0)
+	{
 		ins->opcode = 1;
+	}
 	else if (strcmp(op, "-") == 0)
+	{
 		ins->opcode = 2;
+	}
 	else if (strcmp(op, "*") == 0)
+	{
 		ins->opcode = 3;
+	}
 	else if (strcmp(op, "/") == 0)
+	{
 		ins->opcode = 4;
+	}
 	else if (strcmp(op, "%") == 0)
+	{
 		ins->opcode = 5;
+	}
 	else if (strcmp(op, "==") == 0)
+	{
 		ins->opcode = 6;
+	}
 	else if (strcmp(op, "!=") == 0)
+	{
 		ins->opcode = 7;
+	}
 	else if (strcmp(op, "<") == 0)
+	{
 		ins->opcode = 8;
+	}
 	else if (strcmp(op, ">") == 0)
+	{
 		ins->opcode = 9;
+	}
 	else if (strcmp(op, "<=") == 0)
+	{
 		ins->opcode = 10;
+	}
 	else if (strcmp(op, ">=") == 0)
+	{
 		ins->opcode = 11;
+	}
 	else
+	{
 		ins->opcode = 0;
+	}
 	ins->next = NULL;
 	ins->call_args = NULL;
 	ins->call_nargs = 0;
@@ -331,7 +367,9 @@ void ir_emit_ret(IRBlock* block, IRValue* value)
 	}
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
+	{
 		return;
+	}
 	ins->kind = IR_RET;
 	ins->dest = NULL;
 	ins->operands[0] = value;
@@ -397,9 +435,7 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 		}
 	}
 
-	/* Unescape common escape sequences (\n, \t, \\, \", \r, \xHH, \uXXXX) */
 	size_t clen = strlen(copy);
-	/* Allocate a buffer large enough for UTF-8 expansion */
 	size_t max_out = (clen ? clen * 4 : 4) + 1;
 	char* unesc = (char*)malloc(max_out);
 	if (!unesc)
@@ -417,7 +453,6 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 			char nx = copy[wi + 1];
 			if (nx == 'x')
 			{
-				/* \xHH : parse up to two hex digits */
 				int val = 0;
 				size_t consumed = 0;
 				for (size_t k = 2; k <= 3 && wi + k < clen; ++k)
@@ -425,36 +460,42 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 					char ch = copy[wi + k];
 					int d = -1;
 					if (ch >= '0' && ch <= '9')
+					{
 						d = ch - '0';
+					}
 					else if (ch >= 'a' && ch <= 'f')
+					{
 						d = 10 + (ch - 'a');
+					}
 					else if (ch >= 'A' && ch <= 'F')
+					{
 						d = 10 + (ch - 'A');
+					}
 					if (d >= 0)
 					{
 						val = (val << 4) | d;
 						consumed = k - 1;
 					}
 					else
+					{
 						break;
+					}
 				}
 				if (consumed > 0)
 				{
 					unesc[ri++] = (char)val;
-					wi += 1 + consumed; /* skip \\ x and hex digits */
+					wi += 1 + consumed;
 					continue;
 				}
 				else
 				{
-					/* Invalid \\x sequence: treat as literal 'x' */
 					unesc[ri++] = 'x';
-					wi++; /* skip the 'x' */
+					wi++;
 					continue;
 				}
 			}
 			else if (nx == 'u')
 			{
-				/* \\uXXXX : parse exactly 4 hex digits and encode UTF-8 */
 				if (wi + 5 < clen)
 				{
 					int val = 0;
@@ -464,11 +505,17 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 						char ch = copy[wi + 1 + k];
 						int d = -1;
 						if (ch >= '0' && ch <= '9')
+						{
 							d = ch - '0';
+						}
 						else if (ch >= 'a' && ch <= 'f')
+						{
 							d = 10 + (ch - 'a');
+						}
 						else if (ch >= 'A' && ch <= 'F')
+						{
 							d = 10 + (ch - 'A');
+						}
 						if (d < 0)
 						{
 							ok = 0;
@@ -478,37 +525,40 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 					}
 					if (ok)
 					{
-						/* Encode val as UTF-8 */
 						if (val <= 0x7F)
 						{
 							unesc[ri++] = (char)val;
 						}
 						else if (val <= 0x7FF)
 						{
-							unesc[ri++] = (char)(0xC0 | ((val >> 6) & 0x1F));
+							unesc[ri++] =
+							    (char)(0xC0 | ((val >> 6) & 0x1F));
 							unesc[ri++] = (char)(0x80 | (val & 0x3F));
 						}
 						else if (val <= 0xFFFF)
 						{
-							unesc[ri++] = (char)(0xE0 | ((val >> 12) & 0x0F));
-							unesc[ri++] = (char)(0x80 | ((val >> 6) & 0x3F));
+							unesc[ri++] =
+							    (char)(0xE0 | ((val >> 12) & 0x0F));
+							unesc[ri++] =
+							    (char)(0x80 | ((val >> 6) & 0x3F));
 							unesc[ri++] = (char)(0x80 | (val & 0x3F));
 						}
 						else
 						{
-							/* codepoints beyond BMP -> 4 bytes */
-							unesc[ri++] = (char)(0xF0 | ((val >> 18) & 0x07));
-							unesc[ri++] = (char)(0x80 | ((val >> 12) & 0x3F));
-							unesc[ri++] = (char)(0x80 | ((val >> 6) & 0x3F));
+							unesc[ri++] =
+							    (char)(0xF0 | ((val >> 18) & 0x07));
+							unesc[ri++] =
+							    (char)(0x80 | ((val >> 12) & 0x3F));
+							unesc[ri++] =
+							    (char)(0x80 | ((val >> 6) & 0x3F));
 							unesc[ri++] = (char)(0x80 | (val & 0x3F));
 						}
-						wi += 5; /* skip \\ u and 4 hex digits */
+						wi += 5;
 						continue;
 					}
 				}
-				/* Fallback: treat as literal 'u' */
 				unesc[ri++] = 'u';
-				wi++; /* skip the 'u' */
+				wi++;
 				continue;
 			}
 			else
@@ -540,7 +590,7 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 						unesc[ri++] = nx;
 						break;
 				}
-				wi++; /* skip the escaped char */
+				wi++;
 				continue;
 			}
 		}
@@ -569,7 +619,7 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 
 	g->u.i64 = (int64_t)(intptr_t)copy;
 	fprintf(stderr, "IR constant (string) created: \"%s\" as %s at %p. (Info)\n", str, gname,
-			(void*)copy);
+	        (void*)copy);
 	return g;
 }
 
@@ -583,7 +633,9 @@ IRValue* ir_temp(IRBlock* block, IRType* type)
 	static int next_temp = 1;
 	IRValue* v = malloc(sizeof(IRValue));
 	if (!v)
+	{
 		return NULL;
+	}
 	v->kind = IRV_TEMP;
 	v->u.temp_id = next_temp++;
 	v->type = type;
@@ -600,7 +652,9 @@ IRFunction* ir_function_create_in_module(IRModule* m, const char* name, IRType* 
 	}
 	IRFunction* f = ir_function_create(name, return_type);
 	if (!f)
+	{
 		return NULL;
+	}
 	ir_module_add_function(m, f);
 	fprintf(stderr, "IRFunction '%s' created in module. (Info)\n", name);
 	return f;
@@ -615,7 +669,9 @@ IRBlock* ir_block_create_in_function(IRFunction* f, const char* name)
 	}
 	IRBlock* b = ir_block_create(name);
 	if (!b)
+	{
 		return NULL;
+	}
 	ir_function_add_block(f, b);
 	fprintf(stderr, "IRBlock '%s' created in function '%s'. (Info)\n", name,
 	        f->name ? f->name : "<anon>");
@@ -642,7 +698,9 @@ IRValue* ir_param_create(IRFunction* f, const char* name, IRType* type)
 	v->name = name ? strdup(name) : NULL;
 	v->next = NULL;
 	if (!f->params)
+	{
 		f->params = v;
+	}
 	else
 	{
 		IRValue* it = f->params;
@@ -692,7 +750,9 @@ IRValue* ir_global_create(IRModule* m, const char* name, IRType* type, IRValue* 
 	g->next = NULL;
 	fprintf(stderr, "ir_global_create: current m->globals = %p\n", (void*)m->globals);
 	if (!m->globals)
+	{
 		m->globals = g;
+	}
 	else
 	{
 		IRGlobal* it = m->globals;
@@ -714,7 +774,9 @@ IRValue* ir_emit_alloca(IRBlock* b, IRType* type)
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	fprintf(stderr, "ir_emit_alloca: malloc IRInstruction -> %p\n", (void*)ins);
 	if (!ins)
+	{
 		return NULL;
+	}
 	ins->kind = IR_ALLOCA;
 	IRValue* dst = ir_temp(b, ir_type_ptr(type));
 	ins->dest = dst;
@@ -746,7 +808,9 @@ IRValue* ir_emit_load(IRBlock* b, IRValue* ptr)
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	fprintf(stderr, "ir_emit_load: malloc IRInstruction -> %p\n", (void*)ins);
 	if (!ins)
+	{
 		return NULL;
+	}
 	ins->kind = IR_LOAD;
 	IRValue* dst = ir_temp(b, ptr->type ? ptr->type->pointee : NULL);
 	ins->dest = dst;
@@ -778,7 +842,9 @@ void ir_emit_store(IRBlock* b, IRValue* ptr, IRValue* val)
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	fprintf(stderr, "ir_emit_store: malloc IRInstruction -> %p\n", (void*)ins);
 	if (!ins)
+	{
 		return;
+	}
 	ins->kind = IR_STORE;
 	ins->dest = NULL;
 	ins->operands[0] = ptr;
@@ -808,7 +874,9 @@ IRValue* ir_emit_call(IRBlock* b, IRFunction* callee, IRValue** args, size_t nar
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	fprintf(stderr, "ir_emit_call: malloc IRInstruction -> %p\n", (void*)ins);
 	if (!ins)
+	{
 		return NULL;
+	}
 	ins->kind = IR_CALL;
 	IRValue* dst = NULL;
 	if (callee->return_type && callee->return_type->kind != IR_T_VOID)
@@ -829,7 +897,9 @@ IRValue* ir_emit_call(IRBlock* b, IRFunction* callee, IRValue** args, size_t nar
 		if (ins->call_args)
 		{
 			for (size_t i = 0; i < nargs; ++i)
+			{
 				ins->call_args[i] = args[i];
+			}
 			ins->call_nargs = nargs;
 		}
 		else
@@ -859,7 +929,9 @@ void ir_emit_br(IRBlock* b, IRBlock* target)
 	}
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
+	{
 		return;
+	}
 	ins->kind = IR_BR;
 	ins->dest = NULL;
 	ins->operands[0] = (IRValue*)(void*)target;
@@ -888,7 +960,9 @@ void ir_emit_cbr(IRBlock* b, IRValue* cond, IRBlock* true_b, IRBlock* false_b)
 	}
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
+	{
 		return;
+	}
 	ins->kind = IR_CBR;
 	ins->dest = NULL;
 	ins->operands[0] = cond;
@@ -917,7 +991,9 @@ IRValue* ir_emit_phi(IRBlock* b, IRType* t, IRValue** values, IRBlock** blocks, 
 	}
 	IRInstruction* ins = malloc(sizeof(IRInstruction));
 	if (!ins)
+	{
 		return NULL;
+	}
 	ins->kind = IR_PHI;
 	IRValue* dst = ir_temp(b, t);
 	ins->dest = dst;
@@ -953,10 +1029,14 @@ int ir_validate_module(IRModule* m)
 		while (b)
 		{
 			if (!b->last)
+			{
 				return 0;
+			}
 			IRInstruction* t = b->last;
 			if (!(t->kind == IR_RET || t->kind == IR_BR || t->kind == IR_CBR))
+			{
 				return 0;
+			}
 			b = b->next;
 		}
 		f = f->next;
@@ -981,16 +1061,26 @@ void ir_replace_value(IRModule* m, IRValue* oldv, IRValue* newv)
 			while (ins)
 			{
 				for (int i = 0; i < 3; ++i)
+				{
 					if (ins->operands[i] == oldv)
+					{
 						ins->operands[i] = newv;
+					}
+				}
 				if (ins->call_args && ins->call_nargs)
 				{
 					for (size_t ci = 0; ci < ins->call_nargs; ++ci)
+					{
 						if (ins->call_args[ci] == oldv)
+						{
 							ins->call_args[ci] = newv;
+						}
+					}
 				}
 				if (ins->dest == oldv)
+				{
 					ins->dest = newv;
+				}
 				ins = ins->next;
 			}
 			b = b->next;
@@ -1013,13 +1103,21 @@ void ir_remove_instruction(IRBlock* b, IRInstruction* i)
 		if (cur == i)
 		{
 			if (prev)
+			{
 				prev->next = cur->next;
+			}
 			else
+			{
 				b->first = cur->next;
+			}
 			if (b->last == cur)
+			{
 				b->last = prev;
+			}
 			if (cur->call_args)
+			{
 				free(cur->call_args);
+			}
 			free(cur);
 			return;
 		}

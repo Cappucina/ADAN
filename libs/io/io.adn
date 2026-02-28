@@ -1,4 +1,23 @@
+/*
+	Display text to STDOUT.
+*/
 fun println(message: string): void
 {
 	adn_println(message);
+}
+
+/*
+	Yields program and accepts user input. Input message is returned.
+*/
+fun input(prompt: string): string
+{
+	return adn_input(prompt);
+}
+
+/*
+	Stop program and print to STDOUT.
+*/
+fun errorln(message: string): void
+{
+	adn_errorln(message);
 }

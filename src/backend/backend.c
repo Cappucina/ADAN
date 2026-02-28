@@ -11,11 +11,15 @@
 int backend_compile_ast_to_lltext(struct ASTNode* ast, FILE* out)
 {
 	if (!ast || !out)
+	{
 		return -1;
+	}
 
 	IRModule* m = ir_module_create();
 	if (!m)
+	{
 		return -1;
+	}
 
 	Program prog = {0};
 	prog.ast_root = ast;
@@ -42,10 +46,14 @@ int backend_compile_ast_to_lltext(struct ASTNode* ast, FILE* out)
 int backend_compile_ast_to_llvm_file(struct ASTNode* ast, const char* path)
 {
 	if (!ast || !path)
+	{
 		return -1;
+	}
 	FILE* f = fopen(path, "w");
 	if (!f)
+	{
 		return -1;
+	}
 	int res = backend_compile_ast_to_lltext(ast, f);
 	fclose(f);
 	return res;

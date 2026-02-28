@@ -53,7 +53,9 @@ int main(int argc, char* argv[])
 		if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--file") == 0)
 		{
 			if (i + 1 < argc)
+			{
 				file_path = argv[i + 1];
+			}
 		}
 		else if (strcmp(argv[i], "--link") == 0)
 		{
@@ -62,12 +64,16 @@ int main(int argc, char* argv[])
 		else if (strcmp(argv[i], "--libs") == 0)
 		{
 			if (i + 1 < argc)
+			{
 				libs = argv[i + 1];
+			}
 		}
 		else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0)
 		{
 			if (i + 1 < argc)
+			{
 				out_path = argv[i + 1];
+			}
 		}
 	}
 
@@ -141,23 +147,35 @@ int main(int argc, char* argv[])
 				{
 					emit_res = backend_compile_ast_to_llvm_file(ast, ll_path);
 					if (emit_res == 0)
+					{
 						printf("LLVM IR emitted to %s\n", ll_path);
+					}
 					else
-						fprintf(stderr, "Failed to emit LLVM IR to %s\n", ll_path);
+					{
+						fprintf(stderr, "Failed to emit LLVM IR to %s\n",
+						        ll_path);
+					}
 				}
 
 				if (do_link && ll_path && emit_res == 0)
 				{
 					const char* outp = out_path ? out_path : "a.out";
-					int lres = linker_link_with_clang(ll_path, outp, libs ? libs : "");
+					int lres =
+					    linker_link_with_clang(ll_path, outp, libs ? libs : "");
 					if (lres == 0)
+					{
 						printf("Linked executable: %s\n", outp);
+					}
 					else
+					{
 						fprintf(stderr, "Linking failed (code=%d)\n", lres);
+					}
 				}
 
 				if (ll_path)
+				{
 					free(ll_path);
+				}
 			}
 			semantic_free(analyzer);
 		}

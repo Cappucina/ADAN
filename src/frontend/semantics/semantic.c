@@ -26,7 +26,9 @@ SemanticAnalyzer* semantic_init(ASTNode* ast, SymbolTableStack* symbol_table_sta
 void semantic_free(SemanticAnalyzer* analyzer)
 {
 	if (!analyzer)
+	{
 		return;
+	}
 	validator_cleanup();
 	free(analyzer);
 }

@@ -76,7 +76,6 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 	fprintf(stderr, "lower_expression: node type=%d\n", (int)node->type);
 	switch (node->type)
 	{
-		case AST_NUMBER_LITERAL:
 		{
 			const char* s = node->number_literal.value;
 			if (!s)
@@ -201,8 +200,9 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				args = (IRValue**)calloc(nargs, sizeof(IRValue*));
 				if (!args)
 				{
-					fprintf(stderr,
-							"Out of memory while lowering call args. (Error)\n");
+					fprintf(
+					    stderr,
+					    "Out of memory while lowering call args. (Error)\n");
 					return NULL;
 				}
 			}
@@ -230,19 +230,43 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 
 			if (!callee)
 			{
-				fprintf(stderr, "Call to unknown function '%s'. Creating stub. (Warning)\n",
-						callee_name);
-				IRType* ret_t = ir_type_void();
-				size_t nlen = strlen(callee_name) + 5;
+				fprintf(stderr,
+				        "Call to unknown function '%s'. Creating stub. (Warning)\n",
+				        callee_name);
+				int already_adn = (strlen(callee_name) >= 4 &&
+				                   strncmp(callee_name, "adn_", 4) == 0);
+				size_t nlen = strlen(callee_name) + (already_adn ? 1 : 5);
 				char* stub_name = (char*)malloc(nlen);
 				if (!stub_name)
 				{
-					fprintf(stderr, "Out of memory creating stub name. (Error)\n");
+					fprintf(stderr,
+					        "Out of memory creating stub name. (Error)\n");
 					free(args);
 					return NULL;
 				}
-				snprintf(stub_name, nlen, "adn_%s", callee_name);
-				IRFunction* fn = ir_function_create_in_module(program->ir, stub_name, ret_t);
+				if (already_adn)
+				{
+					snprintf(stub_name, nlen, "%s", callee_name);
+				}
+				else
+				{
+					snprintf(stub_name, nlen, "adn_%s", callee_name);
+				}
+
+				IRType* ret_t = NULL;
+				if (strcmp(callee_name, "input") == 0 ||
+				    strcmp(callee_name, "adn_input") == 0)
+					ret_t = ir_type_ptr(ir_type_i64());
+				else if (strcmp(callee_name, "println") == 0 ||
+				         strcmp(callee_name, "adn_println") == 0 ||
+				         strcmp(callee_name, "errorln") == 0 ||
+				         strcmp(callee_name, "adn_errorln") == 0)
+					ret_t = ir_type_void();
+				else
+					ret_t = ir_type_ptr(ir_type_i64());
+
+				IRFunction* fn =
+				    ir_function_create_in_module(program->ir, stub_name, ret_t);
 				if (fn)
 				{
 					for (size_t i = 0; i < nargs; ++i)
@@ -255,7 +279,8 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				}
 				else
 				{
-					fprintf(stderr, "Failed to create stub for '%s'. (Error)\n", callee_name);
+					fprintf(stderr, "Failed to create stub for '%s'. (Error)\n",
+					        callee_name);
 					free(args);
 					free(stub_name);
 					return NULL;
@@ -347,8 +372,10 @@ void lower_statement(Program* program, ASTNode* node)
 			}
 			IRBlock* entry_block_for_alloc = current_function->blocks;
 			if (!entry_block_for_alloc)
+			{
 				entry_block_for_alloc =
 				    ir_block_create_in_function(current_function, "entry");
+			}
 			IRValue* alloca = ir_emit_alloca(entry_block_for_alloc, var_type);
 			sym_put(var_name, alloca, 1);
 

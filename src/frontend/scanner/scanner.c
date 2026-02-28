@@ -52,21 +52,27 @@ void scanner_free(Scanner* scanner)
 char peek(Scanner* scanner)
 {
 	if (scanner->position >= scanner->length)
+	{
 		return '\0';
+	}
 	return scanner->source[scanner->position];
 }
 
 char peek_next(Scanner* scanner)
 {
 	if (scanner->position + 1 >= scanner->length)
+	{
 		return '\0';
+	}
 	return scanner->source[scanner->position + 1];
 }
 
 char advance(Scanner* scanner)
 {
 	if (scanner->position >= scanner->length)
+	{
 		return '\0';
+	}
 	char curr = scanner->source[scanner->position++];
 	if (curr == '\n')
 	{

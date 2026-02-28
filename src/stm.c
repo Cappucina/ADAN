@@ -41,7 +41,9 @@ SymbolTableStack* sts_init()
 void stm_free(SymbolTableManager* manager)
 {
 	if (!manager)
+	{
 		return;
+	}
 	for (int i = 0; i < TABLE_SIZE; i++)
 	{
 		SymbolEntry* entry = manager->buckets[i];
@@ -63,7 +65,9 @@ void stm_free(SymbolTableManager* manager)
 void sts_free(SymbolTableStack* stack)
 {
 	if (!stack)
+	{
 		return;
+	}
 	SymbolTableManager* iter = stack->current_scope;
 	while (iter != NULL)
 	{
@@ -77,7 +81,9 @@ void sts_free(SymbolTableStack* stack)
 void sts_pop_scope(SymbolTableStack* stack)
 {
 	if (!stack || !stack->current_scope)
+	{
 		return;
+	}
 	SymbolTableManager* old_scope = stack->current_scope;
 	stack->current_scope = old_scope->parent;
 	stm_free(old_scope);
@@ -86,7 +92,9 @@ void sts_pop_scope(SymbolTableStack* stack)
 void sts_push_scope(SymbolTableStack* stack)
 {
 	if (!stack)
+	{
 		return;
+	}
 	SymbolTableManager* new_scope = stm_init();
 	if (!new_scope)
 	{
@@ -111,7 +119,9 @@ void sts_push_scope(SymbolTableStack* stack)
 SymbolEntry* search_buckets(SymbolEntry* buckets[], const char* name)
 {
 	if (!name)
+	{
 		return NULL;
+	}
 
 	unsigned int bucket = hash(name) % TABLE_SIZE;
 	SymbolEntry* entry = buckets[bucket];

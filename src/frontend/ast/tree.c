@@ -105,7 +105,9 @@ ASTNode* ast_create_return(ASTNode* expr, size_t line, size_t column)
 {
 	ASTNode* node = ast_init(AST_RETURN_STATEMENT, line, column);
 	if (!node)
+	{
 		return NULL;
+	}
 	node->ret.expr = expr;
 	return node;
 }
@@ -356,22 +358,30 @@ void ast_print(ASTNode* node, int indent)
 				ast_print(node->func_decl.params[i], indent + 1);
 			}
 			for (int i = 0; i < indent + 1; i++)
+			{
 				printf("  ");
+			}
 			printf("Return Type:\n");
 			ast_print(node->func_decl.return_type, indent + 2);
 			for (int i = 0; i < indent + 1; i++)
+			{
 				printf("  ");
+			}
 			printf("Body:\n");
 			ast_print(node->func_decl.body, indent + 2);
 			break;
 		case AST_VARIABLE_DECLARATION:
 			printf("Variable Declaration: %s\n", node->var_decl.name);
 			for (int i = 0; i < indent + 1; i++)
+			{
 				printf("  ");
+			}
 			printf("Type:\n");
 			ast_print(node->var_decl.type, indent + 2);
 			for (int i = 0; i < indent + 1; i++)
+			{
 				printf("  ");
+			}
 			printf("Initializer:\n");
 			ast_print(node->var_decl.initializer, indent + 2);
 			break;
@@ -381,7 +391,9 @@ void ast_print(ASTNode* node, int indent)
 		case AST_PARAMETER:
 			printf("Parameter: %s\n", node->param.name);
 			for (int i = 0; i < indent + 1; i++)
+			{
 				printf("  ");
+			}
 			printf("Type:\n");
 			ast_print(node->param.type, indent + 2);
 			break;
@@ -397,7 +409,9 @@ void ast_print(ASTNode* node, int indent)
 			for (size_t i = 0; i < node->call.arg_count; i++)
 			{
 				for (int j = 0; j < indent + 1; j++)
+				{
 					printf("  ");
+				}
 				printf("Argument %zu:\n", i + 1);
 				ast_print(node->call.args[i], indent + 2);
 			}

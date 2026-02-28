@@ -129,10 +129,14 @@ bool parser_symbol_exists(Parser* parser, const char* name)
 void advance_token(Parser* parser)
 {
 	if (!parser)
+	{
 		return;
+	}
 
 	if (parser->current)
+	{
 		free(parser->current->lexeme);
+	}
 	free(parser->current);
 
 	parser->current = parser->ahead1;

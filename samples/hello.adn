@@ -1,12 +1,8 @@
 import "adan/io";
 
-fun language(): string
-{
-    set adan: string = "ADAN";
-    return adan;
-}
-
 fun main(): i32
 {
-    println(language());
+    set best_language: string = input("What is the best language? ");
+
+    println(best_language);
 }

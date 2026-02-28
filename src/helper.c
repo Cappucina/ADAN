@@ -55,7 +55,9 @@ char* read_file(char* file_path)
 unsigned int hash(const char* name)
 {
 	if (!name)
+	{
 		return 0;
+	}
 
 	unsigned int hash_value = 5531;
 
@@ -70,7 +72,9 @@ unsigned int hash(const char* name)
 char* clone_string(const char* string, size_t length)
 {
 	if (!string)
+	{
 		return NULL;
+	}
 
 	char* alloc = (char*)malloc(length + 1);
 	if (!alloc)

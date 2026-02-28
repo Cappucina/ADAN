@@ -7,14 +7,20 @@
 static char* es_get_val_name(EmitterState* s, IRValue* v)
 {
 	if (!s || !v)
+	{
 		return NULL;
+	}
 	if (v->kind == IRV_CONST)
+	{
 		return NULL;
+	}
 	ValMap* it = s->vmap;
 	while (it)
 	{
 		if (it->v == v)
+		{
 			return it->name;
+		}
 		it = it->next;
 	}
 	char buf[64];
@@ -31,7 +37,9 @@ static char* es_get_val_name(EmitterState* s, IRValue* v)
 static void es_emit_value_rep(EmitterState* s, FILE* outf, IRValue* v)
 {
 	if (!outf)
+	{
 		return;
+	}
 	if (!v)
 	{
 		fprintf(outf, "null");
@@ -40,9 +48,13 @@ static void es_emit_value_rep(EmitterState* s, FILE* outf, IRValue* v)
 	if (v->kind == IRV_CONST)
 	{
 		if (v->type && v->type->kind == IR_T_I64)
+		{
 			fprintf(outf, "%lld", (long long)v->u.i64);
+		}
 		else
+		{
 			fprintf(outf, "%lld", (long long)v->u.i64);
+		}
 		return;
 	}
 	if (v->kind == IRV_GLOBAL)
@@ -55,9 +67,13 @@ static void es_emit_value_rep(EmitterState* s, FILE* outf, IRValue* v)
 	}
 	char* n = es_get_val_name(s, v);
 	if (n)
+	{
 		fprintf(outf, "%s", n);
+	}
 	else
+	{
 		fprintf(outf, "<val>");
+	}
 }
 
 LLVMEEmitter* llvm_emitter_create(void)
@@ -103,7 +119,9 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 	for (IRGlobal* g = m->globals; g; g = g->next)
 	{
 		if (!g->name || !g->value)
+		{
 			continue;
+		}
 		IRValue* gv = g->value;
 		if (gv->u.i64)
 		{
@@ -117,13 +135,21 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 				{
 					unsigned char c = (unsigned char)s[i];
 					if (c == '\\')
+					{
 						fprintf(out, "\\5C");
+					}
 					else if (c == '"')
+					{
 						fprintf(out, "\\22");
+					}
 					else if (c >= 32 && c < 127)
+					{
 						fprintf(out, "%c", c);
+					}
 					else
+					{
 						fprintf(out, "\\%02X", c);
+					}
 				}
 				fprintf(out, "\\00\"\n");
 			}
@@ -142,14 +168,17 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 		if (!f->blocks)
 		{
 			fprintf(out, "declare %s @%s(", rett ? rett : "void",
-					fname ? fname : "<anon>");
+			        fname ? fname : "<anon>");
 			int firstp = 1;
 			for (IRValue* pv = f->params; pv; pv = pv->next)
 			{
-				char* ptype = llvm_type_to_string(pv->type ? pv->type : ir_type_i64());
+				char* ptype =
+				    llvm_type_to_string(pv->type ? pv->type : ir_type_i64());
 				char* pname = es_get_val_name(&st, pv);
 				if (!firstp)
+				{
 					fprintf(out, ", ");
+				}
 				fprintf(out, "%s %s", ptype ? ptype : "i64", pname ? pname : "<p>");
 				free(ptype);
 				firstp = 0;
@@ -167,7 +196,9 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 			char* ptype = llvm_type_to_string(pv->type ? pv->type : ir_type_i64());
 			char* pname = es_get_val_name(&st, pv);
 			if (!firstp)
+			{
 				fprintf(out, ", ");
+			}
 			fprintf(out, "%s %s", ptype ? ptype : "i64", pname ? pname : "<p>");
 			free(ptype);
 			firstp = 0;
@@ -262,7 +293,9 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								    a && a->type ? a->type
 								                 : ir_type_i64());
 								if (!first)
+								{
 									fprintf(out, ", ");
+								}
 								fprintf(out, "%s ",
 								        at ? at : "i64");
 								es_emit_value_rep(&st, out, a);
@@ -280,7 +313,9 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						IRValue* v = ins->operands[0];
 						if (!v)
 						{
-							IRType* frt = f->return_type ? f->return_type : ir_type_void();
+							IRType* frt = f->return_type
+							                  ? f->return_type
+							                  : ir_type_void();
 							if (frt->kind == IR_T_VOID)
 							{
 								fprintf(out, "  ret void\n");
@@ -288,19 +323,22 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 							else if (frt->kind == IR_T_PTR)
 							{
 								char* rt = llvm_type_to_string(frt);
-								fprintf(out, "  ret %s null\n", rt ? rt : "ptr");
+								fprintf(out, "  ret %s null\n",
+								        rt ? rt : "ptr");
 								free(rt);
 							}
 							else if (frt->kind == IR_T_F64)
 							{
 								char* rt = llvm_type_to_string(frt);
-								fprintf(out, "  ret %s 0.0\n", rt ? rt : "f64");
+								fprintf(out, "  ret %s 0.0\n",
+								        rt ? rt : "f64");
 								free(rt);
 							}
 							else
 							{
 								char* rt = llvm_type_to_string(frt);
-								fprintf(out, "  ret %s 0\n", rt ? rt : "i64");
+								fprintf(out, "  ret %s 0\n",
+								        rt ? rt : "i64");
 								free(rt);
 							}
 						}

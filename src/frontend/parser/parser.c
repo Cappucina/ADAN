@@ -39,7 +39,9 @@ Parser* parser_init(Scanner* scanner)
 void parser_free(Parser* parser)
 {
 	if (!parser)
+	{
 		return;
+	}
 
 	if (parser->current)
 	{
@@ -272,10 +274,14 @@ static ASTNode* parse_call_statement(Parser* parser)
 static ASTNode* parse_expression(Parser* parser)
 {
 	if (match(parser, TOKEN_IDENT) && peek_lookahead1(parser)->type == TOKEN_LPAREN)
+	{
 		return parse_call(parser);
+	}
 	else if (match(parser, TOKEN_IDENT) || match(parser, TOKEN_STRING) ||
 	         match(parser, TOKEN_NUMBER))
+	{
 		return parse_primary(parser);
+	}
 	else
 	{
 		error_expected(parser, "expression");

@@ -28,8 +28,6 @@ LLVMContext* llvm_utils_create_context(void)
 	return ctx;
 }
 
-// The purpose of this function is kinda to create a unique
-// name so that we don't have to worry about overlapping with stuff later.
 char* llvm_utils_mangle_name(const char* name)
 {
 	if (!name)

@@ -221,9 +221,13 @@ static void register_function_signature(ASTNode* decl)
 	if (!signature->name || !signature->return_type)
 	{
 		if (signature->name)
+		{
 			free(signature->name);
+		}
 		if (signature->return_type)
+		{
 			free(signature->return_type);
+		}
 		signature->name = NULL;
 		signature->return_type = NULL;
 		function_signature_count--;
@@ -236,9 +240,13 @@ static void register_function_signature(ASTNode* decl)
 		if (!signature->param_types)
 		{
 			if (signature->name)
+			{
 				free(signature->name);
+			}
 			if (signature->return_type)
+			{
 				free(signature->return_type);
+			}
 			signature->name = NULL;
 			signature->return_type = NULL;
 			function_signature_count--;
@@ -259,14 +267,20 @@ static void register_function_signature(ASTNode* decl)
 					for (size_t j = 0; j < i; j++)
 					{
 						if (signature->param_types[j])
+						{
 							free(signature->param_types[j]);
+						}
 					}
 					free(signature->param_types);
 					signature->param_types = NULL;
 					if (signature->name)
+					{
 						free(signature->name);
+					}
 					if (signature->return_type)
+					{
 						free(signature->return_type);
+					}
 					signature->name = NULL;
 					signature->return_type = NULL;
 					function_signature_count--;
@@ -318,7 +332,9 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 static bool is_known_type_name(const char* name)
 {
 	if (!name)
+	{
 		return false;
+	}
 	static const char* types[] = {"string", "i32", "i64", "u32", "u64", "void"};
 	for (size_t i = 0; i < sizeof(types) / sizeof(types[0]); i++)
 	{
@@ -385,7 +401,9 @@ static bool normalize_import_path(const char* raw, char* output, size_t output_s
 static bool has_imported_path(const char* path)
 {
 	if (!path)
+	{
 		return false;
+	}
 
 	for (size_t i = 0; i < imported_count; i++)
 	{
@@ -816,10 +834,14 @@ void validate_type_node(SemanticAnalyzer* analyzer, ASTNode* node)
 void validate_return_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 {
 	if (!analyzer || !node)
+	{
 		return;
+	}
 
 	if (node->type != AST_RETURN_STATEMENT)
+	{
 		return;
+	}
 
 	if (!analyzer->current_function_return_type)
 	{
@@ -865,10 +887,14 @@ void validate_return_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 void validate_expression_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 {
 	if (!analyzer || !node)
+	{
 		return;
+	}
 
 	if (node->type != AST_EXPRESSION_STATEMENT)
+	{
 		return;
+	}
 
 	ASTNode* expr = node->expr_stmt.expr;
 	if (expr)
