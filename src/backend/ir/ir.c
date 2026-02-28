@@ -300,6 +300,39 @@ IRValue* ir_const_i64(int64_t value)
 	fprintf(stderr, "IR constant (i64) created: %lld. (Info)\n", (long long)value);
 	return v;
 }
+IRValue* ir_const_string(IRModule* m, const char* str)
+{
+	if (!m || !str)
+	{
+		fprintf(stderr, "ir_const_string called with NULL module or string. (Error)\n");
+		return NULL;
+	}
+
+	char* copy = strdup(str);
+	if (!copy)
+	{
+		fprintf(stderr, "Failed to allocate memory for string constant. (Error)\n");
+		return NULL;
+	}
+
+	static int next_str_idx = 1;
+	char gname[64];
+	snprintf(gname, sizeof(gname), ".str%d", next_str_idx++);
+
+	IRType* t = ir_type_ptr(ir_type_i64());
+	IRValue* g = ir_global_create(m, gname, t, NULL);
+	if (!g)
+	{
+		fprintf(stderr, "Failed to create global for string constant. (Error)\n");
+		free(copy);
+		return NULL;
+	}
+
+	g->u.i64 = (int64_t)(intptr_t)copy;
+	fprintf(stderr, "IR constant (string) created: \"%s\" as %s at %p. (Info)\n", str, gname,
+	        (void*)copy);
+	return g;
+}
 
 IRValue* ir_temp(IRBlock* block, IRType* type)
 {

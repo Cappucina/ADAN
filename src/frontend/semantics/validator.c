@@ -26,6 +26,8 @@ void validate_call_expression(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_return_statement(SemanticAnalyzer* analyzer, ASTNode* node);
 
+void validate_expression_statement(SemanticAnalyzer* analyzer, ASTNode* node);
+
 void validate_identifier(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_string_literal(SemanticAnalyzer* analyzer, ASTNode* node);
@@ -81,6 +83,8 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 		case AST_RETURN_STATEMENT:
 			validate_return_statement(analyzer, node);
 			break;
+		case AST_EXPRESSION_STATEMENT:
+			validate_expression_statement(analyzer, node);
 			break;
 		default:
 			fprintf(stderr, "Unknown AST node type! (Error)\n");
@@ -855,5 +859,20 @@ void validate_return_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 			return;
 		}
 		semantic_error(analyzer, node, "Empty return in non-void function is not allowed.");
+	}
+}
+
+void validate_expression_statement(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	if (!analyzer || !node)
+		return;
+
+	if (node->type != AST_EXPRESSION_STATEMENT)
+		return;
+
+	ASTNode* expr = node->expr_stmt.expr;
+	if (expr)
+	{
+		validate_node(analyzer, expr);
 	}
 }

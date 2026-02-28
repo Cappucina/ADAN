@@ -1,0 +1,34 @@
+{
+  "name": "My Workspace",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "github.codespaces",
+        "github.copilot-chat",
+        "github.github-vscode-theme",
+        "github.vscode-pull-request-github",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpp-devtools",
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cpptools-themes",
+        "ms-vscode.makefile-tools",
+        "vira.vsc-vira-theme",
+        "viral-team.carbon-candy"
+      ],
+      "settings": {
+        "workbench.statusBar.visible": false,
+        "window.menuBarVisibility": "toggle",
+        "workbench.activityBar.location": "top",
+        "workbench.sideBar.location": "right",
+        "workbench.colorTheme": "carbon-candy-graphene-pink-thin-border",
+        "window.commandCenter": false,
+        "workbench.layoutControl.enabled": false,
+        "workbench.productIconTheme": "viraUIIcons",
+        "workbench.iconTheme": "vira-icons-carbon",
+        "explorer.confirmDragAndDrop": false
+      }
+    }
+  }
+}

@@ -89,6 +89,9 @@ void ast_free(ASTNode* node)
 		case AST_RETURN_STATEMENT:
 			ast_free(node->ret.expr);
 			break;
+		case AST_EXPRESSION_STATEMENT:
+			ast_free(node->expr_stmt.expr);
+			break;
 		default:
 			break;
 	}
@@ -310,6 +313,19 @@ ASTNode* ast_create_type(const char* name, size_t line, size_t column)
 	return node;
 }
 
+ASTNode* ast_create_expression_statement(ASTNode* expr, size_t line, size_t column)
+{
+	ASTNode* node = ast_init(AST_EXPRESSION_STATEMENT, line, column);
+	if (!node)
+	{
+		fprintf(stderr, "Failed to create AST expression statement node! (Error)\n");
+		return NULL;
+	}
+
+	node->expr_stmt.expr = expr;
+	return node;
+}
+
 // Debugging functions
 
 void ast_print(ASTNode* node, int indent)
@@ -397,6 +413,14 @@ void ast_print(ASTNode* node, int indent)
 			break;
 		case AST_TYPE:
 			printf("Type: %s\n", node->type_node.name);
+			break;
+		case AST_RETURN_STATEMENT:
+			printf("Return Statement:\n");
+			ast_print(node->ret.expr, indent + 1);
+			break;
+		case AST_EXPRESSION_STATEMENT:
+			printf("Expression Statement:\n");
+			ast_print(node->expr_stmt.expr, indent + 1);
 			break;
 	}
 }
