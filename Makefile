@@ -36,3 +36,6 @@ clean:
 
 format:
 	@find ./src ./libs -type f \( -name "*.c" -o -name "*.h" \) -exec clang-format -i {} +
+
+install:
+	@bash ./dependencies.sh

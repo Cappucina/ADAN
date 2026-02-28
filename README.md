@@ -38,6 +38,7 @@ $ make build   # Clean and create a fresh binary.
 $ make run     # Clear the terminal, then run an existing binary.
 $ make format  # Beautifies all C files in the `./src` dir, respecting rules from `.clang-format`.
 $ make clean   # Removes an existing binary in `./build`
+$ make install # Install all required dependencies. (Linux required for now!)
 ```
 
 <br>
