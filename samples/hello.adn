@@ -5,4 +5,6 @@ fun main(): i32
     set best_language: string = input("What is the best language? ");
 
     println(best_language);
+
+    return 0;
 }
