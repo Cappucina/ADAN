@@ -597,12 +597,8 @@ void lower_program(Program* program)
 
 				fprintf(stderr, "Import: %s (Info)\n", import_path);
 
-				/* Create known stubs for standard library imports so calls lower
-				 * correctly. */
 				if (strcmp(import_path, "adan/io") == 0)
 				{
-					/* Only create stub if it does not already exist in the
-					 * module. */
 					int exists = 0;
 					if (program->ir)
 					{

@@ -26,16 +26,6 @@ void ir_module_destroy(IRModule* mod)
 		return;
 	}
 	fprintf(stderr, "ir_module_destroy: start (mod=%p)\n", (void*)mod);
-	/* Conservative destructor: many IR objects (IRValue, IRInstruction,
-	 * IRBlock, IRFunction) are referenced in multiple places and ownership
-	 * is not fully tracked. Freeing them aggressively previously caused
-	 * double-free / corruption. To keep teardown safe, only free owned
-	 * heap allocations we can guarantee: call-arg arrays attached to
-	 * instructions and module-level global nodes and their string data.
-	 * This intentionally leaves IRFunction/IRBlock/IRInstruction/IRValue
-	 * structs alive (minor leak) but avoids crashes while we stabilize
-	 * ownership semantics.
-	 */
 
 	IRFunction* f = mod->functions;
 	while (f)
@@ -62,7 +52,6 @@ void ir_module_destroy(IRModule* mod)
 		f = f->next;
 	}
 
-	/* free module-level globals and their associated string data */
 	fprintf(stderr, "ir_module_destroy: free globals start (mod->globals=%p)\n", (void*)mod->globals);
 	IRGlobal* gg = mod->globals;
 	while (gg)
@@ -71,7 +60,6 @@ void ir_module_destroy(IRModule* mod)
 		IRGlobal* gnext = gg->next;
 		if (gg->value)
 		{
-			/* If the global value holds a strdup'd string in u.i64, free it. */
 			if (gg->value->kind == IRV_GLOBAL && gg->value->u.i64)
 			{
 				const char* s = (const char*)(intptr_t)gg->value->u.i64;
@@ -86,7 +74,6 @@ void ir_module_destroy(IRModule* mod)
 		gg = gnext;
 	}
 
-	/* Finally free the module container only. */
 	fprintf(stderr, "ir_module_destroy: free(mod=%p)\n", (void*)mod);
 	free(mod);
 }
@@ -652,7 +639,6 @@ IRValue* ir_emit_call(IRBlock* b, IRFunction* callee, IRValue** args, size_t nar
 	ins->operands[0] = NULL;
 	ins->operands[1] = NULL;
 	ins->operands[2] = (IRValue*)(void*)callee;
-	/* copy args into a dynamic array for arbitrary arity */
 	ins->call_args = NULL;
 	ins->call_nargs = 0;
 	if (nargs > 0 && args)
@@ -816,7 +802,6 @@ void ir_replace_value(IRModule* m, IRValue* oldv, IRValue* newv)
 				for (int i = 0; i < 3; ++i)
 					if (ins->operands[i] == oldv)
 						ins->operands[i] = newv;
-				/* replace in call args array if present */
 				if (ins->call_args && ins->call_nargs)
 				{
 					for (size_t ci = 0; ci < ins->call_nargs; ++ci)
