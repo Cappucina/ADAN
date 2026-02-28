@@ -6,7 +6,13 @@ project(ADAN LANGUAGES C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+add_subdirectory(src/backend/linker)
+
 file(GLOB_RECURSE SOURCES "src/*.c" "libs/*.c")
 
 add_executable(adan ${SOURCES})
 target_include_directories(adan PRIVATE src libs)
+
+if (TARGET adan_linker)
+	target_link_libraries(adan PRIVATE adan_linker)
+endif()

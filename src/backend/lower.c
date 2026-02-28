@@ -176,7 +176,9 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 
 		case AST_CALL:
 		{
-			fprintf(stderr, "lower_expression: call to '%s' with %zu args\n", node->call.callee ? node->call.callee : "<null>", node->call.arg_count);
+			fprintf(stderr, "lower_expression: call to '%s' with %zu args\n",
+			        node->call.callee ? node->call.callee : "<null>",
+			        node->call.arg_count);
 			if (!current_block)
 			{
 				fprintf(
@@ -190,6 +192,25 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			{
 				fprintf(stderr, "Call with empty callee name. (Error)\n");
 				return NULL;
+			}
+
+			size_t nargs = node->call.arg_count;
+			IRValue** args = NULL;
+			if (nargs > 0)
+			{
+				args = (IRValue**)calloc(nargs, sizeof(IRValue*));
+				if (!args)
+				{
+					fprintf(stderr,
+							"Out of memory while lowering call args. (Error)\n");
+					return NULL;
+				}
+			}
+
+			for (size_t i = 0; i < nargs; ++i)
+			{
+				ASTNode* a = node->call.args[i];
+				args[i] = lower_expression(program, a);
 			}
 
 			IRFunction* callee = NULL;
@@ -209,33 +230,40 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 
 			if (!callee)
 			{
-				fprintf(stderr, "Call to unknown function '%s'. (Warning)\n",
-				        callee_name);
-				return NULL;
-			}
-
-			size_t nargs = node->call.arg_count;
-			IRValue** args = NULL;
-			if (nargs > 0)
-			{
-				args = (IRValue**)calloc(nargs, sizeof(IRValue*));
-				if (!args)
+				fprintf(stderr, "Call to unknown function '%s'. Creating stub. (Warning)\n",
+						callee_name);
+				IRType* ret_t = ir_type_void();
+				size_t nlen = strlen(callee_name) + 5;
+				char* stub_name = (char*)malloc(nlen);
+				if (!stub_name)
 				{
-					fprintf(
-					    stderr,
-					    "Out of memory while lowering call args. (Error)\n");
+					fprintf(stderr, "Out of memory creating stub name. (Error)\n");
+					free(args);
 					return NULL;
 				}
-			}
-
-			for (size_t i = 0; i < nargs; ++i)
-			{
-				ASTNode* a = node->call.args[i];
-				args[i] = lower_expression(program, a);
+				snprintf(stub_name, nlen, "adn_%s", callee_name);
+				IRFunction* fn = ir_function_create_in_module(program->ir, stub_name, ret_t);
+				if (fn)
+				{
+					for (size_t i = 0; i < nargs; ++i)
+					{
+						IRValue* a = args[i];
+						IRType* at = a && a->type ? a->type : ir_type_i64();
+						ir_param_create(fn, NULL, at);
+					}
+					callee = fn;
+				}
+				else
+				{
+					fprintf(stderr, "Failed to create stub for '%s'. (Error)\n", callee_name);
+					free(args);
+					free(stub_name);
+					return NULL;
+				}
+				free(stub_name);
 			}
 
 			IRValue* res = ir_emit_call(current_block, callee, args, nargs);
-
 			free(args);
 			return res;
 		}
@@ -284,7 +312,8 @@ void lower_statement(Program* program, ASTNode* node)
 		}
 		case AST_BLOCK:
 		{
-			fprintf(stderr, "lower_statement: block with %zu statements\n", node->block.count);
+			fprintf(stderr, "lower_statement: block with %zu statements\n",
+			        node->block.count);
 			for (size_t i = 0; i < node->block.count; i++)
 			{
 				lower_statement(program, node->block.statements[i]);
@@ -293,7 +322,8 @@ void lower_statement(Program* program, ASTNode* node)
 		}
 		case AST_VARIABLE_DECLARATION:
 		{
-			fprintf(stderr, "lower_statement: var decl '%s'\n", node->var_decl.name ? node->var_decl.name : "<anon>");
+			fprintf(stderr, "lower_statement: var decl '%s'\n",
+			        node->var_decl.name ? node->var_decl.name : "<anon>");
 			if (!current_block)
 			{
 				fprintf(stderr,
@@ -317,7 +347,8 @@ void lower_statement(Program* program, ASTNode* node)
 			}
 			IRBlock* entry_block_for_alloc = current_function->blocks;
 			if (!entry_block_for_alloc)
-				entry_block_for_alloc = ir_block_create_in_function(current_function, "entry");
+				entry_block_for_alloc =
+				    ir_block_create_in_function(current_function, "entry");
 			IRValue* alloca = ir_emit_alloca(entry_block_for_alloc, var_type);
 			sym_put(var_name, alloca, 1);
 
@@ -430,7 +461,8 @@ void lower_program(Program* program)
 	for (size_t i = 0; i < root->program.count; i++)
 	{
 		ASTNode* decl = root->program.decls[i];
-		fprintf(stderr, "lower_program: processing decl %zu type=%d\n", i, decl ? (int)decl->type : -1);
+		fprintf(stderr, "lower_program: processing decl %zu type=%d\n", i,
+		        decl ? (int)decl->type : -1);
 		if (!decl)
 		{
 			continue;
@@ -505,16 +537,21 @@ void lower_program(Program* program)
 						continue;
 					}
 
-					IRValue* param_val = ir_param_create(ir_func, param_name, param_type);
+					IRValue* param_val =
+					    ir_param_create(ir_func, param_name, param_type);
 					if (param_val)
 					{
 						IRBlock* entry_alloc_block = ir_func->blocks;
 						if (!entry_alloc_block)
-							entry_alloc_block = ir_block_create_in_function(ir_func, "entry");
-						IRValue* alloca = ir_emit_alloca(entry_alloc_block, param_type);
+							entry_alloc_block =
+							    ir_block_create_in_function(ir_func,
+							                                "entry");
+						IRValue* alloca =
+						    ir_emit_alloca(entry_alloc_block, param_type);
 						if (alloca)
 						{
-							ir_emit_store(entry_alloc_block, alloca, param_val);
+							ir_emit_store(entry_alloc_block, alloca,
+							              param_val);
 							sym_put(param_name, alloca, 1);
 						}
 						else

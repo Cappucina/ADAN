@@ -1,15 +1,22 @@
 #include <stdio.h>
 
 #include "print.h"
+#include <string.h>
 
 void adn_println(const char* message)
 {
-	if (message)
+	if (!message)
 	{
-		printf("%s\n", message);
+		putchar('\n');
+		return;
+	}
+	size_t len = strlen(message);
+	if (len > 0 && message[len - 1] == '\n')
+	{
+		fputs(message, stdout);
 	}
 	else
 	{
-		printf("\n");
+		printf("%s\n", message);
 	}
 }

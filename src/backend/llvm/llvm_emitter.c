@@ -111,7 +111,8 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 			if (s)
 			{
 				size_t len = strlen(s);
-				fprintf(out, "@%s = private constant [%zu x i8] c\"", g->name, len + 1);
+				fprintf(out, "@%s = private constant [%zu x i8] c\"", g->name,
+				        len + 1);
 				for (size_t i = 0; i < len; ++i)
 				{
 					unsigned char c = (unsigned char)s[i];
@@ -136,6 +137,27 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 		for (IRValue* pv = f->params; pv; pv = pv->next)
 		{
 			(void)es_get_val_name(&st, pv);
+		}
+
+		if (!f->blocks)
+		{
+			fprintf(out, "declare %s @%s(", rett ? rett : "void",
+					fname ? fname : "<anon>");
+			int firstp = 1;
+			for (IRValue* pv = f->params; pv; pv = pv->next)
+			{
+				char* ptype = llvm_type_to_string(pv->type ? pv->type : ir_type_i64());
+				char* pname = es_get_val_name(&st, pv);
+				if (!firstp)
+					fprintf(out, ", ");
+				fprintf(out, "%s %s", ptype ? ptype : "i64", pname ? pname : "<p>");
+				free(ptype);
+				firstp = 0;
+			}
+			fprintf(out, ")\n\n");
+			free(rett);
+			free(fname);
+			continue;
 		}
 
 		fprintf(out, "define %s @%s(", rett ? rett : "void", fname ? fname : "<anon>");
@@ -205,7 +227,8 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 					}
 					case IR_CALL:
 					{
-						IRFunction* callee = (IRFunction*)(void*)ins->operands[2];
+						IRFunction* callee =
+						    (IRFunction*)(void*)ins->operands[2];
 						char* callee_name = llvm_utils_mangle_name(
 						    callee->name ? callee->name : "<anon>");
 						char* rettype = llvm_type_to_string(
@@ -231,13 +254,17 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						int first = 1;
 						if (ins->call_args && ins->call_nargs)
 						{
-							for (size_t ai = 0; ai < ins->call_nargs; ++ai)
+							for (size_t ai = 0; ai < ins->call_nargs;
+							     ++ai)
 							{
 								IRValue* a = ins->call_args[ai];
-								char* at = llvm_type_to_string(a && a->type ? a->type : ir_type_i64());
+								char* at = llvm_type_to_string(
+								    a && a->type ? a->type
+								                 : ir_type_i64());
 								if (!first)
 									fprintf(out, ", ");
-								fprintf(out, "%s ", at ? at : "i64");
+								fprintf(out, "%s ",
+								        at ? at : "i64");
 								es_emit_value_rep(&st, out, a);
 								free(at);
 								first = 0;
@@ -253,7 +280,29 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						IRValue* v = ins->operands[0];
 						if (!v)
 						{
-							fprintf(out, "  ret void\n");
+							IRType* frt = f->return_type ? f->return_type : ir_type_void();
+							if (frt->kind == IR_T_VOID)
+							{
+								fprintf(out, "  ret void\n");
+							}
+							else if (frt->kind == IR_T_PTR)
+							{
+								char* rt = llvm_type_to_string(frt);
+								fprintf(out, "  ret %s null\n", rt ? rt : "ptr");
+								free(rt);
+							}
+							else if (frt->kind == IR_T_F64)
+							{
+								char* rt = llvm_type_to_string(frt);
+								fprintf(out, "  ret %s 0.0\n", rt ? rt : "f64");
+								free(rt);
+							}
+							else
+							{
+								char* rt = llvm_type_to_string(frt);
+								fprintf(out, "  ret %s 0\n", rt ? rt : "i64");
+								free(rt);
+							}
 						}
 						else
 						{
@@ -292,77 +341,98 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						IRValue* rhs = ins->operands[1];
 						char* lstr = es_get_val_name(&st, lhs);
 						char* rstr = es_get_val_name(&st, rhs);
-						char* tstr = llvm_type_to_string(ins->dest->type ? ins->dest->type : ir_type_i64());
+						char* tstr = llvm_type_to_string(
+						    ins->dest->type ? ins->dest->type
+						                    : ir_type_i64());
 						switch (ins->opcode)
 						{
-							case 1: // +
-								fprintf(out, "  %s = add %s ", dst ? dst : "<dst>", tstr ? tstr : "i64");
+							case 1:  // +
+								fprintf(out, "  %s = add %s ",
+								        dst ? dst : "<dst>",
+								        tstr ? tstr : "i64");
 								es_emit_value_rep(&st, out, lhs);
 								fprintf(out, ", ");
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 2: // -
-								fprintf(out, "  %s = sub %s ", dst ? dst : "<dst>", tstr ? tstr : "i64");
+							case 2:  // -
+								fprintf(out, "  %s = sub %s ",
+								        dst ? dst : "<dst>",
+								        tstr ? tstr : "i64");
 								es_emit_value_rep(&st, out, lhs);
 								fprintf(out, ", ");
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 3: // *
-								fprintf(out, "  %s = mul %s ", dst ? dst : "<dst>", tstr ? tstr : "i64");
+							case 3:  // *
+								fprintf(out, "  %s = mul %s ",
+								        dst ? dst : "<dst>",
+								        tstr ? tstr : "i64");
 								es_emit_value_rep(&st, out, lhs);
 								fprintf(out, ", ");
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 4: // /
-								fprintf(out, "  %s = sdiv %s ", dst ? dst : "<dst>", tstr ? tstr : "i64");
+							case 4:  // /
+								fprintf(out, "  %s = sdiv %s ",
+								        dst ? dst : "<dst>",
+								        tstr ? tstr : "i64");
 								es_emit_value_rep(&st, out, lhs);
 								fprintf(out, ", ");
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 6: // ==
-								fprintf(out, "  %s = icmp eq %s ", dst ? dst : "<dst>", tstr ? tstr : "i64");
+							case 6:  // ==
+								fprintf(out, "  %s = icmp eq %s ",
+								        dst ? dst : "<dst>",
+								        tstr ? tstr : "i64");
 								es_emit_value_rep(&st, out, lhs);
 								fprintf(out, ", ");
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 7: // !=
-								fprintf(out, "  %s = icmp ne %s ", dst ? dst : "<dst>", tstr ? tstr : "i64");
+							case 7:  // !=
+								fprintf(out, "  %s = icmp ne %s ",
+								        dst ? dst : "<dst>",
+								        tstr ? tstr : "i64");
 								es_emit_value_rep(&st, out, lhs);
 								fprintf(out, ", ");
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
 							default:
-								fprintf(out, "  ; binop opcode %d unsupported\n", ins->opcode);
+								fprintf(out,
+								        "  ; binop opcode %d "
+								        "unsupported\n",
+								        ins->opcode);
 								break;
 						}
 						free(tstr);
 						break;
 					}
-						break;
+					break;
 					case IR_PHI:
 					{
 						char* d = es_get_val_name(&st, ins->dest);
-						char* t = llvm_type_to_string(ins->dest->type ? ins->dest->type : ir_type_i64());
-						fprintf(out, "  %s = phi %s [", d ? d : "<dst>", t ? t : "i64");
+						char* t = llvm_type_to_string(ins->dest->type
+						                                  ? ins->dest->type
+						                                  : ir_type_i64());
+						fprintf(out, "  %s = phi %s [", d ? d : "<dst>",
+						        t ? t : "i64");
 						es_emit_value_rep(&st, out, ins->operands[0]);
 						fprintf(out, "]");
 						if (ins->operands[1])
 						{
 							fprintf(out, ", [");
-							es_emit_value_rep(&st, out, ins->operands[1]);
+							es_emit_value_rep(&st, out,
+							                  ins->operands[1]);
 							fprintf(out, "]");
 						}
 						fprintf(out, "\n");
 						free(t);
 						break;
 					}
-						break;
+					break;
 					default:
 						fprintf(out,
 						        "  ; unsupported instruction kind %d\n",

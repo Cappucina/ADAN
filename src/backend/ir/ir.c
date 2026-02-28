@@ -30,17 +30,21 @@ void ir_module_destroy(IRModule* mod)
 	IRFunction* f = mod->functions;
 	while (f)
 	{
-		fprintf(stderr, "ir_module_destroy: function %p name=%p\n", (void*)f, (void*)f->name);
+		fprintf(stderr, "ir_module_destroy: function %p name=%p\n", (void*)f,
+		        (void*)f->name);
 		IRBlock* b = f->blocks;
 		while (b)
 		{
-			fprintf(stderr, "ir_module_destroy: block %p name=%p\n", (void*)b, (void*)b->name);
+			fprintf(stderr, "ir_module_destroy: block %p name=%p\n", (void*)b,
+			        (void*)b->name);
 			IRInstruction* i = b->first;
 			while (i)
 			{
 				if (i->call_args)
 				{
-					fprintf(stderr, "ir_module_destroy: free call_args for instr %p\n", (void*)i);
+					fprintf(stderr,
+					        "ir_module_destroy: free call_args for instr %p\n",
+					        (void*)i);
 					free(i->call_args);
 					i->call_args = NULL;
 					i->call_nargs = 0;
@@ -52,18 +56,21 @@ void ir_module_destroy(IRModule* mod)
 		f = f->next;
 	}
 
-	fprintf(stderr, "ir_module_destroy: free globals start (mod->globals=%p)\n", (void*)mod->globals);
+	fprintf(stderr, "ir_module_destroy: free globals start (mod->globals=%p)\n",
+	        (void*)mod->globals);
 	IRGlobal* gg = mod->globals;
 	while (gg)
 	{
-		fprintf(stderr, "ir_module_destroy: freeing global %p name=%p\n", (void*)gg, (void*)gg->name);
+		fprintf(stderr, "ir_module_destroy: freeing global %p name=%p\n", (void*)gg,
+		        (void*)gg->name);
 		IRGlobal* gnext = gg->next;
 		if (gg->value)
 		{
 			if (gg->value->kind == IRV_GLOBAL && gg->value->u.i64)
 			{
 				const char* s = (const char*)(intptr_t)gg->value->u.i64;
-				fprintf(stderr, "ir_module_destroy: global value string ptr=%p\n", (void*)s);
+				fprintf(stderr, "ir_module_destroy: global value string ptr=%p\n",
+				        (void*)s);
 				if (s)
 					free((void*)s);
 			}
@@ -366,12 +373,185 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 		return NULL;
 	}
 
-	char* copy = strdup(str);
-	if (!copy)
+	size_t len = strlen(str);
+	char* copy = NULL;
+	if (len >= 2 && str[0] == '"' && str[len - 1] == '"')
 	{
-		fprintf(stderr, "Failed to allocate memory for string constant. (Error)\n");
+		size_t inner_len = len - 2;
+		copy = (char*)malloc(inner_len + 1);
+		if (!copy)
+		{
+			fprintf(stderr, "Failed to allocate memory for string constant. (Error)\n");
+			return NULL;
+		}
+		memcpy(copy, str + 1, inner_len);
+		copy[inner_len] = '\0';
+	}
+	else
+	{
+		copy = strdup(str);
+		if (!copy)
+		{
+			fprintf(stderr, "Failed to allocate memory for string constant. (Error)\n");
+			return NULL;
+		}
+	}
+
+	/* Unescape common escape sequences (\n, \t, \\, \", \r, \xHH, \uXXXX) */
+	size_t clen = strlen(copy);
+	/* Allocate a buffer large enough for UTF-8 expansion */
+	size_t max_out = (clen ? clen * 4 : 4) + 1;
+	char* unesc = (char*)malloc(max_out);
+	if (!unesc)
+	{
+		free(copy);
+		fprintf(stderr, "Failed to allocate memory for unescaped string. (Error)\n");
 		return NULL;
 	}
+	size_t ri = 0;
+	for (size_t wi = 0; wi < clen; ++wi)
+	{
+		char c = copy[wi];
+		if (c == '\\' && wi + 1 < clen)
+		{
+			char nx = copy[wi + 1];
+			if (nx == 'x')
+			{
+				/* \xHH : parse up to two hex digits */
+				int val = 0;
+				size_t consumed = 0;
+				for (size_t k = 2; k <= 3 && wi + k < clen; ++k)
+				{
+					char ch = copy[wi + k];
+					int d = -1;
+					if (ch >= '0' && ch <= '9')
+						d = ch - '0';
+					else if (ch >= 'a' && ch <= 'f')
+						d = 10 + (ch - 'a');
+					else if (ch >= 'A' && ch <= 'F')
+						d = 10 + (ch - 'A');
+					if (d >= 0)
+					{
+						val = (val << 4) | d;
+						consumed = k - 1;
+					}
+					else
+						break;
+				}
+				if (consumed > 0)
+				{
+					unesc[ri++] = (char)val;
+					wi += 1 + consumed; /* skip \\ x and hex digits */
+					continue;
+				}
+				else
+				{
+					/* Invalid \\x sequence: treat as literal 'x' */
+					unesc[ri++] = 'x';
+					wi++; /* skip the 'x' */
+					continue;
+				}
+			}
+			else if (nx == 'u')
+			{
+				/* \\uXXXX : parse exactly 4 hex digits and encode UTF-8 */
+				if (wi + 5 < clen)
+				{
+					int val = 0;
+					int ok = 1;
+					for (size_t k = 1; k <= 4; ++k)
+					{
+						char ch = copy[wi + 1 + k];
+						int d = -1;
+						if (ch >= '0' && ch <= '9')
+							d = ch - '0';
+						else if (ch >= 'a' && ch <= 'f')
+							d = 10 + (ch - 'a');
+						else if (ch >= 'A' && ch <= 'F')
+							d = 10 + (ch - 'A');
+						if (d < 0)
+						{
+							ok = 0;
+							break;
+						}
+						val = (val << 4) | d;
+					}
+					if (ok)
+					{
+						/* Encode val as UTF-8 */
+						if (val <= 0x7F)
+						{
+							unesc[ri++] = (char)val;
+						}
+						else if (val <= 0x7FF)
+						{
+							unesc[ri++] = (char)(0xC0 | ((val >> 6) & 0x1F));
+							unesc[ri++] = (char)(0x80 | (val & 0x3F));
+						}
+						else if (val <= 0xFFFF)
+						{
+							unesc[ri++] = (char)(0xE0 | ((val >> 12) & 0x0F));
+							unesc[ri++] = (char)(0x80 | ((val >> 6) & 0x3F));
+							unesc[ri++] = (char)(0x80 | (val & 0x3F));
+						}
+						else
+						{
+							/* codepoints beyond BMP -> 4 bytes */
+							unesc[ri++] = (char)(0xF0 | ((val >> 18) & 0x07));
+							unesc[ri++] = (char)(0x80 | ((val >> 12) & 0x3F));
+							unesc[ri++] = (char)(0x80 | ((val >> 6) & 0x3F));
+							unesc[ri++] = (char)(0x80 | (val & 0x3F));
+						}
+						wi += 5; /* skip \\ u and 4 hex digits */
+						continue;
+					}
+				}
+				/* Fallback: treat as literal 'u' */
+				unesc[ri++] = 'u';
+				wi++; /* skip the 'u' */
+				continue;
+			}
+			else
+			{
+				switch (nx)
+				{
+					case 'n':
+						unesc[ri++] = '\n';
+						break;
+					case 'r':
+						unesc[ri++] = '\r';
+						break;
+					case 't':
+						unesc[ri++] = '\t';
+						break;
+					case '\\':
+						unesc[ri++] = '\\';
+						break;
+					case '"':
+						unesc[ri++] = '"';
+						break;
+					case '\'':
+						unesc[ri++] = '\'';
+						break;
+					case '0':
+						unesc[ri++] = '\0';
+						break;
+					default:
+						unesc[ri++] = nx;
+						break;
+				}
+				wi++; /* skip the escaped char */
+				continue;
+			}
+		}
+		else
+		{
+			unesc[ri++] = c;
+		}
+	}
+	unesc[ri] = '\0';
+	free(copy);
+	copy = unesc;
 
 	static int next_str_idx = 1;
 	char gname[64];
@@ -389,7 +569,7 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 
 	g->u.i64 = (int64_t)(intptr_t)copy;
 	fprintf(stderr, "IR constant (string) created: \"%s\" as %s at %p. (Info)\n", str, gname,
-	        (void*)copy);
+			(void*)copy);
 	return g;
 }
 
@@ -536,7 +716,7 @@ IRValue* ir_emit_alloca(IRBlock* b, IRType* type)
 	if (!ins)
 		return NULL;
 	ins->kind = IR_ALLOCA;
-	IRValue* dst = ir_temp(b, type);
+	IRValue* dst = ir_temp(b, ir_type_ptr(type));
 	ins->dest = dst;
 	ins->operands[0] = NULL;
 	ins->operands[1] = NULL;
@@ -644,7 +824,8 @@ IRValue* ir_emit_call(IRBlock* b, IRFunction* callee, IRValue** args, size_t nar
 	if (nargs > 0 && args)
 	{
 		ins->call_args = (IRValue**)malloc(sizeof(IRValue*) * nargs);
-		fprintf(stderr, "ir_emit_call: allocated call_args -> %p for instr %p\n", (void*)ins->call_args, (void*)ins);
+		fprintf(stderr, "ir_emit_call: allocated call_args -> %p for instr %p\n",
+		        (void*)ins->call_args, (void*)ins);
 		if (ins->call_args)
 		{
 			for (size_t i = 0; i < nargs; ++i)

@@ -12,6 +12,8 @@
 #include "backend/lower.h"
 #include "backend/ir/ir.h"
 #include "backend/backend.h"
+#include "backend/linker/linker.h"
+#include <limits.h>
 
 bool has_valid_extension(const char* filename)
 {
@@ -36,6 +38,9 @@ void print_usage(const char* program_name)
 int main(int argc, char* argv[])
 {
 	char* file_path = NULL;
+	int do_link = 0;
+	char* libs = NULL;
+	char* out_path = NULL;
 
 	if (argc < 3)
 	{
@@ -43,12 +48,26 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	for (int i = 1; i < argc - 1; i++)
+	for (int i = 1; i < argc; i++)
 	{
 		if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--file") == 0)
 		{
-			file_path = argv[i + 1];
-			break;
+			if (i + 1 < argc)
+				file_path = argv[i + 1];
+		}
+		else if (strcmp(argv[i], "--link") == 0)
+		{
+			do_link = 1;
+		}
+		else if (strcmp(argv[i], "--libs") == 0)
+		{
+			if (i + 1 < argc)
+				libs = argv[i + 1];
+		}
+		else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0)
+		{
+			if (i + 1 < argc)
+				out_path = argv[i + 1];
 		}
 	}
 
@@ -103,20 +122,42 @@ int main(int argc, char* argv[])
 			{
 				printf("Semantic analysis completed successfully! (Info)\n");
 
-				IRModule* ir = ir_module_create();
-				if (!ir)
+				char* ll_path = NULL;
+				if (file_path)
 				{
-					fprintf(stderr, "Failed to create IR module. (Error)\n");
+					size_t flen = strlen(file_path);
+					const char* dot = strrchr(file_path, '.');
+					size_t base_len = dot ? (size_t)(dot - file_path) : flen;
+					ll_path = (char*)malloc(base_len + 4 + 1);
+					if (ll_path)
+					{
+						memcpy(ll_path, file_path, base_len);
+						strcpy(ll_path + base_len, ".ll");
+					}
 				}
-				else
+
+				int emit_res = -1;
+				if (ll_path)
 				{
-					Program program = {.ast_root = ast, .ir = ir};
-					lower_program(&program);
-					printf("IR generation completed! (Info)\n");
-					// ir_print_module(ir, stdout);
-					ir_print_module(ir, stdout);
-					ir_module_destroy(ir);
+					emit_res = backend_compile_ast_to_llvm_file(ast, ll_path);
+					if (emit_res == 0)
+						printf("LLVM IR emitted to %s\n", ll_path);
+					else
+						fprintf(stderr, "Failed to emit LLVM IR to %s\n", ll_path);
 				}
+
+				if (do_link && ll_path && emit_res == 0)
+				{
+					const char* outp = out_path ? out_path : "a.out";
+					int lres = linker_link_with_clang(ll_path, outp, libs ? libs : "");
+					if (lres == 0)
+						printf("Linked executable: %s\n", outp);
+					else
+						fprintf(stderr, "Linking failed (code=%d)\n", lres);
+				}
+
+				if (ll_path)
+					free(ll_path);
 			}
 			semantic_free(analyzer);
 		}
