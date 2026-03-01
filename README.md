@@ -1,5 +1,6 @@
 <div align="center">
     <h1>The ADAN Programming Language</h1>
+    <img width="180" height="180" align="right" src="https://github.com/user-attachments/assets/7eb50e19-a1c0-4e25-85e2-50c7c4e65cef" />
     <p>
         A modern, memory safe programming language designed for any developer for any use case.
     </p>
@@ -14,6 +15,8 @@
 
   <img src="https://img.shields.io/github/v/release/Cappucina/ADAN?style=flat&label=Releases&color=blue" alt="Releases"/>
 </div>
+
+---
 
 ## Compiling the Compiler
 Before compiling the compiler you need to have each dependency installed first.
