@@ -29,6 +29,8 @@ detect_distro() {
         DISTRO_LIKE=$ID_LIKE
     elif command_exists lsb_release; then
         DISTRO=$(lsb_release -si | tr '[:upper:]' '[:lower:]')
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        DISTRO="darwin"
     else
         print_error "Cannot detect Linux distribution"
         exit 1
@@ -102,6 +104,14 @@ install_packages() {
             print_info "Installing packages: $packages"
             $SUDO apk add $packages
             ;;
+        brew)
+            print_info "Installing packages: $packages"
+            brew install $packages
+            ;;
+        *)
+            print_error "Unsupported package manager: $PKG_MGR"
+            return 1
+            ;;
     esac
 }
 
@@ -121,6 +131,13 @@ get_package_names() {
             ;;
         apk)
             PACKAGES="build-base cmake clang-extra-tools gdb"
+            ;;
+        brew)
+            PACKAGES="cmake clang-format gdb"
+            ;;
+        *)
+            print_error "Unsupported package manager: $PKG_MGR"
+            exit 1
             ;;
     esac
 }
