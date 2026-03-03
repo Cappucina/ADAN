@@ -23,14 +23,15 @@ command_exists() {
 }
 
 detect_distro() {
-    if [ -f /etc/os-release ]; then
+    if [ "$(uname)" = "Darwin" ]; then
+        DISTRO="darwin"
+    elif [ -f /etc/os-release ]; then
         . /etc/os-release
         DISTRO=$ID
-        DISTRO_LIKE=$ID_LIKE
     elif command_exists lsb_release; then
         DISTRO=$(lsb_release -si | tr '[:upper:]' '[:lower:]')
     else
-        print_error "Cannot detect Linux distribution"
+        print_error "Cannot detect operating system"
         exit 1
     fi
 
@@ -46,6 +47,8 @@ detect_distro() {
         PKG_MGR="zypper"
     elif command_exists apk; then
         PKG_MGR="apk"
+    elif command_exists brew; then
+        PKG_MGR="brew"
     else
         print_error "No supported package manager found"
         exit 1
@@ -69,66 +72,73 @@ needs_sudo() {
 }
 
 install_packages() {
-    local packages="$@"
-    
+    local packages="$*"
+
     case $PKG_MGR in
-        apt)
-            print_info "Updating package list..."
-            $SUDO apt-get update -qq || print_warn "Failed to update package list"
-            print_info "Installing packages: $packages"
-            $SUDO apt-get install -y $packages
-            ;;
-        dnf)
-            print_info "Installing packages: $packages"
-            $SUDO dnf install -y $packages
-            ;;
-        yum)
-            print_info "Installing packages: $packages"
-            $SUDO yum install -y $packages
-            ;;
-        pacman)
-            print_info "Updating package database..."
-            $SUDO pacman -Sy
-            print_info "Installing packages: $packages"
-            $SUDO pacman -S --noconfirm $packages
-            ;;
-        zypper)
-            print_info "Installing packages: $packages"
-            $SUDO zypper install -y $packages
-            ;;
-        apk)
-            print_info "Updating package index..."
-            $SUDO apk update
-            print_info "Installing packages: $packages"
-            $SUDO apk add $packages
-            ;;
+    apt)
+        print_info "Updating package list..."
+        $SUDO apt-get update -qq || print_warn "Failed to update package list"
+        print_info "Installing packages: $packages"
+        $SUDO apt-get install -y $packages
+        ;;
+    dnf)
+        print_info "Installing packages: $packages"
+        $SUDO dnf install -y $packages
+        ;;
+    yum)
+        print_info "Installing packages: $packages"
+        $SUDO yum install -y $packages
+        ;;
+    pacman)
+        print_info "Updating package database..."
+        $SUDO pacman -Sy
+        print_info "Installing packages: $packages"
+        $SUDO pacman -S --noconfirm $packages
+        ;;
+    zypper)
+        print_info "Installing packages: $packages"
+        $SUDO zypper install -y $packages
+        ;;
+    apk)
+        print_info "Updating package index..."
+        $SUDO apk update
+        print_info "Installing packages: $packages"
+        $SUDO apk add $packages
+        ;;
+    brew)
+        print_info "Installing packages: $packages"
+        brew install $packages
+        ;;
     esac
 }
 
 get_package_names() {
     case $PKG_MGR in
-        apt)
-            PACKAGES="build-essential cmake clang-format gdb"
-            ;;
-        dnf|yum)
-            PACKAGES="gcc make cmake clang-tools-extra gdb"
-            ;;
-        pacman)
-            PACKAGES="base-devel cmake clang gdb"
-            ;;
-        zypper)
-            PACKAGES="gcc make cmake clang-tools gdb"
-            ;;
-        apk)
-            PACKAGES="build-base cmake clang-extra-tools gdb"
-            ;;
+    apt)
+        PACKAGES="build-essential cmake clang-format gdb"
+        ;;
+    dnf | yum)
+        PACKAGES="gcc make cmake clang-tools-extra gdb"
+        ;;
+    pacman)
+        PACKAGES="base-devel cmake clang gdb"
+        ;;
+    zypper)
+        PACKAGES="gcc make cmake clang-tools gdb"
+        ;;
+    apk)
+        PACKAGES="build-base cmake clang-extra-tools gdb"
+        ;;
+    brew)
+        PACKAGES="cmake clang-format lldb"
+        ;;
     esac
 }
 
 check_dependency() {
     local cmd=$1
     local name=$2
-    
+
     if command_exists "$cmd"; then
         print_info "✓ $name is installed"
         return 0
@@ -150,11 +160,19 @@ main() {
     echo
 
     NEED_INSTALL=false
-    check_dependency "gcc" "GCC compiler" || NEED_INSTALL=true
-    check_dependency "make" "Make" || NEED_INSTALL=true
-    check_dependency "cmake" "CMake" || NEED_INSTALL=true
-    check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
-    check_dependency "gdb" "GDB debugger" || NEED_INSTALL=true
+    if [ "$DISTRO" = "darwin" ]; then
+        check_dependency "clang" "Clang compiler" || NEED_INSTALL=true
+        check_dependency "make" "Make" || NEED_INSTALL=true
+        check_dependency "cmake" "CMake" || NEED_INSTALL=true
+        check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
+        check_dependency "lldb" "LLDB debugger" || NEED_INSTALL=true
+    else
+        check_dependency "gcc" "GCC compiler" || NEED_INSTALL=true
+        check_dependency "make" "Make" || NEED_INSTALL=true
+        check_dependency "cmake" "CMake" || NEED_INSTALL=true
+        check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
+        check_dependency "gdb" "GDB debugger" || NEED_INSTALL=true
+    fi
 
     echo
 
@@ -166,18 +184,26 @@ main() {
     get_package_names
     print_info "Installing missing dependencies..."
     echo
-    
+
     if install_packages $PACKAGES; then
         echo
         print_info "✓ All dependencies installed successfully!"
         echo
         print_info "Verifying installation..."
         echo
-        check_dependency "gcc" "GCC compiler"
-        check_dependency "make" "Make"
-        check_dependency "cmake" "CMake"
-        check_dependency "clang-format" "clang-format"
-        check_dependency "gdb" "GDB debugger"
+        if [ "$DISTRO" = "darwin" ]; then
+            check_dependency "clang" "Clang compiler"
+            check_dependency "make" "Make"
+            check_dependency "cmake" "CMake"
+            check_dependency "clang-format" "clang-format"
+            check_dependency "lldb" "LLDB debugger"
+        else
+            check_dependency "gcc" "GCC compiler"
+            check_dependency "make" "Make"
+            check_dependency "cmake" "CMake"
+            check_dependency "clang-format" "clang-format"
+            check_dependency "gdb" "GDB debugger"
+        fi
     else
         print_error "Failed to install some dependencies"
         exit 1
