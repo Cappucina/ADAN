@@ -1,0 +1,3 @@
+#!/bin/sh
+ZIG=$(command -v zig || echo "$HOME/bin/zig")
+exec "$ZIG" cc -target x86_64-macos-none "$@"
