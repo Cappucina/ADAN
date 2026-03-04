@@ -1,6 +1,6 @@
 <div align="center">
     <h1>The ADAN Programming Language</h1>
-    <img align="right" width="190" height="190" alt="image" src="https://github.com/user-attachments/assets/d0a04208-84b8-405a-ac47-73960431d5d6" />
+    <img align="right" width="180" height="180" alt="image" src="https://github.com/user-attachments/assets/d0a04208-84b8-405a-ac47-73960431d5d6" />
     <p align="left">
          A modern, memory safe programming language designed to be written like JavaScript and used like C for low-level programming. 
     </p>
