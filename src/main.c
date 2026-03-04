@@ -9,6 +9,7 @@
 #include "frontend/parser/parser.h"
 #include "frontend/ast/tree.h"
 #include "frontend/semantics/semantic.h"
+#include "frontend/semantics/validator.h"
 #include "backend/lower.h"
 #include "backend/ir/ir.h"
 #include "backend/backend.h"
@@ -42,6 +43,7 @@ int main(int argc, char* argv[])
 	char* libs = NULL;
 	char* out_path = NULL;
 	char* bundle_libs = NULL;
+	char* bundle_embedded = NULL;
 
 	if (argc < 3)
 	{
@@ -71,7 +73,14 @@ int main(int argc, char* argv[])
 		}
 		else if (strcmp(argv[i], "--bundle-runtime") == 0)
 		{
-			bundle_libs = "libs/io"; // backward-compatible shorthand
+			bundle_embedded = "adan/io";  // shorthand: bundle io from binary
+		}
+		else if (strcmp(argv[i], "--bundle-embedded") == 0)
+		{
+			if (i + 1 < argc)
+			{
+				bundle_embedded = argv[i + 1];
+			}
 		}
 		else if (strcmp(argv[i], "--bundle-libs") == 0)
 		{
@@ -173,13 +182,27 @@ int main(int argc, char* argv[])
 				{
 					const char* outp = out_path ? out_path : "a.out";
 					int lres;
-					if (bundle_libs)
+
+					const char* auto_embedded =
+					    validator_get_embedded_modules();
+					const char* effective_embedded =
+					    bundle_embedded ? bundle_embedded : auto_embedded;
+
+					if (effective_embedded)
 					{
-						lres = linker_link_and_bundle(ll_path, outp, libs ? libs : "", bundle_libs);
+						lres = linker_link_and_bundle_embedded(
+						    ll_path, outp, libs ? libs : "",
+						    effective_embedded);
+					}
+					else if (bundle_libs)
+					{
+						lres = linker_link_and_bundle(
+						    ll_path, outp, libs ? libs : "", bundle_libs);
 					}
 					else
 					{
-						lres = linker_link_with_clang(ll_path, outp, libs ? libs : "");
+						lres = linker_link_with_clang(ll_path, outp,
+						                              libs ? libs : "");
 					}
 					if (lres == 0)
 					{

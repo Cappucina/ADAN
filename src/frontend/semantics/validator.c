@@ -4,6 +4,7 @@
 
 #include "validator.h"
 #include "../../helper.h"
+#include "../../embedded_libs.h"
 #include "../ast/tree.h"
 #include "../parser/parser.h"
 #include "../scanner/scanner.h"
@@ -99,6 +100,12 @@ static char** imported_paths = NULL;
 static size_t imported_count = 0;
 static size_t imported_capacity = 0;
 
+// Tracks which adan/* modules were loaded from the embedded store this pass
+static char** embedded_modules_used = NULL;
+static size_t embedded_modules_count = 0;
+static size_t embedded_modules_capacity = 0;
+static char* embedded_modules_csv = NULL;
+
 typedef struct
 {
 	char* name;
@@ -158,6 +165,44 @@ void validator_cleanup()
 	function_signatures = NULL;
 	function_signature_count = 0;
 	function_signatures_capacity = 0;
+
+	for (size_t i = 0; i < embedded_modules_count; i++)
+	{
+		free(embedded_modules_used[i]);
+	}
+	free(embedded_modules_used);
+	embedded_modules_used = NULL;
+	embedded_modules_count = 0;
+	embedded_modules_capacity = 0;
+	free(embedded_modules_csv);
+	embedded_modules_csv = NULL;
+}
+
+const char* validator_get_embedded_modules()
+{
+	if (embedded_modules_count == 0)
+		return NULL;
+
+	// Build/rebuild CSV
+	free(embedded_modules_csv);
+	embedded_modules_csv = NULL;
+
+	size_t total = 0;
+	for (size_t i = 0; i < embedded_modules_count; i++)
+		total += strlen(embedded_modules_used[i]) + 1;  // +1 for comma or NUL
+
+	embedded_modules_csv = malloc(total + 1);
+	if (!embedded_modules_csv)
+		return NULL;
+
+	embedded_modules_csv[0] = '\0';
+	for (size_t i = 0; i < embedded_modules_count; i++)
+	{
+		if (i > 0)
+			strcat(embedded_modules_csv, ",");
+		strcat(embedded_modules_csv, embedded_modules_used[i]);
+	}
+	return embedded_modules_csv;
 }
 
 static FunctionSignature* find_function_signature(const char* name)
@@ -636,7 +681,33 @@ void validate_import_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 		return;
 	}
 
-	char* source = read_file(lib_path);
+	// Prefer the version embedded in the compiler binary; fall back to
+	// the filesystem so development builds (running from the project root)
+	// still work with local edits.
+	char* source = NULL;
+	const char* embedded = embedded_lib_get_adn_source(normalized);
+	if (embedded)
+	{
+		source = strdup(embedded);
+		// Record this module so the linker can auto-bundle it
+		if (embedded_modules_count + 1 > embedded_modules_capacity)
+		{
+			size_t nc =
+			    embedded_modules_capacity == 0 ? 8 : embedded_modules_capacity * 2;
+			char** r = realloc(embedded_modules_used, nc * sizeof(char*));
+			if (r)
+			{
+				embedded_modules_used = r;
+				embedded_modules_capacity = nc;
+			}
+		}
+		if (embedded_modules_count < embedded_modules_capacity)
+			embedded_modules_used[embedded_modules_count++] = strdup(normalized);
+	}
+	else
+	{
+		source = read_file(lib_path);
+	}
 	if (!source)
 	{
 		semantic_error(analyzer, node, "Failed to load standard library source.");
