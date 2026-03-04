@@ -1,2 +1,0 @@
-/home/skairipa/ADAN/cmake/../scripts/zig-ar qc libadan_linker.a CMakeFiles/adan_linker.dir/linker.c.o
-/home/skairipa/ADAN/cmake/../scripts/zig-ranlib libadan_linker.a

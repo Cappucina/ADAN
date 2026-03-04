@@ -1,6 +1,0 @@
-/home/skairipa/ADAN/build-macos-arm64/CMakeFiles/adan.dir
-/home/skairipa/ADAN/build-macos-arm64/CMakeFiles/edit_cache.dir
-/home/skairipa/ADAN/build-macos-arm64/CMakeFiles/rebuild_cache.dir
-/home/skairipa/ADAN/build-macos-arm64/src/backend/linker/CMakeFiles/adan_linker.dir
-/home/skairipa/ADAN/build-macos-arm64/src/backend/linker/CMakeFiles/edit_cache.dir
-/home/skairipa/ADAN/build-macos-arm64/src/backend/linker/CMakeFiles/rebuild_cache.dir

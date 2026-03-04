@@ -1,8 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/skairipa/ADAN/build-macos-arm64/cmake_install.cmake",
-		"/home/skairipa/ADAN/build-macos-arm64/src/backend/linker/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
