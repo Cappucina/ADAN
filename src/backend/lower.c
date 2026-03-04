@@ -76,6 +76,7 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 	fprintf(stderr, "lower_expression: node type=%d\n", (int)node->type);
 	switch (node->type)
 	{
+		case AST_NUMBER_LITERAL:
 		{
 			const char* s = node->number_literal.value;
 			if (!s)
