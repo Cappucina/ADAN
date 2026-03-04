@@ -5,6 +5,11 @@
 
 int linker_link_with_clang(const char* input_ll_path, const char* output_path, const char* libs);
 
+int linker_link_and_bundle(const char* input_ll_path,
+									 const char* output_path,
+									 const char* libs,
+									 const char* bundle_csv);
+
 int linker_llvm_link_bitcode(const char** inputs, size_t ninputs, const char* out_bc_path);
 
 int linker_emit_bitcode_from_ll(const char* ll_path, const char* bc_path);

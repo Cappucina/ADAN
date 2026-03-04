@@ -41,6 +41,7 @@ int main(int argc, char* argv[])
 	int do_link = 0;
 	char* libs = NULL;
 	char* out_path = NULL;
+	char* bundle_libs = NULL;
 
 	if (argc < 3)
 	{
@@ -66,6 +67,17 @@ int main(int argc, char* argv[])
 			if (i + 1 < argc)
 			{
 				libs = argv[i + 1];
+			}
+		}
+		else if (strcmp(argv[i], "--bundle-runtime") == 0)
+		{
+			bundle_libs = "libs/io"; // backward-compatible shorthand
+		}
+		else if (strcmp(argv[i], "--bundle-libs") == 0)
+		{
+			if (i + 1 < argc)
+			{
+				bundle_libs = argv[i + 1];
 			}
 		}
 		else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0)
@@ -160,8 +172,15 @@ int main(int argc, char* argv[])
 				if (do_link && ll_path && emit_res == 0)
 				{
 					const char* outp = out_path ? out_path : "a.out";
-					int lres =
-					    linker_link_with_clang(ll_path, outp, libs ? libs : "");
+					int lres;
+					if (bundle_libs)
+					{
+						lres = linker_link_and_bundle(ll_path, outp, libs ? libs : "", bundle_libs);
+					}
+					else
+					{
+						lres = linker_link_with_clang(ll_path, outp, libs ? libs : "");
+					}
 					if (lres == 0)
 					{
 						printf("Linked executable: %s\n", outp);
