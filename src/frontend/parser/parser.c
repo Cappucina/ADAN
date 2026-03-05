@@ -81,6 +81,12 @@ static ASTNode* parse_import_statement(Parser* parser);
 
 static ASTNode* parse_expression(Parser* parser);
 
+static ASTNode* parse_additive(Parser* parser);
+
+static ASTNode* parse_multiplicative(Parser* parser);
+
+static ASTNode* parse_power(Parser* parser);
+
 static ASTNode* parse_primary(Parser* parser);
 
 static ASTNode* parse_call(Parser* parser);
@@ -146,7 +152,8 @@ static ASTNode* parse_type(Parser* parser)
 {
 	if (match(parser, TOKEN_STRING_TYPE) || match(parser, TOKEN_I32_TYPE) ||
 	    match(parser, TOKEN_I64_TYPE) || match(parser, TOKEN_U32_TYPE) ||
-	    match(parser, TOKEN_U64_TYPE) || match(parser, TOKEN_VOID_TYPE))
+	    match(parser, TOKEN_U64_TYPE) || match(parser, TOKEN_VOID_TYPE) ||
+	    match(parser, TOKEN_F32_TYPE) || match(parser, TOKEN_F64_TYPE))
 	{
 		size_t tok_line = peek_current(parser)->line;
 		size_t tok_column = peek_current(parser)->column;
@@ -170,6 +177,10 @@ static ASTNode* parse_primary(Parser* parser)
 {
 	if (match(parser, TOKEN_IDENT))
 	{
+		if (peek_lookahead1(parser) && peek_lookahead1(parser)->type == TOKEN_LPAREN)
+		{
+			return parse_call(parser);
+		}
 		size_t tok_line = peek_current(parser)->line;
 		size_t tok_column = peek_current(parser)->column;
 		char* name = clone_string(peek_current(parser)->lexeme,
@@ -200,6 +211,13 @@ static ASTNode* parse_primary(Parser* parser)
 		ASTNode* node = ast_create_number_literal(value, tok_line, tok_column);
 		free(value);
 		return node;
+	}
+	else if (match(parser, TOKEN_LPAREN))
+	{
+		advance_token(parser);
+		ASTNode* expr = parse_expression(parser);
+		consume(parser, TOKEN_RPAREN, "Expected ')' after grouped expression.");
+		return expr;
 	}
 	else
 	{
@@ -273,22 +291,67 @@ static ASTNode* parse_call_statement(Parser* parser)
 
 static ASTNode* parse_expression(Parser* parser)
 {
-	if (match(parser, TOKEN_IDENT) && peek_lookahead1(parser)->type == TOKEN_LPAREN)
+	return parse_additive(parser);
+}
+
+static ASTNode* parse_additive(Parser* parser)
+{
+	ASTNode* left = parse_multiplicative(parser);
+
+	while (match(parser, TOKEN_PLUS) || match(parser, TOKEN_MINUS))
 	{
-		return parse_call(parser);
+		size_t op_line = peek_current(parser)->line;
+		size_t op_col = peek_current(parser)->column;
+		char op[2] = {peek_current(parser)->lexeme[0], '\0'};
+		advance_token(parser);
+		ASTNode* right = parse_multiplicative(parser);
+		if (!right)
+		{
+			return left;
+		}
+		left = ast_create_binary_op(op, left, right, op_line, op_col);
 	}
-	else if (match(parser, TOKEN_IDENT) || match(parser, TOKEN_STRING) ||
-	         match(parser, TOKEN_NUMBER))
+	return left;
+}
+
+static ASTNode* parse_multiplicative(Parser* parser)
+{
+	ASTNode* left = parse_power(parser);
+
+	while (match(parser, TOKEN_STAR) || match(parser, TOKEN_SLASH) ||
+	       match(parser, TOKEN_PERCENT))
 	{
-		return parse_primary(parser);
+		size_t op_line = peek_current(parser)->line;
+		size_t op_col = peek_current(parser)->column;
+		char op[2] = {peek_current(parser)->lexeme[0], '\0'};
+		advance_token(parser);
+		ASTNode* right = parse_power(parser);
+		if (!right)
+		{
+			return left;
+		}
+		left = ast_create_binary_op(op, left, right, op_line, op_col);
 	}
-	else
+	return left;
+}
+
+static ASTNode* parse_power(Parser* parser)
+{
+	ASTNode* base = parse_primary(parser);
+
+	if (match(parser, TOKEN_CARET))
 	{
-		error_expected(parser, "expression");
-		enter_recovery_mode(parser);
-		synchronize(parser);
-		return NULL;
+		size_t op_line = peek_current(parser)->line;
+		size_t op_col = peek_current(parser)->column;
+		advance_token(parser);
+		ASTNode* exp = parse_power(parser);
+		if (!exp)
+		{
+			return base;
+		}
+		return ast_create_binary_op("^", base, exp, op_line, op_col);
 	}
+	return base;
 }
 
 static ASTNode* parse_parameter(Parser* parser)

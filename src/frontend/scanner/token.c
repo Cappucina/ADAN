@@ -77,6 +77,16 @@ char* token_type_to_string(TokenType type)
 			return "QUOTE";
 		case TOKEN_COMMA:
 			return "COMMA";
+		case TOKEN_PLUS:
+			return "PLUS";
+		case TOKEN_MINUS:
+			return "MINUS";
+		case TOKEN_STAR:
+			return "MUL";
+		case TOKEN_SLASH:
+			return "DIV";
+		case TOKEN_PERCENT:
+			return "MOD";
 		default:
 			return "UNKNOWN";
 	}

@@ -24,6 +24,7 @@ typedef enum
 {
 	IR_T_VOID,
 	IR_T_I64,
+	IR_T_F32,
 	IR_T_F64,
 	IR_T_PTR,
 } IRTypeKind;
@@ -109,6 +110,8 @@ void ir_function_add_block(IRFunction* fn, IRBlock* b);
 void ir_print_module(IRModule* m, FILE* out);
 
 IRType* ir_type_i64(void);
+
+IRType* ir_type_f32(void);
 
 IRType* ir_type_f64(void);
 

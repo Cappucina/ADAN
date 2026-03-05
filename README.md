@@ -1,19 +1,19 @@
 <div align="center">
     <h1>The ADAN Programming Language</h1>
-    <img width="180" height="180" align="right" src="https://github.com/user-attachments/assets/e062dcaf-c9b8-4c44-934b-0b1cba331bc0" />
+    <img align="right" width="180" height="180" alt="image" src="https://github.com/user-attachments/assets/d0a04208-84b8-405a-ac47-73960431d5d6" />
     <p align="left">
         A modern, memory safe programming language designed to be written like JavaScript and used like C for low-level programming.
     </p>
 </div>
 
-<p align="center">
+<p align="left">
  ADAN has been continuously maintained from between <b>February 4th, 2026</b> to <b>Now</b>.
 </p>
 
 <div align="center">
   <img src="https://github.com/Cappucina/ADAN/actions/workflows/build.yml/badge.svg" alt="Build Status"/>
 
-  <img src="https://img.shields.io/github/v/release/Cappucina/ADAN?style=flat&label=Releases&color=blue" alt="Releases"/>
+  <img src="https://img.shields.io/github/v/release/Cappucina/ADAN?sort=date&style=flat&label=Releases&color=blue" alt="Releases"/>
 </div>
 
 ---

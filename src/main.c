@@ -9,6 +9,7 @@
 #include "frontend/parser/parser.h"
 #include "frontend/ast/tree.h"
 #include "frontend/semantics/semantic.h"
+#include "frontend/semantics/validator.h"
 #include "backend/lower.h"
 #include "backend/ir/ir.h"
 #include "backend/backend.h"
@@ -41,6 +42,8 @@ int main(int argc, char* argv[])
 	int do_link = 0;
 	char* libs = NULL;
 	char* out_path = NULL;
+	char* bundle_libs = NULL;
+	char* bundle_embedded = NULL;
 
 	if (argc < 3)
 	{
@@ -66,6 +69,24 @@ int main(int argc, char* argv[])
 			if (i + 1 < argc)
 			{
 				libs = argv[i + 1];
+			}
+		}
+		else if (strcmp(argv[i], "--bundle-runtime") == 0)
+		{
+			bundle_embedded = "adan/io";  // shorthand: bundle io from binary
+		}
+		else if (strcmp(argv[i], "--bundle-embedded") == 0)
+		{
+			if (i + 1 < argc)
+			{
+				bundle_embedded = argv[i + 1];
+			}
+		}
+		else if (strcmp(argv[i], "--bundle-libs") == 0)
+		{
+			if (i + 1 < argc)
+			{
+				bundle_libs = argv[i + 1];
 			}
 		}
 		else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0)
@@ -160,8 +181,50 @@ int main(int argc, char* argv[])
 				if (do_link && ll_path && emit_res == 0)
 				{
 					const char* outp = out_path ? out_path : "a.out";
-					int lres =
-					    linker_link_with_clang(ll_path, outp, libs ? libs : "");
+					int lres;
+
+					const char* auto_embedded =
+					    validator_get_embedded_modules();
+					
+					char* effective_embedded = NULL;
+					if (auto_embedded && auto_embedded[0])
+					{
+						size_t len = strlen("adan/runtime,") + strlen(auto_embedded) + 1;
+						effective_embedded = malloc(len);
+						if (effective_embedded)
+						{
+							sprintf(effective_embedded, "adan/runtime,%s", auto_embedded);
+						}
+					}
+					else
+					{
+						effective_embedded = strdup("adan/runtime");
+					}
+					
+					const char* final_embedded = bundle_embedded ? bundle_embedded : effective_embedded;
+
+					if (final_embedded)
+					{
+						lres = linker_link_and_bundle_embedded(
+						    ll_path, outp, libs ? libs : "",
+						    final_embedded);
+					}
+					else if (bundle_libs)
+					{
+						lres = linker_link_and_bundle(
+						    ll_path, outp, libs ? libs : "", bundle_libs);
+					}
+					else
+					{
+						lres = linker_link_with_clang(ll_path, outp,
+						                              libs ? libs : "");
+					}
+					
+					if (effective_embedded)
+					{
+						free(effective_embedded);
+					}
+					
 					if (lres == 0)
 					{
 						printf("Linked executable: %s\n", outp);

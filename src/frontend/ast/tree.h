@@ -17,7 +17,8 @@ typedef enum ASTNodeType
 	AST_NUMBER_LITERAL,
 	AST_TYPE,  // i32, u32, string, etc.
 	AST_RETURN_STATEMENT,
-	AST_EXPRESSION_STATEMENT  // Expression used as a statement.
+	AST_EXPRESSION_STATEMENT,  // Expression used as a statement.
+	AST_BINARY_OP              // Binary arithmetic/logic expression.
 } ASTNodeType;
 
 typedef struct ASTNode ASTNode;
@@ -100,6 +101,13 @@ typedef struct
 	ASTNode* expr;  // The expression being used as a statement
 } ASTExprStmt;
 
+typedef struct
+{
+	char* op;
+	ASTNode* left;
+	ASTNode* right;
+} ASTBinaryOp;
+
 // Unified AST node structure
 
 struct ASTNode
@@ -122,6 +130,7 @@ struct ASTNode
 		ASTType type_node;
 		ASTReturn ret;
 		ASTExprStmt expr_stmt;
+		ASTBinaryOp binary_op;
 	};
 };
 
@@ -158,6 +167,11 @@ ASTNode* ast_create_string_literal(const char* value, size_t line, size_t column
 ASTNode* ast_create_number_literal(const char* value, size_t line, size_t column);
 
 ASTNode* ast_create_type(const char* name, size_t line, size_t column);
+
+ASTNode* ast_create_expression_statement(ASTNode* expr, size_t line, size_t column);
+
+ASTNode* ast_create_binary_op(const char* op, ASTNode* left, ASTNode* right, size_t line,
+                              size_t column);
 
 ASTNode* ast_create_expression_statement(ASTNode* expr, size_t line, size_t column);
 

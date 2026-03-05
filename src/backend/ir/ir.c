@@ -202,6 +202,20 @@ IRType* ir_type_f64(void)
 	return t;
 }
 
+IRType* ir_type_f32(void)
+{
+	IRType* t = malloc(sizeof(IRType));
+	if (!t)
+	{
+		fprintf(stderr, "Failed to allocate IRType (f32). (Error)\n");
+		return NULL;
+	}
+	t->kind = IR_T_F32;
+	t->pointee = NULL;
+	fprintf(stderr, "IRType f32 created. (Info)\n");
+	return t;
+}
+
 IRType* ir_type_void(void)
 {
 	IRType* t = malloc(sizeof(IRType));
@@ -338,6 +352,10 @@ IRValue* ir_emit_binop(IRBlock* block, const char* op, IRValue* lhs, IRValue* rh
 	else if (strcmp(op, ">=") == 0)
 	{
 		ins->opcode = 11;
+	}
+	else if (strcmp(op, "^") == 0)
+	{
+		ins->opcode = 12;
 	}
 	else
 	{

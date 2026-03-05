@@ -15,8 +15,10 @@ char* llvm_type_to_string(IRType* t)
 			return strdup("void");
 		case IR_T_I64:
 			return strdup("i64");
+		case IR_T_F32:
+			return strdup("float");
 		case IR_T_F64:
-			return strdup("f64");
+			return strdup("double");
 		case IR_T_PTR:
 		{
 			char* pointee_str = llvm_type_to_string(t->pointee);
@@ -25,7 +27,7 @@ char* llvm_type_to_string(IRType* t)
 				return NULL;
 			}
 			size_t len =
-			    strlen(pointee_str) + 2;  // For the '*' and null terminator stuff
+			    strlen(pointee_str) + 2;
 			char* result = (char*)malloc(len);
 			if (!result)
 			{
@@ -63,7 +65,7 @@ char* llvm_type_mangle(IRType* t)
 				return NULL;
 			}
 			size_t len =
-			    strlen(pointee_str) + 2;  // For the 'P' and null terminator stuff
+			    strlen(pointee_str) + 2;
 			char* result = (char*)malloc(len);
 			if (!result)
 			{

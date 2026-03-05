@@ -4,6 +4,7 @@
 
 #include "validator.h"
 #include "../../helper.h"
+#include "../../embedded_libs.h"
 #include "../ast/tree.h"
 #include "../parser/parser.h"
 #include "../scanner/scanner.h"
@@ -36,7 +37,7 @@ void validate_number_literal(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_type_node(SemanticAnalyzer* analyzer, ASTNode* node);
 
-// Primary validator stuff
+void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 {
@@ -86,6 +87,9 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 		case AST_EXPRESSION_STATEMENT:
 			validate_expression_statement(analyzer, node);
 			break;
+		case AST_BINARY_OP:
+			validate_binary_op(analyzer, node);
+			break;
 		default:
 			fprintf(stderr, "Unknown AST node type! (Error)\n");
 			analyzer->error_count++;
@@ -98,6 +102,11 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 static char** imported_paths = NULL;
 static size_t imported_count = 0;
 static size_t imported_capacity = 0;
+
+static char** embedded_modules_used = NULL;
+static size_t embedded_modules_count = 0;
+static size_t embedded_modules_capacity = 0;
+static char* embedded_modules_csv = NULL;
 
 typedef struct
 {
@@ -158,6 +167,43 @@ void validator_cleanup()
 	function_signatures = NULL;
 	function_signature_count = 0;
 	function_signatures_capacity = 0;
+
+	for (size_t i = 0; i < embedded_modules_count; i++)
+	{
+		free(embedded_modules_used[i]);
+	}
+	free(embedded_modules_used);
+	embedded_modules_used = NULL;
+	embedded_modules_count = 0;
+	embedded_modules_capacity = 0;
+	free(embedded_modules_csv);
+	embedded_modules_csv = NULL;
+}
+
+const char* validator_get_embedded_modules()
+{
+	if (embedded_modules_count == 0)
+		return NULL;
+
+	free(embedded_modules_csv);
+	embedded_modules_csv = NULL;
+
+	size_t total = 0;
+	for (size_t i = 0; i < embedded_modules_count; i++)
+		total += strlen(embedded_modules_used[i]) + 1;  // +1 for comma or NUL
+
+	embedded_modules_csv = malloc(total + 1);
+	if (!embedded_modules_csv)
+		return NULL;
+
+	embedded_modules_csv[0] = '\0';
+	for (size_t i = 0; i < embedded_modules_count; i++)
+	{
+		if (i > 0)
+			strcat(embedded_modules_csv, ",");
+		strcat(embedded_modules_csv, embedded_modules_used[i]);
+	}
+	return embedded_modules_csv;
 }
 
 static FunctionSignature* find_function_signature(const char* name)
@@ -324,6 +370,8 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 				return signature ? signature->return_type : NULL;
 			}
 			return NULL;
+		case AST_BINARY_OP:
+			return "i32";
 		default:
 			return NULL;
 	}
@@ -635,8 +683,29 @@ void validate_import_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 		semantic_error(analyzer, node, "Failed to resolve standard library path.");
 		return;
 	}
-
-	char* source = read_file(lib_path);
+	char* source = NULL;
+	const char* embedded = embedded_lib_get_adn_source(normalized);
+	if (embedded)
+	{
+		source = strdup(embedded);
+		if (embedded_modules_count + 1 > embedded_modules_capacity)
+		{
+			size_t nc =
+			    embedded_modules_capacity == 0 ? 8 : embedded_modules_capacity * 2;
+			char** r = realloc(embedded_modules_used, nc * sizeof(char*));
+			if (r)
+			{
+				embedded_modules_used = r;
+				embedded_modules_capacity = nc;
+			}
+		}
+		if (embedded_modules_count < embedded_modules_capacity)
+			embedded_modules_used[embedded_modules_count++] = strdup(normalized);
+	}
+	else
+	{
+		source = read_file(lib_path);
+	}
 	if (!source)
 	{
 		semantic_error(analyzer, node, "Failed to load standard library source.");
@@ -831,6 +900,37 @@ void validate_type_node(SemanticAnalyzer* analyzer, ASTNode* node)
 	}
 }
 
+void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	if (!analyzer || !node)
+	{
+		return;
+	}
+
+	if (node->type != AST_BINARY_OP)
+	{
+		return;
+	}
+
+	if (node->binary_op.left)
+	{
+		validate_node(analyzer, node->binary_op.left);
+	}
+	else
+	{
+		semantic_error(analyzer, node, "Binary operation missing left operand.");
+	}
+
+	if (node->binary_op.right)
+	{
+		validate_node(analyzer, node->binary_op.right);
+	}
+	else
+	{
+		semantic_error(analyzer, node, "Binary operation missing right operand.");
+	}
+}
+
 void validate_return_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 {
 	if (!analyzer || !node)
@@ -877,7 +977,6 @@ void validate_return_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 	{
 		if (func_ret && strcmp(func_ret, "void") == 0)
 		{
-			// empty return in void function is allowed
 			return;
 		}
 		semantic_error(analyzer, node, "Empty return in non-void function is not allowed.");

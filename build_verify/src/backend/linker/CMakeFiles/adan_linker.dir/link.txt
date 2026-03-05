@@ -1,2 +1,0 @@
-/usr/bin/ar qc libadan_linker.a CMakeFiles/adan_linker.dir/linker.c.o
-/usr/bin/ranlib libadan_linker.a

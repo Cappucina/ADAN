@@ -23,6 +23,8 @@ typedef enum TokenType
 	TOKEN_VOID_TYPE,
 	TOKEN_U32_TYPE,
 	TOKEN_U64_TYPE,
+	TOKEN_F32_TYPE,
+	TOKEN_F64_TYPE,
 
 	// Literals
 	TOKEN_STRING,
@@ -38,6 +40,14 @@ typedef enum TokenType
 	TOKEN_EQUALS,
 	TOKEN_QUOTE,
 	TOKEN_COMMA,
+
+	// Operators
+	TOKEN_PLUS,
+	TOKEN_MINUS,
+	TOKEN_STAR,
+	TOKEN_SLASH,
+	TOKEN_CARET,
+	TOKEN_PERCENT,
 } TokenType;
 
 typedef struct Token

@@ -8,4 +8,6 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validator_cleanup();
 
+const char* validator_get_embedded_modules();
+
 #endif

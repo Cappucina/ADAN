@@ -19,6 +19,8 @@ const Keyword keywords[] = {
     {"i64", TOKEN_I64_TYPE},
     {"u32", TOKEN_U32_TYPE},
     {"u64", TOKEN_U64_TYPE},
+    {"f32", TOKEN_F32_TYPE},
+    {"f64", TOKEN_F64_TYPE},
     {"void", TOKEN_VOID_TYPE},
 };
 
@@ -285,6 +287,30 @@ Token* scan_next_token(Scanner* scanner)
 			advance(scanner);
 			return make_token(TOKEN_COMMA, token_col, token_line, clone_string(",", 1),
 			                  1);
+		case '+':
+			advance(scanner);
+			return make_token(TOKEN_PLUS, token_col, token_line, clone_string("+", 1),
+			                  1);
+		case '-':
+			advance(scanner);
+			return make_token(TOKEN_MINUS, token_col, token_line, clone_string("-", 1),
+			                  1);
+		case '*':
+			advance(scanner);
+			return make_token(TOKEN_STAR, token_col, token_line, clone_string("*", 1),
+			                  1);
+		case '/':
+			advance(scanner);
+			return make_token(TOKEN_SLASH, token_col, token_line, clone_string("/", 1),
+			                  1);
+		case '^':
+			advance(scanner);
+			return make_token(TOKEN_CARET, token_col, token_line, clone_string("^", 1),
+			                  1);
+		case '%':
+			advance(scanner);
+			return make_token(TOKEN_PERCENT, token_col, token_line,
+			                  clone_string("%", 1), 1);
 		default:
 			advance(scanner);
 			printf("Unexpected character '%c' at line %zu, column %zu\n", current,

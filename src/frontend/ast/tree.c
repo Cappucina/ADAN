@@ -92,6 +92,11 @@ void ast_free(ASTNode* node)
 		case AST_EXPRESSION_STATEMENT:
 			ast_free(node->expr_stmt.expr);
 			break;
+		case AST_BINARY_OP:
+			free(node->binary_op.op);
+			ast_free(node->binary_op.left);
+			ast_free(node->binary_op.right);
+			break;
 		default:
 			break;
 	}
@@ -325,6 +330,27 @@ ASTNode* ast_create_expression_statement(ASTNode* expr, size_t line, size_t colu
 	}
 
 	node->expr_stmt.expr = expr;
+	return node;
+}
+
+ASTNode* ast_create_binary_op(const char* op, ASTNode* left, ASTNode* right, size_t line,
+                              size_t column)
+{
+	ASTNode* node = ast_init(AST_BINARY_OP, line, column);
+	if (!node)
+	{
+		fprintf(stderr, "Failed to create AST binary op node! (Error)\n");
+		return NULL;
+	}
+
+	node->binary_op.op = clone_string(op, strlen(op));
+	if (!node->binary_op.op)
+	{
+		ast_free(node);
+		return NULL;
+	}
+	node->binary_op.left = left;
+	node->binary_op.right = right;
 	return node;
 }
 

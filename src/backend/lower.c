@@ -76,6 +76,7 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 	fprintf(stderr, "lower_expression: node type=%d\n", (int)node->type);
 	switch (node->type)
 	{
+		case AST_NUMBER_LITERAL:
 		{
 			const char* s = node->number_literal.value;
 			if (!s)
@@ -253,37 +254,60 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 					snprintf(stub_name, nlen, "adn_%s", callee_name);
 				}
 
-				IRType* ret_t = NULL;
-				if (strcmp(callee_name, "input") == 0 ||
-				    strcmp(callee_name, "adn_input") == 0)
-					ret_t = ir_type_ptr(ir_type_i64());
-				else if (strcmp(callee_name, "println") == 0 ||
-				         strcmp(callee_name, "adn_println") == 0 ||
-				         strcmp(callee_name, "errorln") == 0 ||
-				         strcmp(callee_name, "adn_errorln") == 0)
-					ret_t = ir_type_void();
-				else
-					ret_t = ir_type_ptr(ir_type_i64());
-
-				IRFunction* fn =
-				    ir_function_create_in_module(program->ir, stub_name, ret_t);
-				if (fn)
+				IRFunction* existing_stub = NULL;
+				if (program->ir)
 				{
-					for (size_t i = 0; i < nargs; ++i)
+					IRFunction* it = program->ir->functions;
+					while (it)
 					{
-						IRValue* a = args[i];
-						IRType* at = a && a->type ? a->type : ir_type_i64();
-						ir_param_create(fn, NULL, at);
+						if (it->name && strcmp(it->name, stub_name) == 0)
+						{
+							existing_stub = it;
+							break;
+						}
+						it = it->next;
 					}
-					callee = fn;
+				}
+
+				IRFunction* fn = existing_stub;
+				if (!fn)
+				{
+					IRType* ret_t = NULL;
+					if (strcmp(callee_name, "input") == 0 ||
+					    strcmp(callee_name, "adn_input") == 0)
+						ret_t = ir_type_ptr(ir_type_i64());
+					else if (strcmp(callee_name, "println") == 0 ||
+					         strcmp(callee_name, "adn_println") == 0 ||
+					         strcmp(callee_name, "errorln") == 0 ||
+					         strcmp(callee_name, "adn_errorln") == 0)
+						ret_t = ir_type_void();
+					else
+						ret_t = ir_type_ptr(ir_type_i64());
+
+					fn =
+					    ir_function_create_in_module(program->ir, stub_name, ret_t);
+					if (fn)
+					{
+						for (size_t i = 0; i < nargs; ++i)
+						{
+							IRValue* a = args[i];
+							IRType* at = a && a->type ? a->type : ir_type_i64();
+							ir_param_create(fn, NULL, at);
+						}
+						callee = fn;
+					}
+					else
+					{
+						fprintf(stderr, "Failed to create stub for '%s'. (Error)\n",
+						        callee_name);
+						free(args);
+						free(stub_name);
+						return NULL;
+					}
 				}
 				else
 				{
-					fprintf(stderr, "Failed to create stub for '%s'. (Error)\n",
-					        callee_name);
-					free(args);
-					free(stub_name);
-					return NULL;
+					callee = fn;
 				}
 				free(stub_name);
 			}
@@ -291,6 +315,23 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			IRValue* res = ir_emit_call(current_block, callee, args, nargs);
 			free(args);
 			return res;
+		}
+
+		case AST_BINARY_OP:
+		{
+			if (!current_block)
+			{
+				fprintf(stderr, "No current block for binary op. (Error)\n");
+				return NULL;
+			}
+			IRValue* lhs = lower_expression(program, node->binary_op.left);
+			IRValue* rhs = lower_expression(program, node->binary_op.right);
+			if (!lhs || !rhs)
+			{
+				fprintf(stderr, "Failed to lower binary op operands. (Error)\n");
+				return NULL;
+			}
+			return ir_emit_binop(current_block, node->binary_op.op, lhs, rhs);
 		}
 
 		default:
@@ -438,6 +479,10 @@ static IRType* lower_type(Program* program, ASTNode* node)
 	if (strcmp(type_name, "f64") == 0)
 	{
 		return ir_type_f64();
+	}
+	if (strcmp(type_name, "f32") == 0)
+	{
+		return ir_type_f32();
 	}
 	if (strcmp(type_name, "void") == 0)
 	{
