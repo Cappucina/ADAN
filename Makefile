@@ -5,7 +5,7 @@ SAMPLE = samples/hello.adn
 SAMPLE_LL = $(patsubst %.adn,%.ll,$(SAMPLE))
 SAMPLE_OUT = samples/hello
 
-.PHONY: all build run emit link clean format
+.PHONY: all build run emit link clean format build-macos-arm64 build-macos-x86_64 build-macos
 
 all: build run
 
@@ -30,8 +30,23 @@ run: link
 	@clear
 	@./$(SAMPLE_OUT)
 
+build-macos-arm64:
+	@mkdir -p build-macos-arm64
+	@cmake -S . -B build-macos-arm64 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-macos-arm64.cmake
+	@cmake --build build-macos-arm64
+	@echo "macOS arm64 binary: build-macos-arm64/adan"
+
+build-macos-x86_64:
+	@mkdir -p build-macos-x86_64
+	@cmake -S . -B build-macos-x86_64 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-macos-x86_64.cmake
+	@cmake --build build-macos-x86_64
+	@echo "macOS x86_64 binary: build-macos-x86_64/adan"
+
+build-macos: build-macos-arm64 build-macos-x86_64
+	@echo "Both macOS binaries built."
+
 clean:
-	@rm -rf $(BUILD_DIR)
+	@rm -rf $(BUILD_DIR) build-macos-arm64 build-macos-x86_64
 	@rm -f $(SAMPLE_LL) $(SAMPLE_OUT)
 
 format:
