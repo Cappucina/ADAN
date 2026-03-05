@@ -328,7 +328,6 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				return NULL;
 			}
 
-			// Constant fold two string literals at compile time.
 			if (node->binary_op.op && strcmp(node->binary_op.op, "+") == 0 &&
 			    node->binary_op.left && node->binary_op.left->type == AST_STRING_LITERAL &&
 			    node->binary_op.right && node->binary_op.right->type == AST_STRING_LITERAL)
@@ -337,7 +336,6 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				const char* rs = node->binary_op.right->string_literal.value;
 				size_t ll = strlen(ls);
 				size_t rl = strlen(rs);
-				// Strip surrounding quotes if present.
 				const char* raw_l = (ll >= 2 && ls[0] == '"' && ls[ll - 1] == '"')
 				                        ? ls + 1
 				                        : ls;

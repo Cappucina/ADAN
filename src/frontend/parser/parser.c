@@ -449,14 +449,12 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 	consume(parser, TOKEN_IDENT, "Expected variable name after 'set' keyword.");
 
-	// Peek at what follows the identifier to decide declaration vs. assignment.
 	Token* after = peek_current(parser);
 	bool is_plus_assign = after && after->type == TOKEN_PLUS_EQUALS;
 	bool is_plain_assign = after && after->type == TOKEN_EQUALS;
 
 	if (is_plus_assign || is_plain_assign)
 	{
-		// Reassignment: `set name = expr;` or `set name += expr;`
 		advance_token(parser);  // consume '=' or '+='
 		ASTNode* rhs = parse_expression(parser);
 		consume(parser, TOKEN_SEMICOLON, "Expected ';' after assignment.");
@@ -464,7 +462,6 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 		ASTNode* value = rhs;
 		if (is_plus_assign && name && rhs)
 		{
-			// Desugar: name += rhs  →  name = name + rhs
 			ASTNode* lhs_id = ast_create_identifier(name, tok_line, tok_column);
 			value = ast_create_binary_op("+", lhs_id, rhs, tok_line, tok_column);
 		}
