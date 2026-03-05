@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/stat.h>
+#include <limits.h>
 
 #include "helper.h"
 #include "stm.h"
@@ -14,7 +16,6 @@
 #include "backend/ir/ir.h"
 #include "backend/backend.h"
 #include "backend/linker/linker.h"
-#include <limits.h>
 
 bool has_valid_extension(const char* filename)
 {
@@ -32,8 +33,24 @@ bool has_valid_extension(const char* filename)
 
 void print_usage(const char* program_name)
 {
-	printf("Usage: %s -f <file.adn> | --file <file.adn>\n", program_name);
+	printf("Usage: %s -f <file.adn> [options]\n", program_name);
 	printf("File must have .adn or .adan extension\n");
+}
+
+void print_help(const char* program_name)
+{
+	printf("Usage: %s -f <file.adn> [options]\n\n", program_name);
+	printf("Options:\n");
+	printf("  -f, --file <file>          Source file to compile (.adn or .adan)\n");
+	printf("  -o, --output <path>        Output path for the linked binary.\n");
+	printf("                             If <path> is a directory, the binary is placed\n");
+	printf("                             inside it named after the source file.\n");
+	printf("  --link                     Link the compiled IR into an executable\n");
+	printf("  --libs <libs>              Comma-separated extra libraries to link against\n");
+	printf("  --bundle-runtime           Bundle the built-in runtime (adan/io)\n");
+	printf("  --bundle-embedded <mods>   Bundle specific embedded modules (comma-separated)\n");
+	printf("  --bundle-libs <libs>       Bundle external libraries into the binary\n");
+	printf("  -h, --help                 Show this help message and exit\n");
 }
 
 int main(int argc, char* argv[])
@@ -45,7 +62,7 @@ int main(int argc, char* argv[])
 	char* bundle_libs = NULL;
 	char* bundle_embedded = NULL;
 
-	if (argc < 3)
+	if (argc < 2)
 	{
 		print_usage(argv[0]);
 		return 1;
@@ -53,7 +70,12 @@ int main(int argc, char* argv[])
 
 	for (int i = 1; i < argc; i++)
 	{
-		if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--file") == 0)
+		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
+		{
+			print_help(argv[0]);
+			return 0;
+		}
+		else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--file") == 0)
 		{
 			if (i + 1 < argc)
 			{
@@ -115,7 +137,7 @@ int main(int argc, char* argv[])
 	if (!source)
 	{
 		fprintf(stderr, "Failed to read source file! (Error)\n");
-		return 1;
+		return 2;
 	}
 
 	SymbolTableStack* global_stack = sts_init();
@@ -131,6 +153,8 @@ int main(int argc, char* argv[])
 	parser_free(parser);
 	scanner_free(scanner);
 
+	int exit_code = 0;
+
 	if (ast)
 	{
 		printf("AST created successfully! (Info)\n");
@@ -144,6 +168,7 @@ int main(int argc, char* argv[])
 				fprintf(stderr,
 				        "Semantic analysis failed with %d error(s). (Error)\n",
 				        analyzer->error_count);
+				exit_code = 3;
 			}
 			else
 			{
@@ -175,33 +200,79 @@ int main(int argc, char* argv[])
 					{
 						fprintf(stderr, "Failed to emit LLVM IR to %s\n",
 						        ll_path);
+						exit_code = 4;
 					}
 				}
 
 				if (do_link && ll_path && emit_res == 0)
 				{
-					const char* outp = out_path ? out_path : "a.out";
+					char resolved_out[PATH_MAX];
+					if (out_path)
+					{
+						struct stat st;
+						bool is_dir = false;
+						size_t op_len = strlen(out_path);
+						if (out_path[op_len - 1] == '/')
+						{
+							is_dir = true;
+						}
+						else if (stat(out_path, &st) == 0 &&
+						         S_ISDIR(st.st_mode))
+						{
+							is_dir = true;
+						}
+
+						if (is_dir)
+						{
+							const char* slash = strrchr(file_path, '/');
+							const char* base = slash ? slash + 1 : file_path;
+							const char* dot = strrchr(base, '.');
+							size_t stem_len =
+							    dot ? (size_t)(dot - base) : strlen(base);
+							size_t dir_len = op_len;
+							while (dir_len > 0 &&
+							       out_path[dir_len - 1] == '/')
+								dir_len--;
+							snprintf(resolved_out, sizeof(resolved_out),
+							         "%.*s/%.*s",
+							         (int)dir_len, out_path,
+							         (int)stem_len, base);
+						}
+						else
+						{
+							snprintf(resolved_out, sizeof(resolved_out),
+							         "%s", out_path);
+						}
+					}
+					else
+					{
+						snprintf(resolved_out, sizeof(resolved_out), "a.out");
+					}
+					const char* outp = resolved_out;
 					int lres;
 
 					const char* auto_embedded =
 					    validator_get_embedded_modules();
-					
+
 					char* effective_embedded = NULL;
 					if (auto_embedded && auto_embedded[0])
 					{
-						size_t len = strlen("adan/runtime,") + strlen(auto_embedded) + 1;
+						size_t len = strlen("adan/runtime,") +
+						             strlen(auto_embedded) + 1;
 						effective_embedded = malloc(len);
 						if (effective_embedded)
 						{
-							sprintf(effective_embedded, "adan/runtime,%s", auto_embedded);
+							sprintf(effective_embedded,
+							        "adan/runtime,%s", auto_embedded);
 						}
 					}
 					else
 					{
 						effective_embedded = strdup("adan/runtime");
 					}
-					
-					const char* final_embedded = bundle_embedded ? bundle_embedded : effective_embedded;
+
+					const char* final_embedded =
+					    bundle_embedded ? bundle_embedded : effective_embedded;
 
 					if (final_embedded)
 					{
@@ -219,12 +290,12 @@ int main(int argc, char* argv[])
 						lres = linker_link_with_clang(ll_path, outp,
 						                              libs ? libs : "");
 					}
-					
+
 					if (effective_embedded)
 					{
 						free(effective_embedded);
 					}
-					
+
 					if (lres == 0)
 					{
 						printf("Linked executable: %s\n", outp);
@@ -232,6 +303,7 @@ int main(int argc, char* argv[])
 					else
 					{
 						fprintf(stderr, "Linking failed (code=%d)\n", lres);
+						exit_code = 5;
 					}
 				}
 
@@ -245,6 +317,7 @@ int main(int argc, char* argv[])
 		else
 		{
 			fprintf(stderr, "Failed to initialize semantic analyzer! (Error)\n");
+			exit_code = 3;
 		}
 
 		ast_free(ast);
@@ -252,5 +325,5 @@ int main(int argc, char* argv[])
 	sts_free(global_stack);
 	free(source);
 
-	return 0;
+	return exit_code;
 }

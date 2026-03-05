@@ -97,6 +97,10 @@ void ast_free(ASTNode* node)
 			ast_free(node->binary_op.left);
 			ast_free(node->binary_op.right);
 			break;
+		case AST_ASSIGNMENT:
+			free(node->assignment.name);
+			ast_free(node->assignment.value);
+			break;
 		default:
 			break;
 	}
@@ -354,7 +358,23 @@ ASTNode* ast_create_binary_op(const char* op, ASTNode* left, ASTNode* right, siz
 	return node;
 }
 
-// Debugging functions
+ASTNode* ast_create_assignment(const char* name, ASTNode* value, size_t line, size_t column)
+{
+	ASTNode* node = ast_init(AST_ASSIGNMENT, line, column);
+	if (!node)
+	{
+		fprintf(stderr, "Failed to create AST assignment node! (Error)\n");
+		return NULL;
+	}
+	node->assignment.name = clone_string(name, strlen(name));
+	if (!node->assignment.name)
+	{
+		ast_free(node);
+		return NULL;
+	}
+	node->assignment.value = value;
+	return node;
+}
 
 void ast_print(ASTNode* node, int indent)
 {

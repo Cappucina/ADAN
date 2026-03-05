@@ -39,6 +39,8 @@ void validate_type_node(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node);
 
+void validate_assignment(SemanticAnalyzer* analyzer, ASTNode* node);
+
 void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 {
 	if (!node)
@@ -89,6 +91,9 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 			break;
 		case AST_BINARY_OP:
 			validate_binary_op(analyzer, node);
+			break;
+		case AST_ASSIGNMENT:
+			validate_assignment(analyzer, node);
 			break;
 		default:
 			fprintf(stderr, "Unknown AST node type! (Error)\n");
@@ -371,7 +376,18 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 			}
 			return NULL;
 		case AST_BINARY_OP:
+		{
+			const char* lt =
+			    resolve_expression_type(analyzer, node->binary_op.left);
+			const char* rt =
+			    resolve_expression_type(analyzer, node->binary_op.right);
+			if (lt && strcmp(lt, "string") == 0 && rt && strcmp(rt, "string") == 0 &&
+			    node->binary_op.op && strcmp(node->binary_op.op, "+") == 0)
+			{
+				return "string";
+			}
 			return "i32";
+		}
 		default:
 			return NULL;
 	}
@@ -383,7 +399,7 @@ static bool is_known_type_name(const char* name)
 	{
 		return false;
 	}
-	static const char* types[] = {"string", "i32", "i64", "u32", "u64", "void"};
+	static const char* types[] = {"string", "i32", "i64", "u32", "u64", "f32", "f64", "void"};
 	for (size_t i = 0; i < sizeof(types) / sizeof(types[0]); i++)
 	{
 		if (strcmp(types[i], name) == 0)
@@ -928,6 +944,65 @@ void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node)
 	else
 	{
 		semantic_error(analyzer, node, "Binary operation missing right operand.");
+	}
+
+	const char* lt = resolve_expression_type(analyzer, node->binary_op.left);
+	const char* rt = resolve_expression_type(analyzer, node->binary_op.right);
+	if ((lt && strcmp(lt, "string") == 0) || (rt && strcmp(rt, "string") == 0))
+	{
+		if (!lt || !rt || strcmp(lt, "string") != 0 || strcmp(rt, "string") != 0)
+		{
+			semantic_error(analyzer, node,
+			               "Type mismatch: cannot mix string and non-string in binary operation.");
+		}
+		else if (!node->binary_op.op || strcmp(node->binary_op.op, "+") != 0)
+		{
+			semantic_error(analyzer, node,
+			               "Operator not supported for string type; only '+' is allowed.");
+		}
+	}
+}
+
+void validate_assignment(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	if (!analyzer || !node || node->type != AST_ASSIGNMENT)
+	{
+		return;
+	}
+
+	const char* name = node->assignment.name;
+	if (!name)
+	{
+		semantic_error(analyzer, node, "Assignment missing variable name.");
+		return;
+	}
+
+	if (!analyzer->symbol_table_stack || !analyzer->symbol_table_stack->current_scope)
+	{
+		return;
+	}
+
+	SymbolEntry* entry =
+	    stm_lookup(analyzer->symbol_table_stack->current_scope, name);
+	if (!entry)
+	{
+		semantic_error(analyzer, node, "Assignment to undeclared variable.");
+		return;
+	}
+
+	if (node->assignment.value)
+	{
+		validate_node(analyzer, node->assignment.value);
+		const char* val_type = resolve_expression_type(analyzer, node->assignment.value);
+		if (val_type && !semantic_types_compatible(entry->type, val_type))
+		{
+			semantic_error(analyzer, node,
+			               "Assignment value type does not match variable type.");
+		}
+	}
+	else
+	{
+		semantic_error(analyzer, node, "Assignment missing value.");
 	}
 }
 

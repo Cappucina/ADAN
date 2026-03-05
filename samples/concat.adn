@@ -1,0 +1,13 @@
+import "adan/io";
+
+set myVar: string = "Hello, ";
+
+fun main(): i32 {
+  set myVar += "world!";
+  set myVar = myVar + " String concatenation in ";
+  
+  println(myVar + "ADAN!");
+  return 0;
+}
+
+// Hello, world! String concatenation in ADAN!

@@ -26,8 +26,7 @@ char* llvm_type_to_string(IRType* t)
 			{
 				return NULL;
 			}
-			size_t len =
-			    strlen(pointee_str) + 2;
+			size_t len = strlen(pointee_str) + 2;
 			char* result = (char*)malloc(len);
 			if (!result)
 			{
@@ -64,8 +63,7 @@ char* llvm_type_mangle(IRType* t)
 			{
 				return NULL;
 			}
-			size_t len =
-			    strlen(pointee_str) + 2;
+			size_t len = strlen(pointee_str) + 2;
 			char* result = (char*)malloc(len);
 			if (!result)
 			{

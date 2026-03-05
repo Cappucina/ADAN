@@ -43,9 +43,6 @@ static int run_cmd(char* const argv[])
 	return -1;
 }
 
-/* Split a space-separated string into a NULL-terminated argv array.
-   *out_storage receives the duplicated string that backs the tokens;
-   both *out_storage and the returned array must be freed by the caller. */
 static char** split_args(const char* str, size_t* out_count, char** out_storage)
 {
 	*out_count = 0;

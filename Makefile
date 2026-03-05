@@ -54,3 +54,6 @@ format:
 
 install:
 	@bash ./dependencies.sh
+
+push:
+	@bash ./push.sh

@@ -289,6 +289,12 @@ Token* scan_next_token(Scanner* scanner)
 			                  1);
 		case '+':
 			advance(scanner);
+			if (peek(scanner) == '=')
+			{
+				advance(scanner);
+				return make_token(TOKEN_PLUS_EQUALS, token_col, token_line,
+				                  clone_string("+=", 2), 2);
+			}
 			return make_token(TOKEN_PLUS, token_col, token_line, clone_string("+", 1),
 			                  1);
 		case '-':

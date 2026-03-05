@@ -5,6 +5,7 @@
 #include "lower.h"
 #include "ir/ir.h"
 #include "../stm.h"
+#include "runtime/runtime.h"
 
 static IRFunction* current_function = NULL;
 
@@ -284,21 +285,23 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 					else
 						ret_t = ir_type_ptr(ir_type_i64());
 
-					fn =
-					    ir_function_create_in_module(program->ir, stub_name, ret_t);
+					fn = ir_function_create_in_module(program->ir, stub_name,
+					                                  ret_t);
 					if (fn)
 					{
 						for (size_t i = 0; i < nargs; ++i)
 						{
 							IRValue* a = args[i];
-							IRType* at = a && a->type ? a->type : ir_type_i64();
+							IRType* at =
+							    a && a->type ? a->type : ir_type_i64();
 							ir_param_create(fn, NULL, at);
 						}
 						callee = fn;
 					}
 					else
 					{
-						fprintf(stderr, "Failed to create stub for '%s'. (Error)\n",
+						fprintf(stderr,
+						        "Failed to create stub for '%s'. (Error)\n",
 						        callee_name);
 						free(args);
 						free(stub_name);
@@ -324,12 +327,73 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				fprintf(stderr, "No current block for binary op. (Error)\n");
 				return NULL;
 			}
+
+			// Constant fold two string literals at compile time.
+			if (node->binary_op.op && strcmp(node->binary_op.op, "+") == 0 &&
+			    node->binary_op.left && node->binary_op.left->type == AST_STRING_LITERAL &&
+			    node->binary_op.right && node->binary_op.right->type == AST_STRING_LITERAL)
+			{
+				const char* ls = node->binary_op.left->string_literal.value;
+				const char* rs = node->binary_op.right->string_literal.value;
+				size_t ll = strlen(ls);
+				size_t rl = strlen(rs);
+				// Strip surrounding quotes if present.
+				const char* raw_l = (ll >= 2 && ls[0] == '"' && ls[ll - 1] == '"')
+				                        ? ls + 1
+				                        : ls;
+				size_t raw_ll = (ll >= 2 && ls[0] == '"' && ls[ll - 1] == '"')
+				                    ? ll - 2
+				                    : ll;
+				const char* raw_r = (rl >= 2 && rs[0] == '"' && rs[rl - 1] == '"')
+				                        ? rs + 1
+				                        : rs;
+				size_t raw_rl = (rl >= 2 && rs[0] == '"' && rs[rl - 1] == '"')
+				                    ? rl - 2
+				                    : rl;
+				char* folded = (char*)malloc(raw_ll + raw_rl + 1);
+				if (folded)
+				{
+					memcpy(folded, raw_l, raw_ll);
+					memcpy(folded + raw_ll, raw_r, raw_rl);
+					folded[raw_ll + raw_rl] = '\0';
+					IRValue* result = ir_const_string(program->ir, folded);
+					free(folded);
+					if (result)
+						return result;
+				}
+			}
+
 			IRValue* lhs = lower_expression(program, node->binary_op.left);
 			IRValue* rhs = lower_expression(program, node->binary_op.right);
 			if (!lhs || !rhs)
 			{
 				fprintf(stderr, "Failed to lower binary op operands. (Error)\n");
 				return NULL;
+			}
+			if (strcmp(node->binary_op.op, "+") == 0 &&
+				lhs->type && lhs->type->kind == IR_T_PTR &&
+				rhs->type && rhs->type->kind == IR_T_PTR)
+			{
+				IRFunction* concat_fn = NULL;
+				IRFunction* it = program->ir->functions;
+				while (it)
+				{
+					if (it->name && strcmp(it->name, "adn_strconcat") == 0)
+					{
+						concat_fn = it;
+						break;
+					}
+					it = it->next;
+				}
+				if (!concat_fn)
+				{
+					concat_fn = ir_function_create_in_module(
+						program->ir, "adn_strconcat", ir_type_ptr(ir_type_i64()));
+					ir_param_create(concat_fn, NULL, ir_type_ptr(ir_type_i64()));
+					ir_param_create(concat_fn, NULL, ir_type_ptr(ir_type_i64()));
+				}
+				IRValue* cargs[2] = {lhs, rhs};
+				return ir_emit_call(current_block, concat_fn, cargs, 2);
 			}
 			return ir_emit_binop(current_block, node->binary_op.op, lhs, rhs);
 		}
@@ -441,6 +505,40 @@ void lower_statement(Program* program, ASTNode* node)
 		case AST_CALL:
 		{
 			lower_expression(program, node);
+			break;
+		}
+		case AST_ASSIGNMENT:
+		{
+			fprintf(stderr, "lower_statement: assignment to '%s'\n",
+			        node->assignment.name ? node->assignment.name : "<anon>");
+			if (!current_block)
+			{
+				fprintf(stderr, "No current block to emit assignment into. (Error)\n");
+				return;
+			}
+			const char* aname = node->assignment.name;
+			if (!aname)
+			{
+				fprintf(stderr, "Assignment with no variable name. (Error)\n");
+				return;
+			}
+			SymEntry* se = sym_get(aname);
+			if (!se || !se->is_address)
+			{
+				fprintf(stderr, "Assignment to unknown or non-addressable variable '%s'. (Error)\n",
+				        aname);
+				return;
+			}
+			IRValue* val = lower_expression(program, node->assignment.value);
+			if (val)
+			{
+				ir_emit_store(current_block, se->value, val);
+			}
+			else
+			{
+				fprintf(stderr, "Failed to lower assignment value for '%s'. (Error)\n",
+				        aname);
+			}
 			break;
 		}
 		default:

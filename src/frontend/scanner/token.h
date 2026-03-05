@@ -43,6 +43,7 @@ typedef enum TokenType
 
 	// Operators
 	TOKEN_PLUS,
+	TOKEN_PLUS_EQUALS,
 	TOKEN_MINUS,
 	TOKEN_STAR,
 	TOKEN_SLASH,

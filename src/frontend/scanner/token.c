@@ -79,6 +79,8 @@ char* token_type_to_string(TokenType type)
 			return "COMMA";
 		case TOKEN_PLUS:
 			return "PLUS";
+		case TOKEN_PLUS_EQUALS:
+			return "PLUS_EQUALS";
 		case TOKEN_MINUS:
 			return "MINUS";
 		case TOKEN_STAR:

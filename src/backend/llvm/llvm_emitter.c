@@ -267,7 +267,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						char* rettype = llvm_type_to_string(
 						    callee->return_type ? callee->return_type
 						                        : ir_type_void());
-						if (ins->dest && callee->return_type && 
+						if (ins->dest && callee->return_type &&
 						    callee->return_type->kind != IR_T_VOID)
 						{
 							char* dname =
@@ -432,17 +432,19 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-						case 12:  // ^ (exponentiation)
-						{
-							fprintf(out, "  %s = call i64 @adn_powi(",
-							        dst ? dst : "<dst>");
-							fprintf(out, "i64 ");
-							es_emit_value_rep(&st, out, lhs);
-							fprintf(out, ", i64 ");
-							es_emit_value_rep(&st, out, rhs);
-							fprintf(out, ")\n");
-							break;
-						}
+							case 12:  // ^ (exponentiation)
+							{
+								fprintf(
+								    out,
+								    "  %s = call i64 @adn_powi(",
+								    dst ? dst : "<dst>");
+								fprintf(out, "i64 ");
+								es_emit_value_rep(&st, out, lhs);
+								fprintf(out, ", i64 ");
+								es_emit_value_rep(&st, out, rhs);
+								fprintf(out, ")\n");
+								break;
+							}
 							case 6:  // ==
 								fprintf(out, "  %s = icmp eq %s ",
 								        dst ? dst : "<dst>",
