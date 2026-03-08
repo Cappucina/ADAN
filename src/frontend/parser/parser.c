@@ -474,8 +474,17 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 	// Declaration: `set name: type = expr;`
 	consume(parser, TOKEN_COLON, "Expected ':' after variable name.");
 
+	if (!peek_current(parser)->lexeme)
+	{
+		error_expected(parser, "type name after ':'");
+		enter_recovery_mode(parser);
+		free(name);
+		return NULL;
+	}
+
 	char* type_name =
 	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
+	printf("Parsing variable declaration for '%s' of type '%s'\n", name, type_name);
 	ASTNode* type = parse_type(parser);
 
 	consume(parser, TOKEN_EQUALS, "Expected '=' after variable type.");
