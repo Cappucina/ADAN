@@ -132,7 +132,7 @@ get_package_names() {
         PACKAGES="build-base cmake clang-extra-tools gdb"
         ;;
     brew)
-        PACKAGES="cmake clang-format lldb"
+        PACKAGES="cmake clang-format"
         ;;
     esac
 }
@@ -167,7 +167,8 @@ main() {
         check_dependency "make" "Make" || NEED_INSTALL=true
         check_dependency "cmake" "CMake" || NEED_INSTALL=true
         check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
-        check_dependency "lldb" "LLDB debugger" || NEED_INSTALL=true
+        # lldb ships with Xcode Command Line Tools and is not available via brew
+        check_dependency "lldb" "LLDB debugger" || print_warn "LLDB is not installed — run: xcode-select --install"
     else
         check_dependency "gcc" "GCC compiler" || NEED_INSTALL=true
         check_dependency "make" "Make" || NEED_INSTALL=true
@@ -198,7 +199,7 @@ main() {
             check_dependency "make" "Make"
             check_dependency "cmake" "CMake"
             check_dependency "clang-format" "clang-format"
-            check_dependency "lldb" "LLDB debugger"
+            check_dependency "lldb" "LLDB debugger" || print_warn "LLDB not found — run: xcode-select --install"
         else
             check_dependency "gcc" "GCC compiler"
             check_dependency "make" "Make"
