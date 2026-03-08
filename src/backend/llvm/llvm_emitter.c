@@ -473,7 +473,6 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						free(tstr);
 						break;
 					}
-					break;
 					case IR_PHI:
 					{
 						char* d = es_get_val_name(&st, ins->dest);
@@ -495,7 +494,6 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						free(t);
 						break;
 					}
-					break;
 					default:
 						fprintf(out,
 						        "  ; unsupported instruction kind %d\n",
