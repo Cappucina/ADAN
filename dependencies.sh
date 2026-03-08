@@ -187,7 +187,7 @@ main() {
     print_info "Installing missing dependencies..."
     echo
 
-    if install_packages "$PACKAGES"; then
+    if install_packages $PACKAGES; then
         echo
         print_info "✓ All dependencies installed successfully!"
         echo
