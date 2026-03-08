@@ -128,7 +128,6 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				return e->value;
 			}
 
-			SymbolEntry* se = NULL;
 			if (program)
 			{
 				if (program->ir)
