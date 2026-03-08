@@ -55,7 +55,7 @@ jobs:
 
   build-macos-x86_64:
     name: Build macOS (x86_64)
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
 
@@ -105,7 +105,7 @@ jobs:
           gh release delete latest --yes 2>/dev/null || true
           gh release create latest \
             --title "Nightly (latest)" \
-            --notes "Automatically updated on every push to \`main\`." \
+            --notes "The Nightly releases may contain unstable, untested, or incomplete features. It's recommended to use these builds for testing purposes or if developing anything for newer versions of ADAN.\n\n> Read ADAN documentations @ **https://docs.adan.sh/** and learn compiler flags at **https://install.adan.sh/**." \
             ADAN-Linux-Nightly \
             ADAN-macOS-arm64-Nightly \
             ADAN-macOS-x86_64-Nightly
