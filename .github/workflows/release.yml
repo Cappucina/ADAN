@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: bash ./dependencies.sh
 
+      - name: Install zig
+        run: brew install zig
+
       - name: Build
         run: make build-macos-arm64
 
@@ -58,6 +61,9 @@ jobs:
 
       - name: Install dependencies
         run: bash ./dependencies.sh
+
+      - name: Install zig
+        run: brew install zig
 
       - name: Build
         run: make build-macos-x86_64
