@@ -60,7 +60,7 @@ detect_distro() {
     print_info "Package manager: $PKG_MGR"
 }
 
-needs_sudo() {
+set_sudo_command() {
     if [ "$EUID" -eq 0 ]; then
         SUDO=""
         return 1
@@ -74,42 +74,41 @@ needs_sudo() {
 }
 
 install_packages() {
-    local packages="$*"
 
     case $PKG_MGR in
     apt)
         print_info "Updating package list..."
         $SUDO apt-get update -qq || print_warn "Failed to update package list"
-        print_info "Installing packages: $packages"
-        $SUDO apt-get install -y $packages
+        print_info "Installing packages: $*"
+        $SUDO apt-get install -y "$@"
         ;;
     dnf)
-        print_info "Installing packages: $packages"
-        $SUDO dnf install -y $packages
+        print_info "Installing packages: $*"
+        $SUDO dnf install -y "$@"
         ;;
     yum)
-        print_info "Installing packages: $packages"
-        $SUDO yum install -y $packages
+        print_info "Installing packages: $*"
+        $SUDO yum install -y "$@"
         ;;
     pacman)
         print_info "Updating package database..."
         $SUDO pacman -Sy
-        print_info "Installing packages: $packages"
-        $SUDO pacman -S --noconfirm $packages
+        print_info "Installing packages: $*"
+        $SUDO pacman -S --noconfirm "$@"
         ;;
     zypper)
-        print_info "Installing packages: $packages"
-        $SUDO zypper install -y $packages
+        print_info "Installing packages: $*"
+        $SUDO zypper install -y "$@"
         ;;
     apk)
         print_info "Updating package index..."
         $SUDO apk update
-        print_info "Installing packages: $packages"
-        $SUDO apk add $packages
+        print_info "Installing packages: $*"
+        $SUDO apk add "$@"
         ;;
     brew)
-        print_info "Installing packages: $packages"
-        brew install $packages
+        print_info "Installing packages: $*"
+        brew install "$@"
         ;;
     esac
 }
@@ -152,7 +151,7 @@ check_dependency() {
 
 main() {
     detect_distro
-    needs_sudo
+    set_sudo_command
     if [ -n "$SUDO" ]; then
         print_info "Will use sudo for package installation"
     fi
@@ -188,7 +187,7 @@ main() {
     print_info "Installing missing dependencies..."
     echo
 
-    if install_packages $PACKAGES; then
+    if install_packages "$PACKAGES"; then
         echo
         print_info "✓ All dependencies installed successfully!"
         echo
