@@ -13,7 +13,9 @@
 <div align="center">
   <img src="https://github.com/Cappucina/ADAN/actions/workflows/build.yml/badge.svg" alt="Build Status"/>
 
-  <img src="https://img.shields.io/github/v/release/Cappucina/ADAN?style=flat&label=Releases&color=blue" alt="Releases"/>
+  <a href="https://github.com/Cappucina/ADAN/releases">
+    <img src="https://img.shields.io/github/v/release/Cappucina/ADAN?style=flat&label=Releases&color=blue" alt="Releases"/>
+  </a>
 </div>
 
 ---
