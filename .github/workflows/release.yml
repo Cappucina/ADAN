@@ -103,9 +103,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release delete latest --yes 2>/dev/null || true
+          cat > release_notes.md << 'EOF'
+          The Nightly releases may contain unstable, untested, or incomplete features. It's recommended to use these builds for testing purposes or if developing anything for newer versions of ADAN.
+
+          > Read ADAN documentations @ **https://docs.adan.sh/** and learn compiler flags at **https://install.adan.sh/**.
+          EOF
           gh release create latest \
             --title "Nightly (latest)" \
-            --notes "The Nightly releases may contain unstable, untested, or incomplete features. It's recommended to use these builds for testing purposes or if developing anything for newer versions of ADAN.\n\n> Read ADAN documentations @ **https://docs.adan.sh/** and learn compiler flags at **https://install.adan.sh/**." \
+            --notes-file release_notes.md \
             ADAN-Linux-Nightly \
             ADAN-macOS-arm64-Nightly \
             ADAN-macOS-x86_64-Nightly
