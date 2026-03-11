@@ -15,24 +15,18 @@ add_custom_command(
 	OUTPUT ${EMBEDDED_DATA_HEADER}
 	COMMAND ${CMAKE_COMMAND} -E rm -f ${EMBEDDED_DATA_HEADER}
 	COMMAND ${CMAKE_COMMAND}
-		-DCOUNT=5
+		-DCOUNT=3
 		-DVAR_0=LIB_IO_ADN
 		"-DPATH_0=${CMAKE_SOURCE_DIR}/libs/io/io.adn"
-		-DVAR_1=LIB_IO_C
-		"-DPATH_1=${CMAKE_SOURCE_DIR}/libs/io/print.c"
-		-DVAR_2=LIB_IO_H
-		"-DPATH_2=${CMAKE_SOURCE_DIR}/libs/io/print.h"
-		-DVAR_3=LIB_RUNTIME_C
-		"-DPATH_3=${CMAKE_SOURCE_DIR}/src/backend/runtime/runtime.c"
-		-DVAR_4=LIB_RUNTIME_H
-		"-DPATH_4=${CMAKE_SOURCE_DIR}/src/backend/runtime/runtime.h"
+		-DVAR_1=LIB_IO_H
+		"-DPATH_1=${CMAKE_SOURCE_DIR}/libs/io/io.h"
+		-DVAR_2=LIB_RUNTIME_H
+		"-DPATH_2=${CMAKE_SOURCE_DIR}/src/backend/runtime/runtime.h"
 		"-DOUTPUT_FILE=${EMBEDDED_DATA_HEADER}"
 		-P ${CMAKE_SOURCE_DIR}/cmake/embed_libs.cmake
 	DEPENDS
 		${CMAKE_SOURCE_DIR}/libs/io/io.adn
-		${CMAKE_SOURCE_DIR}/libs/io/print.c
-		${CMAKE_SOURCE_DIR}/libs/io/print.h
-		${CMAKE_SOURCE_DIR}/src/backend/runtime/runtime.c
+		${CMAKE_SOURCE_DIR}/libs/io/io.h
 		${CMAKE_SOURCE_DIR}/src/backend/runtime/runtime.h
 		${CMAKE_SOURCE_DIR}/cmake/embed_libs.cmake
 )

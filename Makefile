@@ -24,7 +24,7 @@ link: $(SAMPLE_OUT)
 
 $(SAMPLE_OUT): $(SAMPLE_LL)
 	@echo "Linking $(SAMPLE_LL) -> $(SAMPLE_OUT)"
-	@clang $(SAMPLE_LL) libs/io/print.c -o $(SAMPLE_OUT)
+	@clang $(SAMPLE_LL) libs/io/stdout.c -o $(SAMPLE_OUT)
 
 run: link
 	@clear

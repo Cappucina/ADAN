@@ -4,8 +4,8 @@
 #include "embedded_libs_data.h"
 
 static const EmbeddedLib REGISTRY[] = {
-    {"adan/io", LIB_IO_ADN, LIB_IO_C, "print.h", LIB_IO_H},
-    {"adan/runtime", NULL, LIB_RUNTIME_C, "runtime.h", LIB_RUNTIME_H},
+    {"adan/io", LIB_IO_ADN, NULL, "io.h", LIB_IO_H},
+    {"adan/runtime", NULL, LIB_RUNTIME_H, "runtime.h", LIB_RUNTIME_H},
 };
 
 const EmbeddedLib* embedded_lib_get(const char* import_path)
