@@ -9,5 +9,3 @@ fun main(): i32 {
   println(myVar + "ADAN!");
   return 0;
 }
-
-// Hello, world! String concatenation in ADAN!

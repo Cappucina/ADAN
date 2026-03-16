@@ -185,21 +185,41 @@ Token* scan_next_token(Scanner* scanner)
 		return make_token(TOKEN_NUMBER, start_col, start_line, lexeme, length);
 	}
 
-	if (current == '"')
+	if (current == '"' || current == '\'' || current == '`')
 	{
+		char quote_type = current;
 		size_t start_pos = scanner->position;
 		size_t start_col = scanner->column;
 		size_t start_line = scanner->line;
 
 		advance(scanner);
 
-		while (!is_at_end(scanner) && peek(scanner) != '"')
+		while (!is_at_end(scanner) && peek(scanner) != quote_type)
 		{
 			if (peek(scanner) == '\\' && !is_at_end(scanner))
 			{
 				advance(scanner);
 				if (!is_at_end(scanner))
 				{
+					advance(scanner);
+				}
+			}
+			// i think this works
+			else if (peek(scanner) == '$' && peek_next(scanner) == '{')
+			{
+				advance(scanner);
+				advance(scanner);
+				int bcount = 1;
+				while (!is_at_end(scanner) && bcount > 0)
+				{
+					if (peek(scanner) == '{')
+					{
+						bcount++;
+					}
+					else if (peek(scanner) == '}')
+					{
+						bcount--;
+					}
 					advance(scanner);
 				}
 			}
@@ -317,6 +337,14 @@ Token* scan_next_token(Scanner* scanner)
 			advance(scanner);
 			return make_token(TOKEN_PERCENT, token_col, token_line,
 			                  clone_string("%", 1), 1);
+		case '`':
+			advance(scanner);
+			return make_token(TOKEN_BACKTICK, token_col, token_line,
+			                  clone_string("`", 1), 1);
+		case '$':
+			advance(scanner);
+			return make_token(TOKEN_DOLLAR, token_col, token_line,
+			                  clone_string("$", 1), 1);
 		default:
 			advance(scanner);
 			printf("Unexpected character '%c' at line %zu, column %zu\n", current,

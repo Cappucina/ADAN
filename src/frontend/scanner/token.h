@@ -40,6 +40,8 @@ typedef enum TokenType
 	TOKEN_EQUALS,
 	TOKEN_QUOTE,
 	TOKEN_COMMA,
+	TOKEN_BACKTICK,
+	TOKEN_DOLLAR,
 
 	// Operators
 	TOKEN_PLUS,

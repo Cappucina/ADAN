@@ -73,6 +73,8 @@ char* token_type_to_string(TokenType type)
 			return "SEMICOLON";
 		case TOKEN_EQUALS:
 			return "EQUALS";
+		case TOKEN_BACKTICK:
+			return "BACKTICK";
 		case TOKEN_QUOTE:
 			return "QUOTE";
 		case TOKEN_COMMA:

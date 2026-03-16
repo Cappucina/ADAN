@@ -14,6 +14,7 @@ typedef enum ASTNodeType
 	AST_CALL,  // Function call. `callee(arg, ...)`.
 	AST_IDENTIFIER,
 	AST_STRING_LITERAL,
+	AST_INTERPOLATED_STRING,  // String enclosing interpolated expressions, e.g. `Hello, ${name}!`
 	AST_NUMBER_LITERAL,
 	AST_TYPE,  // i32, u32, string, etc.
 	AST_RETURN_STATEMENT,
