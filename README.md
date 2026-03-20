@@ -38,7 +38,6 @@ $ make
 
 ## Different Make Commands
 ```powershell
-```
 $ make                     # Clean, build, and run the binary file.
 $ make build               # Clean and create a fresh binary.
 $ make emit                # Build and emit LLVM IR for the sample file.
@@ -51,7 +50,6 @@ $ make build-macos-arm64   # Build the binary for macOS ARM64 (Apple Silicon).
 $ make build-macos-x86_64  # Build the binary for macOS x86_64 (Intel Macs).
 $ make build-macos         # Build both macOS binaries (ARM64 and x86_64).
 $ make push                # Run the push.sh script (for maintainers).
-```
 ```
 
 <br>
