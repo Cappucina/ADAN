@@ -38,12 +38,20 @@ $ make
 
 ## Different Make Commands
 ```powershell
-$ make         # Clean, build, and run the binary file.
-$ make build   # Clean and create a fresh binary.
-$ make run     # Clear the terminal, then run an existing binary.
-$ make format  # Beautifies all C files in the `./src` dir, respecting rules from `.clang-format`.
-$ make clean   # Removes an existing binary in `./build`
-$ make install # Install all required dependencies. (Linux required for now!)
+```
+$ make                     # Clean, build, and run the binary file.
+$ make build               # Clean and create a fresh binary.
+$ make emit                # Build and emit LLVM IR for the sample file.
+$ make link                # Build, compile, and link the sample file.
+$ make run                 # Clear the terminal, then run the sample binary.
+$ make format              # Beautifies all C and header files in ./src and ./libs, using .clang-format.
+$ make clean               # Removes all build artifacts and sample outputs.
+$ make install             # Install all required dependencies. (Linux required for now!)
+$ make build-macos-arm64   # Build the binary for macOS ARM64 (Apple Silicon).
+$ make build-macos-x86_64  # Build the binary for macOS x86_64 (Intel Macs).
+$ make build-macos         # Build both macOS binaries (ARM64 and x86_64).
+$ make push                # Run the push.sh script (for maintainers).
+```
 ```
 
 <br>
