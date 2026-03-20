@@ -197,16 +197,14 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 			int firstp = 1;
 			for (IRValue* pv = f->params; pv; pv = pv->next)
 			{
-				char* ptype =
-				    llvm_type_to_string(pv->type ? pv->type : ir_type_i64());
-				char* pname = es_get_val_name(&st, pv);
-				if (!firstp)
-				{
-					fprintf(out, ", ");
-				}
-				fprintf(out, "%s %s", ptype ? ptype : "i64", pname ? pname : "<p>");
-				free(ptype);
-				firstp = 0;
+				   char* ptype = llvm_type_to_string(pv->type ? pv->type : ir_type_i64());
+				   if (!firstp)
+				   {
+					   fprintf(out, ", ");
+				   }
+				   fprintf(out, "%s", ptype ? ptype : "i64");
+				   free(ptype);
+				   firstp = 0;
 			}
 			fprintf(out, ")\n\n");
 			free(rett);
@@ -237,6 +235,24 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 			const char* label = b->name ? b->name : "entry";
 			fprintf(out, "%s:\n", label);
 			IRInstruction* ins = b->first;
+			if (!ins) {
+				IRType* frt = f->return_type ? f->return_type : ir_type_void();
+				if (frt->kind == IR_T_VOID) {
+					fprintf(out, "  ret void\n");
+				} else if (frt->kind == IR_T_PTR) {
+					char* rt = llvm_type_to_string(frt);
+					fprintf(out, "  ret %s null\n", rt ? rt : "ptr");
+					free(rt);
+				} else if (frt->kind == IR_T_F64) {
+					char* rt = llvm_type_to_string(frt);
+					fprintf(out, "  ret %s 0.0\n", rt ? rt : "f64");
+					free(rt);
+				} else {
+					char* rt = llvm_type_to_string(frt);
+					fprintf(out, "  ret %s 0\n", rt ? rt : "i64");
+					free(rt);
+				}
+			}
 			while (ins)
 			{
 				switch (ins->kind)
@@ -246,7 +262,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						char* dname = es_get_val_name(&st, ins->dest);
 						char* t = llvm_type_to_string(ins->dest->type);
 						fprintf(out, "  %s = alloca %s\n",
-						        dname ? dname : "<dst>", t ? t : "i64");
+								dname ? dname : "<dst>", t ? t : "i64");
 						free(t);
 						break;
 					}
