@@ -49,6 +49,7 @@ void print_help(const char* program_name)
 	printf("  -o, --output <path>        Output path for the linked binary.\n");
 	printf("                             If <path> is a directory, the binary is placed\n");
 	printf("                             inside it named after the source file.\n");
+	printf("  -r, --rawir                Stop after emitting LLVM IR (.ll file)\n");
 	printf("  -h, --help                 Show this help message and exit\n");
 }
 
@@ -59,6 +60,7 @@ int main(int argc, char* argv[])
 	char* out_path = NULL;
 	char* bundle_libs = NULL;
 	char* bundle_embedded = NULL;
+	bool stop_at_ir = false;
 
 	if (argc < 2)
 	{
@@ -86,6 +88,10 @@ int main(int argc, char* argv[])
 			{
 				out_path = argv[i + 1];
 			}
+		}
+		else if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--rawir") == 0)
+		{
+			stop_at_ir = true;
 		}
 	}
 
@@ -173,17 +179,31 @@ int main(int argc, char* argv[])
 					}
 				}
 
-				if (ll_path && emit_res == 0 && out_path)
+				if (ll_path && emit_res == 0 && !stop_at_ir)
 				{
+					char default_out[PATH_MAX];
+					const char* final_out = out_path;
+
+					if (!final_out)
+					{
+						size_t flen = strlen(file_path);
+						const char* dot = strrchr(file_path, '.');
+						size_t base_len =
+						    dot ? (size_t)(dot - file_path) : flen;
+						memcpy(default_out, file_path, base_len);
+						default_out[base_len] = '\0';
+						final_out = default_out;
+					}
+
 					char resolved_out[PATH_MAX];
 					struct stat st;
 					bool is_dir = false;
-					size_t op_len = strlen(out_path);
-					if (out_path[op_len - 1] == '/')
+					size_t op_len = strlen(final_out);
+					if (final_out[op_len - 1] == '/')
 					{
 						is_dir = true;
 					}
-					else if (stat(out_path, &st) == 0 && S_ISDIR(st.st_mode))
+					else if (stat(final_out, &st) == 0 && S_ISDIR(st.st_mode))
 					{
 						is_dir = true;
 					}
@@ -196,25 +216,28 @@ int main(int argc, char* argv[])
 						size_t stem_len =
 						    dot ? (size_t)(dot - base) : strlen(base);
 						size_t dir_len = op_len;
-						while (dir_len > 0 && out_path[dir_len - 1] == '/')
+						while (dir_len > 0 && final_out[dir_len - 1] == '/')
+						{
 							dir_len--;
+						}
 						snprintf(resolved_out, sizeof(resolved_out),
-						         "%.*s/%.*s", (int)dir_len, out_path,
+						         "%.*s/%.*s", (int)dir_len, final_out,
 						         (int)stem_len, base);
 					}
 					else
 					{
 						snprintf(resolved_out, sizeof(resolved_out), "%s",
-						         out_path);
+						         final_out);
 					}
+
 					const char* outp = resolved_out;
 					int lres;
-
 					const char* all_embedded =
 					    embedded_lib_get_all_import_paths();
 					lres = linker_link_and_bundle_embedded(
 					    ll_path, outp, libs ? libs : "",
 					    all_embedded ? all_embedded : "adan/runtime");
+
 					if (all_embedded)
 					{
 						free((void*)all_embedded);
@@ -223,6 +246,7 @@ int main(int argc, char* argv[])
 					if (lres == 0)
 					{
 						printf("Linked executable: %s\n", outp);
+						remove(ll_path);
 					}
 					else
 					{

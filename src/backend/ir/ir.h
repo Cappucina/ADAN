@@ -94,6 +94,7 @@ typedef struct IRGlobal
 {
 	char* name;
 	IRValue* value;
+	IRValue* initial;
 	struct IRGlobal* next;
 } IRGlobal;
 

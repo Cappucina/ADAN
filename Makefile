@@ -14,18 +14,13 @@ build: clean
 	@cmake -S . -B $(BUILD_DIR)
 	@cmake --build $(BUILD_DIR)
 
-emit: build $(SAMPLE_LL)
-
-$(SAMPLE_LL): build
+emit: build
 	@echo "Emitting LLVM IR to $(SAMPLE_LL)"
-	@./$(BUILD_DIR)/$(BINARY) -f $(SAMPLE)
+	@./$(BUILD_DIR)/$(BINARY) -f $(SAMPLE) -r
 
-link: $(SAMPLE_OUT)
-
-$(SAMPLE_OUT): $(SAMPLE_LL)
-	@echo "Linking $(SAMPLE_LL) -> $(SAMPLE_OUT)"
-	@clang $(SAMPLE_LL) libs/io/stdout.c -o $(SAMPLE_OUT)
-	@rm -f $(SAMPLE_LL)
+link: build
+	@echo "Compiling and linking $(SAMPLE) -> $(SAMPLE_OUT)"
+	@./$(BUILD_DIR)/$(BINARY) -f $(SAMPLE) -o $(SAMPLE_OUT)
 
 run: link
 	@clear

@@ -154,6 +154,29 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 				fprintf(out, "\\00\"\n");
 			}
 		}
+		else
+		{
+			char* tstr = llvm_type_to_string(gv->type ? gv->type->pointee : ir_type_i64());
+			if (g->initial)
+			{
+				fprintf(out, "@%s = global %s ", g->name, tstr ? tstr : "i64");
+				es_emit_value_rep(&st, out, g->initial);
+				fprintf(out, "\n");
+			}
+			else
+			{
+				fprintf(out, "@%s = common global %s ", g->name, tstr ? tstr : "i64");
+				if (gv->type && gv->type->pointee && gv->type->pointee->kind == IR_T_PTR)
+				{
+					fprintf(out, "null\n");
+				}
+				else
+				{
+					fprintf(out, "0\n");
+				}
+			}
+			free(tstr);
+		}
 	}
 
 	fprintf(out, "declare i64 @adn_powi(i64, i64)\n\n");
@@ -235,11 +258,11 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						    ptr && ptr->type ? ptr->type->pointee : NULL;
 						char* tstr =
 						    llvm_type_to_string(pt ? pt : ir_type_i64());
-						char* ptrname = es_get_val_name(&st, ptr);
-						fprintf(out, "  %s = load %s, %s* %s\n",
+						fprintf(out, "  %s = load %s, %s* ",
 						        dname ? dname : "<dst>",
-						        tstr ? tstr : "i64", tstr ? tstr : "i64",
-						        ptrname ? ptrname : "<ptr>");
+						        tstr ? tstr : "i64", tstr ? tstr : "i64");
+						es_emit_value_rep(&st, out, ptr);
+						fprintf(out, "\n");
 						free(tstr);
 						break;
 					}
@@ -250,11 +273,11 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						IRType* vt =
 						    val && val->type ? val->type : ir_type_i64();
 						char* vtstr = llvm_type_to_string(vt);
-						char* ptrname = es_get_val_name(&st, ptr);
 						fprintf(out, "  store %s ", vtstr ? vtstr : "i64");
 						es_emit_value_rep(&st, out, val);
-						fprintf(out, ", %s* %s\n", vtstr ? vtstr : "i64",
-						        ptrname ? ptrname : "<ptr>");
+						fprintf(out, ", %s* ", vtstr ? vtstr : "i64");
+						es_emit_value_rep(&st, out, ptr);
+						fprintf(out, "\n");
 						free(vtstr);
 						break;
 					}

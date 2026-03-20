@@ -633,17 +633,27 @@ void lower_program(Program* program)
 	}
 
 	sym_clear();
-	current_function = NULL;
-	current_block = NULL;
+	IRFunction* init_func = ir_function_create_in_module(program->ir, "__adan_init",
+	                                                     ir_type_void());
+	IRBlock* init_block = ir_block_create_in_function(init_func, "entry");
 
 	ASTNode* root = program->ast_root;
-	for (size_t i = 0; i < root->program.count; i++)
+	for (size_t i = 0; i < root->program.count; ++i)
 	{
 		ASTNode* decl = root->program.decls[i];
-		fprintf(stderr, "lower_program: processing decl %zu type=%d\n", i,
-		        decl ? (int)decl->type : -1);
 		if (!decl)
 		{
+			continue;
+		}
+
+		if (decl->type == AST_ASSIGNMENT || decl->type == AST_EXPRESSION_STATEMENT ||
+		    decl->type == AST_CALL)
+		{
+			current_function = init_func;
+			current_block = init_block;
+			lower_statement(program, decl);
+			current_function = NULL;
+			current_block = NULL;
 			continue;
 		}
 
@@ -691,6 +701,11 @@ void lower_program(Program* program)
 					        func_name);
 					current_function = NULL;
 					break;
+				}
+
+				if (strcmp(func_name, "main") == 0)
+				{
+					ir_emit_call(entry_block, init_func, NULL, 0);
 				}
 
 				current_block = entry_block;

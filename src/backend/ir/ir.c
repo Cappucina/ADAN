@@ -626,7 +626,7 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 	snprintf(gname, sizeof(gname), ".str%d", next_str_idx++);
 	fprintf(stderr, "ir_const_string: creating global %s for string '%s'\n", gname, str);
 
-	IRType* t = ir_type_ptr(ir_type_i64());
+	IRType* t = ir_type_i64();
 	IRValue* g = ir_global_create(m, gname, t, NULL);
 	if (!g)
 	{
@@ -748,7 +748,7 @@ IRValue* ir_global_create(IRModule* m, const char* name, IRType* type, IRValue* 
 	}
 	v->kind = IRV_GLOBAL;
 	v->u.temp_id = 0;
-	v->type = type;
+	v->type = ir_type_ptr(type);
 	v->name = strdup(name);
 	fprintf(stderr, "ir_global_create: strdup for v->name -> %p\n", (void*)v->name);
 	v->next = NULL;
@@ -765,8 +765,8 @@ IRValue* ir_global_create(IRModule* m, const char* name, IRType* type, IRValue* 
 	g->name = strdup(name);
 	fprintf(stderr, "ir_global_create: strdup for g->name -> %p\n", (void*)g->name);
 	g->value = v;
+	g->initial = initial;
 	g->next = NULL;
-	fprintf(stderr, "ir_global_create: current m->globals = %p\n", (void*)m->globals);
 	if (!m->globals)
 	{
 		m->globals = g;
