@@ -87,7 +87,9 @@ static char** split_args(const char* str, size_t* out_count, char** out_storage)
 			while (*p && *p != ' ')
 				p++;
 			if (*p)
+			{
 				*p++ = '\0';
+			}
 		}
 	}
 	arr[idx] = NULL;
@@ -144,7 +146,9 @@ int linker_link_with_clang(const char* input_ll_path, const char* output_path, c
 static char* trim_whitespace(char* s)
 {
 	if (!s)
+	{
 		return s;
+	}
 	while (*s && isspace((unsigned char)*s))
 		s++;
 	char* end = s + strlen(s);
@@ -157,11 +161,15 @@ static char* trim_whitespace(char* s)
 static int ends_with(const char* s, const char* suffix)
 {
 	if (!s || !suffix)
+	{
 		return 0;
+	}
 	size_t ls = strlen(s);
 	size_t lsu = strlen(suffix);
 	if (ls < lsu)
+	{
 		return 0;
+	}
 	return strcmp(s + ls - lsu, suffix) == 0;
 }
 
@@ -264,7 +272,9 @@ int linker_link_and_bundle(const char* input_ll_path, const char* output_path, c
 			size_t cmdlen = strlen(path) + strlen(tmpobj) + 64;
 			char* cmd = malloc(cmdlen);
 			if (!cmd)
+			{
 				goto cleanup_error;
+			}
 			snprintf(cmd, cmdlen, "clang -c %s -o %s", path, tmpobj);
 			size_t cmd_argc = 0;
 			char* cmd_storage = NULL;
@@ -278,7 +288,9 @@ int linker_link_and_bundle(const char* input_ll_path, const char* output_path, c
 			}
 			free(cmd);
 			if (r != 0)
+			{
 				goto cleanup_error;
+			}
 			link_items = realloc(link_items, sizeof(char*) * (link_count + 1));
 			link_items[link_count++] = strdup(tmpobj);
 			temp_objs = realloc(temp_objs, sizeof(char*) * (temp_count + 1));
@@ -311,7 +323,9 @@ int linker_link_and_bundle(const char* input_ll_path, const char* output_path, c
 		len += strlen(link_items[i]) + 3;
 	char* linkcmd = malloc(len + 1);
 	if (!linkcmd)
+	{
 		goto cleanup_error;
+	}
 	strcpy(linkcmd, "clang ");
 	strcat(linkcmd, input_ll_path);
 	for (size_t i = 0; i < link_count; ++i)
@@ -493,7 +507,9 @@ int linker_link_and_bundle_embedded(const char* input_ll_path, const char* outpu
 			llen += strlen(objs[i]) + 2;
 		char* linkcmd = malloc(llen + 1);
 		if (!linkcmd)
+		{
 			goto cleanup_embedded_error;
+		}
 		strcpy(linkcmd, "clang ");
 		strcat(linkcmd, input_ll_path);
 		for (size_t i = 0; i < obj_count; ++i)

@@ -188,24 +188,32 @@ void validator_cleanup()
 const char* validator_get_embedded_modules()
 {
 	if (embedded_modules_count == 0)
+	{
 		return NULL;
+	}
 
 	free(embedded_modules_csv);
 	embedded_modules_csv = NULL;
 
 	size_t total = 0;
 	for (size_t i = 0; i < embedded_modules_count; i++)
-		total += strlen(embedded_modules_used[i]) + 1;  // +1 for comma or NUL
+	{
+		total += strlen(embedded_modules_used[i]) + 1;
+	}
 
 	embedded_modules_csv = malloc(total + 1);
 	if (!embedded_modules_csv)
+	{
 		return NULL;
+	}
 
 	embedded_modules_csv[0] = '\0';
 	for (size_t i = 0; i < embedded_modules_count; i++)
 	{
 		if (i > 0)
+		{
 			strcat(embedded_modules_csv, ",");
+		}
 		strcat(embedded_modules_csv, embedded_modules_used[i]);
 	}
 	return embedded_modules_csv;
@@ -377,10 +385,8 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 			return NULL;
 		case AST_BINARY_OP:
 		{
-			const char* lt =
-			    resolve_expression_type(analyzer, node->binary_op.left);
-			const char* rt =
-			    resolve_expression_type(analyzer, node->binary_op.right);
+			const char* lt = resolve_expression_type(analyzer, node->binary_op.left);
+			const char* rt = resolve_expression_type(analyzer, node->binary_op.right);
 			if (lt && strcmp(lt, "string") == 0 && rt && strcmp(rt, "string") == 0 &&
 			    node->binary_op.op && strcmp(node->binary_op.op, "+") == 0)
 			{
@@ -716,7 +722,9 @@ void validate_import_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 			}
 		}
 		if (embedded_modules_count < embedded_modules_capacity)
+		{
 			embedded_modules_used[embedded_modules_count++] = strdup(normalized);
+		}
 	}
 	else
 	{
@@ -952,13 +960,15 @@ void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node)
 	{
 		if (!lt || !rt || strcmp(lt, "string") != 0 || strcmp(rt, "string") != 0)
 		{
-			semantic_error(analyzer, node,
-			               "Type mismatch: cannot mix string and non-string in binary operation.");
+			semantic_error(
+			    analyzer, node,
+			    "Type mismatch: cannot mix string and non-string in binary operation.");
 		}
 		else if (!node->binary_op.op || strcmp(node->binary_op.op, "+") != 0)
 		{
-			semantic_error(analyzer, node,
-			               "Operator not supported for string type; only '+' is allowed.");
+			semantic_error(
+			    analyzer, node,
+			    "Operator not supported for string type; only '+' is allowed.");
 		}
 	}
 }
@@ -982,8 +992,7 @@ void validate_assignment(SemanticAnalyzer* analyzer, ASTNode* node)
 		return;
 	}
 
-	SymbolEntry* entry =
-	    stm_lookup(analyzer->symbol_table_stack->current_scope, name);
+	SymbolEntry* entry = stm_lookup(analyzer->symbol_table_stack->current_scope, name);
 	if (!entry)
 	{
 		semantic_error(analyzer, node, "Assignment to undeclared variable.");

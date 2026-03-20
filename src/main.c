@@ -11,22 +11,26 @@
 #include "frontend/parser/parser.h"
 #include "frontend/ast/tree.h"
 #include "frontend/semantics/semantic.h"
-#include "frontend/semantics/validator.h"
-#include "backend/lower.h"
-#include "backend/ir/ir.h"
 #include "backend/backend.h"
 #include "backend/linker/linker.h"
+#include "embedded_libs.h"
 
 bool has_valid_extension(const char* filename)
 {
 	size_t len = strlen(filename);
 	if (len < 5)
+	{
 		return false;
+	}
 
 	if (strcmp(filename + len - 4, ".adn") == 0)
+	{
 		return true;
+	}
 	if (len >= 6 && strcmp(filename + len - 5, ".adan") == 0)
+	{
 		return true;
+	}
 
 	return false;
 }
@@ -45,18 +49,12 @@ void print_help(const char* program_name)
 	printf("  -o, --output <path>        Output path for the linked binary.\n");
 	printf("                             If <path> is a directory, the binary is placed\n");
 	printf("                             inside it named after the source file.\n");
-	printf("  --link                     Link the compiled IR into an executable\n");
-	printf("  --libs <libs>              Comma-separated extra libraries to link against\n");
-	printf("  --bundle-runtime           Bundle the built-in runtime (adan/io)\n");
-	printf("  --bundle-embedded <mods>   Bundle specific embedded modules (comma-separated)\n");
-	printf("  --bundle-libs <libs>       Bundle external libraries into the binary\n");
 	printf("  -h, --help                 Show this help message and exit\n");
 }
 
 int main(int argc, char* argv[])
 {
 	char* file_path = NULL;
-	int do_link = 0;
 	char* libs = NULL;
 	char* out_path = NULL;
 	char* bundle_libs = NULL;
@@ -80,35 +78,6 @@ int main(int argc, char* argv[])
 			if (i + 1 < argc)
 			{
 				file_path = argv[i + 1];
-			}
-		}
-		else if (strcmp(argv[i], "--link") == 0)
-		{
-			do_link = 1;
-		}
-		else if (strcmp(argv[i], "--libs") == 0)
-		{
-			if (i + 1 < argc)
-			{
-				libs = argv[i + 1];
-			}
-		}
-		else if (strcmp(argv[i], "--bundle-runtime") == 0)
-		{
-			bundle_embedded = "adan/io";  // shorthand: bundle io from binary
-		}
-		else if (strcmp(argv[i], "--bundle-embedded") == 0)
-		{
-			if (i + 1 < argc)
-			{
-				bundle_embedded = argv[i + 1];
-			}
-		}
-		else if (strcmp(argv[i], "--bundle-libs") == 0)
-		{
-			if (i + 1 < argc)
-			{
-				bundle_libs = argv[i + 1];
 			}
 		}
 		else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0)
@@ -204,96 +173,51 @@ int main(int argc, char* argv[])
 					}
 				}
 
-				if (do_link && ll_path && emit_res == 0)
+				if (ll_path && emit_res == 0 && out_path)
 				{
 					char resolved_out[PATH_MAX];
-					if (out_path)
+					struct stat st;
+					bool is_dir = false;
+					size_t op_len = strlen(out_path);
+					if (out_path[op_len - 1] == '/')
 					{
-						struct stat st;
-						bool is_dir = false;
-						size_t op_len = strlen(out_path);
-						if (out_path[op_len - 1] == '/')
-						{
-							is_dir = true;
-						}
-						else if (stat(out_path, &st) == 0 &&
-						         S_ISDIR(st.st_mode))
-						{
-							is_dir = true;
-						}
+						is_dir = true;
+					}
+					else if (stat(out_path, &st) == 0 && S_ISDIR(st.st_mode))
+					{
+						is_dir = true;
+					}
 
-						if (is_dir)
-						{
-							const char* slash = strrchr(file_path, '/');
-							const char* base = slash ? slash + 1 : file_path;
-							const char* dot = strrchr(base, '.');
-							size_t stem_len =
-							    dot ? (size_t)(dot - base) : strlen(base);
-							size_t dir_len = op_len;
-							while (dir_len > 0 &&
-							       out_path[dir_len - 1] == '/')
-								dir_len--;
-							snprintf(resolved_out, sizeof(resolved_out),
-							         "%.*s/%.*s",
-							         (int)dir_len, out_path,
-							         (int)stem_len, base);
-						}
-						else
-						{
-							snprintf(resolved_out, sizeof(resolved_out),
-							         "%s", out_path);
-						}
+					if (is_dir)
+					{
+						const char* slash = strrchr(file_path, '/');
+						const char* base = slash ? slash + 1 : file_path;
+						const char* dot = strrchr(base, '.');
+						size_t stem_len =
+						    dot ? (size_t)(dot - base) : strlen(base);
+						size_t dir_len = op_len;
+						while (dir_len > 0 && out_path[dir_len - 1] == '/')
+							dir_len--;
+						snprintf(resolved_out, sizeof(resolved_out),
+						         "%.*s/%.*s", (int)dir_len, out_path,
+						         (int)stem_len, base);
 					}
 					else
 					{
-						snprintf(resolved_out, sizeof(resolved_out), "a.out");
+						snprintf(resolved_out, sizeof(resolved_out), "%s",
+						         out_path);
 					}
 					const char* outp = resolved_out;
 					int lres;
 
-					const char* auto_embedded =
-					    validator_get_embedded_modules();
-
-					char* effective_embedded = NULL;
-					if (auto_embedded && auto_embedded[0])
+					const char* all_embedded =
+					    embedded_lib_get_all_import_paths();
+					lres = linker_link_and_bundle_embedded(
+					    ll_path, outp, libs ? libs : "",
+					    all_embedded ? all_embedded : "adan/runtime");
+					if (all_embedded)
 					{
-						size_t len = strlen("adan/runtime,") +
-						             strlen(auto_embedded) + 1;
-						effective_embedded = malloc(len);
-						if (effective_embedded)
-						{
-							sprintf(effective_embedded,
-							        "adan/runtime,%s", auto_embedded);
-						}
-					}
-					else
-					{
-						effective_embedded = strdup("adan/runtime");
-					}
-
-					const char* final_embedded =
-					    bundle_embedded ? bundle_embedded : effective_embedded;
-
-					if (final_embedded)
-					{
-						lres = linker_link_and_bundle_embedded(
-						    ll_path, outp, libs ? libs : "",
-						    final_embedded);
-					}
-					else if (bundle_libs)
-					{
-						lres = linker_link_and_bundle(
-						    ll_path, outp, libs ? libs : "", bundle_libs);
-					}
-					else
-					{
-						lres = linker_link_with_clang(ll_path, outp,
-						                              libs ? libs : "");
-					}
-
-					if (effective_embedded)
-					{
-						free(effective_embedded);
+						free((void*)all_embedded);
 					}
 
 					if (lres == 0)

@@ -1,9 +1,9 @@
 BUILD_DIR = build
 BINARY = adan
 
-SAMPLE = samples/hello.adn
+SAMPLE = samples/testing.adn
 SAMPLE_LL = $(patsubst %.adn,%.ll,$(SAMPLE))
-SAMPLE_OUT = samples/hello
+SAMPLE_OUT = samples/testing
 
 .PHONY: all build run emit link clean format build-macos-arm64 build-macos-x86_64 build-macos
 
@@ -25,6 +25,7 @@ link: $(SAMPLE_OUT)
 $(SAMPLE_OUT): $(SAMPLE_LL)
 	@echo "Linking $(SAMPLE_LL) -> $(SAMPLE_OUT)"
 	@clang $(SAMPLE_LL) libs/io/stdout.c -o $(SAMPLE_OUT)
+	@rm -f $(SAMPLE_LL)
 
 run: link
 	@clear

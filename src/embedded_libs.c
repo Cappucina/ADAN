@@ -1,21 +1,26 @@
 #include "embedded_libs.h"
 #include <string.h>
+#include <stdlib.h>
 
 #include "embedded_libs_data.h"
 
 static const EmbeddedLib REGISTRY[] = {
-    {"adan/io", LIB_IO_ADN, NULL, "io.h", LIB_IO_H},
-    {"adan/runtime", NULL, LIB_RUNTIME_H, "runtime.h", LIB_RUNTIME_H},
+    {"adan/io", LIB_IO_ADN, LIB_IO_STDOUT_C, "io.h", LIB_IO_H},
+    {"adan/runtime", LIB_RUNTIME_ADN, LIB_RUNTIME_C, "runtime.h", LIB_RUNTIME_H},
 };
 
 const EmbeddedLib* embedded_lib_get(const char* import_path)
 {
 	if (!import_path)
+	{
 		return NULL;
+	}
 	for (size_t i = 0; i < sizeof(REGISTRY) / sizeof(REGISTRY[0]); i++)
 	{
 		if (strcmp(REGISTRY[i].import_path, import_path) == 0)
+		{
 			return &REGISTRY[i];
+		}
 	}
 	return NULL;
 }
@@ -42,4 +47,39 @@ const char* embedded_lib_get_h_source(const char* import_path)
 {
 	const EmbeddedLib* lib = embedded_lib_get(import_path);
 	return lib ? lib->h_source : NULL;
+}
+
+const char* embedded_lib_get_all_import_paths()
+{
+	size_t count = sizeof(REGISTRY) / sizeof(REGISTRY[0]);
+	size_t total = 0;
+	for (size_t i = 0; i < count; i++)
+	{
+		if (REGISTRY[i].import_path)
+		{
+			total += strlen(REGISTRY[i].import_path) + 1;
+		}
+	}
+
+	char* csv = malloc(total + 1);
+	if (!csv)
+	{
+		return NULL;
+	}
+
+	csv[0] = '\0';
+	for (size_t i = 0; i < count; i++)
+	{
+		if (!REGISTRY[i].import_path)
+		{
+			continue;
+		}
+		if (csv[0] != '\0')
+		{
+			strcat(csv, ",");
+		}
+		strcat(csv, REGISTRY[i].import_path);
+	}
+
+	return csv;
 }

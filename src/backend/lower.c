@@ -275,14 +275,20 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 					IRType* ret_t = NULL;
 					if (strcmp(callee_name, "input") == 0 ||
 					    strcmp(callee_name, "adn_input") == 0)
+					{
 						ret_t = ir_type_ptr(ir_type_i64());
+					}
 					else if (strcmp(callee_name, "println") == 0 ||
 					         strcmp(callee_name, "adn_println") == 0 ||
 					         strcmp(callee_name, "errorln") == 0 ||
 					         strcmp(callee_name, "adn_errorln") == 0)
+					{
 						ret_t = ir_type_void();
+					}
 					else
+					{
 						ret_t = ir_type_ptr(ir_type_i64());
+					}
 
 					fn = ir_function_create_in_module(program->ir, stub_name,
 					                                  ret_t);
@@ -328,25 +334,23 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			}
 
 			if (node->binary_op.op && strcmp(node->binary_op.op, "+") == 0 &&
-			    node->binary_op.left && node->binary_op.left->type == AST_STRING_LITERAL &&
-			    node->binary_op.right && node->binary_op.right->type == AST_STRING_LITERAL)
+			    node->binary_op.left &&
+			    node->binary_op.left->type == AST_STRING_LITERAL &&
+			    node->binary_op.right &&
+			    node->binary_op.right->type == AST_STRING_LITERAL)
 			{
 				const char* ls = node->binary_op.left->string_literal.value;
 				const char* rs = node->binary_op.right->string_literal.value;
 				size_t ll = strlen(ls);
 				size_t rl = strlen(rs);
-				const char* raw_l = (ll >= 2 && ls[0] == '"' && ls[ll - 1] == '"')
-				                        ? ls + 1
-				                        : ls;
-				size_t raw_ll = (ll >= 2 && ls[0] == '"' && ls[ll - 1] == '"')
-				                    ? ll - 2
-				                    : ll;
-				const char* raw_r = (rl >= 2 && rs[0] == '"' && rs[rl - 1] == '"')
-				                        ? rs + 1
-				                        : rs;
-				size_t raw_rl = (rl >= 2 && rs[0] == '"' && rs[rl - 1] == '"')
-				                    ? rl - 2
-				                    : rl;
+				const char* raw_l =
+				    (ll >= 2 && ls[0] == '"' && ls[ll - 1] == '"') ? ls + 1 : ls;
+				size_t raw_ll =
+				    (ll >= 2 && ls[0] == '"' && ls[ll - 1] == '"') ? ll - 2 : ll;
+				const char* raw_r =
+				    (rl >= 2 && rs[0] == '"' && rs[rl - 1] == '"') ? rs + 1 : rs;
+				size_t raw_rl =
+				    (rl >= 2 && rs[0] == '"' && rs[rl - 1] == '"') ? rl - 2 : rl;
 				char* folded = (char*)malloc(raw_ll + raw_rl + 1);
 				if (folded)
 				{
@@ -356,7 +360,9 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 					IRValue* result = ir_const_string(program->ir, folded);
 					free(folded);
 					if (result)
+					{
 						return result;
+					}
 				}
 			}
 
@@ -367,9 +373,8 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				fprintf(stderr, "Failed to lower binary op operands. (Error)\n");
 				return NULL;
 			}
-			if (strcmp(node->binary_op.op, "+") == 0 &&
-				lhs->type && lhs->type->kind == IR_T_PTR &&
-				rhs->type && rhs->type->kind == IR_T_PTR)
+			if (strcmp(node->binary_op.op, "+") == 0 && lhs->type &&
+			    lhs->type->kind == IR_T_PTR && rhs->type && rhs->type->kind == IR_T_PTR)
 			{
 				IRFunction* concat_fn = NULL;
 				IRFunction* it = program->ir->functions;
@@ -385,9 +390,12 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				if (!concat_fn)
 				{
 					concat_fn = ir_function_create_in_module(
-						program->ir, "adn_strconcat", ir_type_ptr(ir_type_i64()));
-					ir_param_create(concat_fn, NULL, ir_type_ptr(ir_type_i64()));
-					ir_param_create(concat_fn, NULL, ir_type_ptr(ir_type_i64()));
+					    program->ir, "adn_strconcat",
+					    ir_type_ptr(ir_type_i64()));
+					ir_param_create(concat_fn, NULL,
+					                ir_type_ptr(ir_type_i64()));
+					ir_param_create(concat_fn, NULL,
+					                ir_type_ptr(ir_type_i64()));
 				}
 				IRValue* cargs[2] = {lhs, rhs};
 				return ir_emit_call(current_block, concat_fn, cargs, 2);
@@ -510,7 +518,8 @@ void lower_statement(Program* program, ASTNode* node)
 			        node->assignment.name ? node->assignment.name : "<anon>");
 			if (!current_block)
 			{
-				fprintf(stderr, "No current block to emit assignment into. (Error)\n");
+				fprintf(stderr,
+				        "No current block to emit assignment into. (Error)\n");
 				return;
 			}
 			const char* aname = node->assignment.name;
@@ -522,7 +531,9 @@ void lower_statement(Program* program, ASTNode* node)
 			SymEntry* se = sym_get(aname);
 			if (!se || !se->is_address)
 			{
-				fprintf(stderr, "Assignment to unknown or non-addressable variable '%s'. (Error)\n",
+				fprintf(stderr,
+				        "Assignment to unknown or non-addressable variable '%s'. "
+				        "(Error)\n",
 				        aname);
 				return;
 			}
@@ -533,7 +544,8 @@ void lower_statement(Program* program, ASTNode* node)
 			}
 			else
 			{
-				fprintf(stderr, "Failed to lower assignment value for '%s'. (Error)\n",
+				fprintf(stderr,
+				        "Failed to lower assignment value for '%s'. (Error)\n",
 				        aname);
 			}
 			break;
@@ -710,9 +722,11 @@ void lower_program(Program* program)
 					{
 						IRBlock* entry_alloc_block = ir_func->blocks;
 						if (!entry_alloc_block)
+						{
 							entry_alloc_block =
 							    ir_block_create_in_function(ir_func,
 							                                "entry");
+						}
 						IRValue* alloca =
 						    ir_emit_alloca(entry_alloc_block, param_type);
 						if (alloca)

@@ -1,9 +1,8 @@
-// `${}`
-
 import "adan/io";
 
 set partial: string = "World!";
 
 fun main(): i32 {
     println(`Hello, ${partial}`);
+    return 0;
 }

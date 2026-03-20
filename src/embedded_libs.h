@@ -20,4 +20,6 @@ const char* embedded_lib_get_h_filename(const char* import_path);
 
 const char* embedded_lib_get_h_source(const char* import_path);
 
+const char* embedded_lib_get_all_import_paths();
+
 #endif
