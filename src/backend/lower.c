@@ -4,8 +4,6 @@
 
 #include "lower.h"
 #include "ir/ir.h"
-#include "../stm.h"
-#include "runtime/runtime.h"
 
 static IRFunction* current_function = NULL;
 
@@ -13,9 +11,10 @@ static IRType* lower_type(Program* program, ASTNode* node);
 
 static IRBlock* current_block = NULL;
 
-// Helper functions
-
 static SymEntry* sym_table = NULL;
+
+static void emit_global_inits(IRBlock* block, ASTNode* root, Program* program,
+                              IRFunction* init_func);
 
 static void sym_put(const char* name, IRValue* v, int is_addr)
 {
@@ -68,38 +67,8 @@ static void sym_clear(void)
 
 IRValue* lower_expression(Program* program, ASTNode* node)
 {
-	if (!program || !node)
-	{
-		fprintf(stderr, "Invalid arguments to lower_expression. (Error)\n");
-		return NULL;
-	}
-
-	fprintf(stderr, "lower_expression: node type=%d\n", (int)node->type);
 	switch (node->type)
 	{
-		case AST_NUMBER_LITERAL:
-		{
-			const char* s = node->number_literal.value;
-			if (!s)
-			{
-				fprintf(stderr, "Empty numeric literal. (Error)\n");
-				return NULL;
-			}
-			long long v = strtoll(s, NULL, 0);
-			return ir_const_i64((int64_t)v);
-		}
-		case AST_STRING_LITERAL:
-		{
-			const char* s = node->string_literal.value;
-			fprintf(stderr, "lower_expression: string literal '%s'\n", s);
-			if (!s)
-			{
-				fprintf(stderr, "Empty string literal. (Error)\n");
-				return NULL;
-			}
-			IRValue* str_val = ir_const_string(program->ir, s);
-			return str_val;
-		}
 		case AST_IDENTIFIER:
 		{
 			const char* name = node->identifier.name;
@@ -109,7 +78,6 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				fprintf(stderr, "Encountered identifier with no name. (Error)\n");
 				return NULL;
 			}
-
 			SymEntry* e = sym_get(name);
 			if (e)
 			{
@@ -125,53 +93,13 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 					}
 					return ir_emit_load(current_block, e->value);
 				}
-				return e->value;
-			}
-
-			if (program)
-			{
-				if (program->ir)
+				else
 				{
-					IRFunction* it = program->ir->functions;
-					while (it)
-					{
-						if (it->name && strcmp(it->name, name) == 0)
-						{
-							return NULL;
-						}
-						it = it->next;
-					}
+					return e->value;
 				}
 			}
-
-			if (!current_function)
-			{
-				fprintf(stderr,
-				        "No current function while resolving identifier '%s'. "
-				        "(Error)\n",
-				        name);
-				return NULL;
-			}
-
-			IRBlock* entry_block = current_function->blocks;
-			if (!entry_block)
-			{
-				entry_block =
-				    ir_block_create_in_function(current_function, "entry");
-			}
-			IRType* ty = ir_type_i64();
-			IRValue* alloca = ir_emit_alloca(entry_block, ty);
-			sym_put(name, alloca, 1);
-
-			if (!current_block)
-			{
-				fprintf(stderr,
-				        "No current block for loading freshly created alloca '%s'. "
-				        "(Error)\n",
-				        name);
-				return NULL;
-			}
-			return ir_emit_load(current_block, alloca);
+			fprintf(stderr, "Unknown identifier '%s'. (Error)\n", name);
+			return NULL;
 		}
 
 		case AST_CALL:
@@ -181,9 +109,9 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			        node->call.arg_count);
 			if (!current_block)
 			{
-				fprintf(
-				    stderr,
-				    "Attempt to lower call but no current block is set. (Error)\n");
+				fprintf(stderr,
+				        "Attempt to lower call but no current block is set. "
+				        "(Error)\n");
 				return NULL;
 			}
 
@@ -201,9 +129,9 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				args = (IRValue**)calloc(nargs, sizeof(IRValue*));
 				if (!args)
 				{
-					fprintf(
-					    stderr,
-					    "Out of memory while lowering call args. (Error)\n");
+					fprintf(stderr,
+					        "Out of memory allocating args array. "
+					        "(Error)\n");
 					return NULL;
 				}
 			}
@@ -232,7 +160,8 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			if (!callee)
 			{
 				fprintf(stderr,
-				        "Call to unknown function '%s'. Creating stub. (Warning)\n",
+				        "Call to unknown function '%s'. Creating stub. "
+				        "(Warning)\n",
 				        callee_name);
 				int already_adn = (strlen(callee_name) >= 4 &&
 				                   strncmp(callee_name, "adn_", 4) == 0);
@@ -241,7 +170,8 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				if (!stub_name)
 				{
 					fprintf(stderr,
-					        "Out of memory creating stub name. (Error)\n");
+					        "Out of memory creating stub name. "
+					        "(Error)\n");
 					free(args);
 					return NULL;
 				}
@@ -306,7 +236,8 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 					else
 					{
 						fprintf(stderr,
-						        "Failed to create stub for '%s'. (Error)\n",
+						        "Failed to create stub for '%s'. "
+						        "(Error)\n",
 						        callee_name);
 						free(args);
 						free(stub_name);
@@ -323,6 +254,27 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			IRValue* res = ir_emit_call(current_block, callee, args, nargs);
 			free(args);
 			return res;
+		}
+
+		case AST_STRING_LITERAL:
+		{
+			if (!program || !program->ir || !node->string_literal.value)
+			{
+				fprintf(stderr, "Invalid string literal node. (Error)\n");
+				return NULL;
+			}
+			return ir_const_string(program->ir, node->string_literal.value);
+		}
+
+		case AST_NUMBER_LITERAL:
+		{
+			if (!node->number_literal.value)
+			{
+				fprintf(stderr, "Invalid number literal node. (Error)\n");
+				return NULL;
+			}
+			long long v = strtoll(node->number_literal.value, NULL, 10);
+			return ir_const_i64(v);
 		}
 
 		case AST_BINARY_OP:
@@ -370,7 +322,13 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			IRValue* rhs = lower_expression(program, node->binary_op.right);
 			if (!lhs || !rhs)
 			{
-				fprintf(stderr, "Failed to lower binary op operands. (Error)\n");
+				fprintf(stderr,
+				        "Failed to lower binary op operands. "
+				        "(Error)\n");
+				if (lhs && lhs->type && lhs->type->kind == IR_T_PTR)
+					return ir_const_i64(0);
+				if (rhs && rhs->type && rhs->type->kind == IR_T_PTR)
+					return ir_const_i64(0);
 				return NULL;
 			}
 			if (strcmp(node->binary_op.op, "+") == 0 && lhs->type &&
@@ -398,14 +356,18 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 					                ir_type_ptr(ir_type_i64()));
 				}
 				IRValue* cargs[2] = {lhs, rhs};
-				return ir_emit_call(current_block, concat_fn, cargs, 2);
+				if (lhs && rhs)
+					return ir_emit_call(current_block, concat_fn, cargs, 2);
+				else
+					return ir_const_i64(0);
 			}
 			return ir_emit_binop(current_block, node->binary_op.op, lhs, rhs);
 		}
 
 		default:
 			fprintf(stderr,
-			        "Unsupported AST node type in lower_expression: %d. (Error)\n",
+			        "Unsupported AST node type in "
+			        "lower_expression: %d. (Error)\n",
 			        (int)node->type);
 			return NULL;
 	}
@@ -439,9 +401,9 @@ void lower_statement(Program* program, ASTNode* node)
 			}
 			else
 			{
-				fprintf(
-				    stderr,
-				    "No current block to emit return statement into. (Error)\n");
+				fprintf(stderr,
+				        "No current block to emit return statement "
+				        "into. (Error)\n");
 			}
 			break;
 		}
@@ -462,21 +424,24 @@ void lower_statement(Program* program, ASTNode* node)
 			if (!current_block)
 			{
 				fprintf(stderr,
-				        "No current block to emit variable declaration into. "
-				        "(Error)\n");
+				        "No current block to emit variable "
+				        "declaration into. (Error)\n");
 				return;
 			}
 			const char* var_name = node->var_decl.name;
 			if (!var_name)
 			{
-				fprintf(stderr, "Variable declaration with no name. (Error)\n");
+				fprintf(stderr,
+				        "Variable declaration with no name. "
+				        "(Error)\n");
 				return;
 			}
 			IRType* var_type = lower_type(program, node->var_decl.type);
 			if (!var_type)
 			{
 				fprintf(stderr,
-				        "Failed to resolve variable type for '%s'. (Error)\n",
+				        "Failed to resolve variable type for "
+				        "'%s'. (Error)\n",
 				        var_name);
 				return;
 			}
@@ -500,11 +465,20 @@ void lower_statement(Program* program, ASTNode* node)
 				else
 				{
 					fprintf(stderr,
-					        "Failed to lower initializer for variable '%s'. "
-					        "(Error)\n",
+					        "Failed to lower initializer for "
+					        "variable '%s'. (Error)\n",
 					        var_name);
+					IRValue* def = ir_const_i64(0);
+					ir_emit_store(current_block, alloca, def);
 				}
 			}
+			else
+			{
+				IRValue* def = ir_const_i64(0);
+				ir_emit_store(current_block, alloca, def);
+			}
+			IRValue* loaded = ir_emit_load(current_block, alloca);
+			(void)loaded;
 			break;
 		}
 		case AST_CALL:
@@ -519,20 +493,24 @@ void lower_statement(Program* program, ASTNode* node)
 			if (!current_block)
 			{
 				fprintf(stderr,
-				        "No current block to emit assignment into. (Error)\n");
+				        "No current block to emit assignment "
+				        "into. (Error)\n");
 				return;
 			}
 			const char* aname = node->assignment.name;
 			if (!aname)
 			{
-				fprintf(stderr, "Assignment with no variable name. (Error)\n");
+				fprintf(stderr,
+				        "Assignment with no variable name. "
+				        "(Error)\n");
 				return;
 			}
 			SymEntry* se = sym_get(aname);
 			if (!se || !se->is_address)
 			{
 				fprintf(stderr,
-				        "Assignment to unknown or non-addressable variable '%s'. "
+				        "Assignment to unknown or "
+				        "non-addressable variable '%s'. "
 				        "(Error)\n",
 				        aname);
 				return;
@@ -541,18 +519,38 @@ void lower_statement(Program* program, ASTNode* node)
 			if (val)
 			{
 				ir_emit_store(current_block, se->value, val);
+				if (se->is_address)
+				{
+					sym_put(aname, se->value, 1);
+				}
+				else
+				{
+					sym_put(aname, val, 0);
+				}
 			}
 			else
 			{
 				fprintf(stderr,
-				        "Failed to lower assignment value for '%s'. (Error)\n",
+				        "Failed to lower assignment value for "
+				        "'%s'. (Error)\n",
 				        aname);
+				IRValue* def = ir_const_i64(0);
+				ir_emit_store(current_block, se->value, def);
+				if (se->is_address)
+				{
+					sym_put(aname, se->value, 1);
+				}
+				else
+				{
+					sym_put(aname, def, 0);
+				}
 			}
 			break;
 		}
 		default:
 			fprintf(stderr,
-			        "Unsupported AST node type in lower_statement: %d. (Error)\n",
+			        "Unsupported AST node type in "
+			        "lower_statement: %d. (Error)\n",
 			        (int)node->type);
 			return;
 	}
@@ -604,7 +602,41 @@ static IRType* lower_type(Program* program, ASTNode* node)
 	return NULL;
 }
 
-// Main lowering function
+static void emit_global_inits(IRBlock* block, ASTNode* root, Program* program,
+                              IRFunction* init_func)
+{
+	for (size_t i = 0; i < root->program.count; ++i)
+	{
+		ASTNode* decl = root->program.decls[i];
+		if (!decl)
+			continue;
+		if (decl->type == AST_VARIABLE_DECLARATION)
+		{
+			const char* var_name = decl->var_decl.name;
+			if (!var_name)
+				continue;
+			SymEntry* se = sym_get(var_name);
+			if (se && se->is_address)
+			{
+				IRValue* init_val = NULL;
+				if (decl->var_decl.initializer)
+				{
+					current_function = init_func;
+					current_block = block;
+					init_val =
+					    lower_expression(program, decl->var_decl.initializer);
+					current_function = NULL;
+					current_block = NULL;
+				}
+				if (!init_val)
+				{
+					init_val = ir_const_i64(0);
+				}
+				ir_emit_store(block, se->value, init_val);
+			}
+		}
+	}
+}
 
 void lower_program(Program* program)
 {
@@ -633,19 +665,101 @@ void lower_program(Program* program)
 	}
 
 	sym_clear();
-	IRFunction* init_func = ir_function_create_in_module(program->ir, "__adan_init",
-	                                                     ir_type_void());
-	IRBlock* init_block = ir_block_create_in_function(init_func, "entry");
-
 	ASTNode* root = program->ast_root;
 	for (size_t i = 0; i < root->program.count; ++i)
 	{
 		ASTNode* decl = root->program.decls[i];
 		if (!decl)
-		{
 			continue;
+		if (decl->type == AST_VARIABLE_DECLARATION)
+		{
+			const char* var_name = decl->var_decl.name;
+			if (!var_name)
+			{
+				fprintf(stderr,
+				        "Global variable with no name. "
+				        "(Error)\n");
+				continue;
+			}
+			IRType* var_type = lower_type(program, decl->var_decl.type);
+			if (!var_type)
+			{
+				fprintf(stderr,
+				        "Failed to resolve type for global "
+				        "variable '%s'. (Error)\n",
+				        var_name);
+				continue;
+			}
+			IRValue* initial = NULL;
+			if (decl->var_decl.initializer)
+			{
+				initial = lower_expression(program, decl->var_decl.initializer);
+			}
+			IRValue* global =
+			    ir_global_create(program->ir, var_name, var_type, initial);
+			if (global)
+			{
+				sym_put(var_name, global, 1);
+			}
+			else
+			{
+				fprintf(stderr,
+				        "Failed to create global variable "
+				        "'%s'. (Error)\n",
+				        var_name);
+			}
 		}
+		else if (decl->type == AST_IMPORT_STATEMENT)
+		{
+			const char* import_path = decl->import.path;
+			if (!import_path)
+			{
+				fprintf(stderr,
+				        "Import statement with no path. "
+				        "(Error)\n");
+				continue;
+			}
+			fprintf(stderr, "Import: %s (Info)\n", import_path);
+			if (strcmp(import_path, "adan/io") == 0)
+			{
+				int exists = 0;
+				if (program->ir)
+				{
+					IRFunction* it = program->ir->functions;
+					while (it)
+					{
+						if (it->name && strcmp(it->name, "println") == 0)
+						{
+							exists = 1;
+							break;
+						}
+						it = it->next;
+					}
+				}
+				if (!exists)
+				{
+					IRType* ret_t = ir_type_void();
+					IRFunction* fn = ir_function_create_in_module(
+					    program->ir, "println", ret_t);
+					if (fn)
+					{
+						IRType* str_t = ir_type_ptr(ir_type_i64());
+						ir_param_create(fn, "s", str_t);
+					}
+				}
+			}
+		}
+	}
 
+	IRFunction* init_func =
+	    ir_function_create_in_module(program->ir, "__adan_init", ir_type_void());
+	IRBlock* init_block = ir_block_create_in_function(init_func, "entry");
+	emit_global_inits(init_block, root, program, init_func);
+	for (size_t i = 0; i < root->program.count; ++i)
+	{
+		ASTNode* decl = root->program.decls[i];
+		if (!decl)
+			continue;
 		if (decl->type == AST_ASSIGNMENT || decl->type == AST_EXPRESSION_STATEMENT ||
 		    decl->type == AST_CALL)
 		{
@@ -654,219 +768,137 @@ void lower_program(Program* program)
 			lower_statement(program, decl);
 			current_function = NULL;
 			current_block = NULL;
-			continue;
 		}
-
-		switch (decl->type)
+	}
+	for (size_t i = 0; i < root->program.count; ++i)
+	{
+		ASTNode* decl = root->program.decls[i];
+		if (!decl)
+			continue;
+		if (decl->type == AST_FUNCTION_DECLARATION)
 		{
-			case AST_FUNCTION_DECLARATION:
+			const char* func_name = decl->func_decl.name;
+			if (!func_name)
+				continue;
+			IRFunction* ir_func = NULL;
+			IRBlock* entry_block = NULL;
+			for (IRFunction* f = program->ir->functions; f; f = f->next)
 			{
-				const char* func_name = decl->func_decl.name;
-				if (!func_name)
+				if (f->name && strcmp(f->name, func_name) == 0)
 				{
-					fprintf(stderr,
-					        "Function declaration with no name. (Error)\n");
+					ir_func = f;
 					break;
 				}
-
-				IRType* ret_type = lower_type(program, decl->func_decl.return_type);
-				if (!ret_type)
-				{
-					fprintf(stderr,
-					        "Failed to resolve return type for function '%s'. "
-					        "(Error)\n",
-					        func_name);
-					break;
-				}
-
-				IRFunction* ir_func =
-				    ir_function_create_in_module(program->ir, func_name, ret_type);
-				if (!ir_func)
-				{
-					fprintf(stderr,
-					        "Failed to create IR function '%s'. (Error)\n",
-					        func_name);
-					break;
-				}
-
-				current_function = ir_func;
-
-				IRBlock* entry_block =
-				    ir_block_create_in_function(ir_func, "entry");
-				if (!entry_block)
-				{
-					fprintf(stderr,
-					        "Failed to create entry block for function '%s'. "
-					        "(Error)\n",
-					        func_name);
-					current_function = NULL;
-					break;
-				}
-
-				if (strcmp(func_name, "main") == 0)
-				{
-					ir_emit_call(entry_block, init_func, NULL, 0);
-				}
-
-				current_block = entry_block;
-
-				for (size_t j = 0; j < decl->func_decl.param_count; j++)
-				{
-					ASTNode* param_node = decl->func_decl.params[j];
-					if (!param_node)
-					{
-						continue;
-					}
-
-					const char* param_name = param_node->param.name;
-					IRType* param_type =
-					    lower_type(program, param_node->param.type);
-					if (!param_name || !param_type)
-					{
-						fprintf(stderr,
-						        "Failed to lower parameter %zu for "
-						        "function '%s'. "
-						        "(Error)\n",
-						        j, func_name);
-						continue;
-					}
-
-					IRValue* param_val =
-					    ir_param_create(ir_func, param_name, param_type);
-					if (param_val)
-					{
-						IRBlock* entry_alloc_block = ir_func->blocks;
-						if (!entry_alloc_block)
-						{
-							entry_alloc_block =
-							    ir_block_create_in_function(ir_func,
-							                                "entry");
-						}
-						IRValue* alloca =
-						    ir_emit_alloca(entry_alloc_block, param_type);
-						if (alloca)
-						{
-							ir_emit_store(entry_alloc_block, alloca,
-							              param_val);
-							sym_put(param_name, alloca, 1);
-						}
-						else
-						{
-							sym_put(param_name, param_val, 0);
-						}
-					}
-				}
-
-				if (decl->func_decl.body)
-				{
-					lower_statement(program, decl->func_decl.body);
-				}
-
-				if (current_block)
-				{
-					if (!current_block->last ||
-					    current_block->last->kind != IR_RET)
-					{
-						ir_emit_ret(current_block, NULL);
-					}
-				}
-
-				current_function = NULL;
-				current_block = NULL;
-
-				break;
 			}
+			if (ir_func)
+				entry_block = ir_func->blocks;
+			if (entry_block)
+				emit_global_inits(entry_block, root, program, init_func);
+		}
+	}
 
-			case AST_VARIABLE_DECLARATION:
+	for (size_t i = 0; i < root->program.count; ++i)
+	{
+		ASTNode* decl = root->program.decls[i];
+		if (!decl)
+			continue;
+		if (decl->type == AST_FUNCTION_DECLARATION)
+		{
+			const char* func_name = decl->func_decl.name;
+			if (!func_name)
 			{
-				const char* var_name = decl->var_decl.name;
-				if (!var_name)
-				{
-					fprintf(stderr, "Global variable with no name. (Error)\n");
-					break;
-				}
-
-				IRType* var_type = lower_type(program, decl->var_decl.type);
-				if (!var_type)
-				{
-					fprintf(stderr,
-					        "Failed to resolve type for global variable '%s'. "
-					        "(Error)\n",
-					        var_name);
-					break;
-				}
-
-				IRValue* initial = NULL;
-				if (decl->var_decl.initializer)
-				{
-					initial =
-					    lower_expression(program, decl->var_decl.initializer);
-				}
-
-				IRValue* global =
-				    ir_global_create(program->ir, var_name, var_type, initial);
-				if (global)
-				{
-					sym_put(var_name, global, 1);
-				}
-				else
-				{
-					fprintf(stderr,
-					        "Failed to create global variable '%s'. (Error)\n",
-					        var_name);
-				}
-
-				break;
-			}
-
-			case AST_IMPORT_STATEMENT:
-			{
-				const char* import_path = decl->import.path;
-				if (!import_path)
-				{
-					fprintf(stderr, "Import statement with no path. (Error)\n");
-					break;
-				}
-
-				fprintf(stderr, "Import: %s (Info)\n", import_path);
-
-				if (strcmp(import_path, "adan/io") == 0)
-				{
-					int exists = 0;
-					if (program->ir)
-					{
-						IRFunction* it = program->ir->functions;
-						while (it)
-						{
-							if (it->name &&
-							    strcmp(it->name, "println") == 0)
-							{
-								exists = 1;
-								break;
-							}
-							it = it->next;
-						}
-					}
-					if (!exists)
-					{
-						IRType* ret_t = ir_type_void();
-						IRFunction* fn = ir_function_create_in_module(
-						    program->ir, "println", ret_t);
-						if (fn)
-						{
-							IRType* str_t = ir_type_ptr(ir_type_i64());
-							ir_param_create(fn, "s", str_t);
-						}
-					}
-				}
-				break;
-			}
-
-			default:
 				fprintf(stderr,
-				        "Unexpected top-level declaration type: %d. (Error)\n",
-				        (int)decl->type);
-				break;
+				        "Function declaration with no name. "
+				        "(Error)\n");
+				continue;
+			}
+			IRType* ret_type = lower_type(program, decl->func_decl.return_type);
+			if (!ret_type)
+			{
+				fprintf(stderr,
+				        "Failed to resolve return type for "
+				        "function '%s'. (Error)\n",
+				        func_name);
+				continue;
+			}
+			IRFunction* ir_func =
+			    ir_function_create_in_module(program->ir, func_name, ret_type);
+			if (!ir_func)
+			{
+				fprintf(stderr,
+				        "Failed to create IR function '%s'. "
+				        "(Error)\n",
+				        func_name);
+				continue;
+			}
+			current_function = ir_func;
+			IRBlock* entry_block = ir_block_create_in_function(ir_func, "entry");
+			if (!entry_block)
+			{
+				fprintf(stderr,
+				        "Failed to create entry block for "
+				        "function '%s'. (Error)\n",
+				        func_name);
+				current_function = NULL;
+				continue;
+			}
+			if (strcmp(func_name, "main") == 0)
+			{
+				ir_emit_call(entry_block, init_func, NULL, 0);
+			}
+			current_block = entry_block;
+			for (size_t j = 0; j < decl->func_decl.param_count; j++)
+			{
+				ASTNode* param_node = decl->func_decl.params[j];
+				if (!param_node)
+					continue;
+				const char* param_name = param_node->param.name;
+				IRType* param_type = lower_type(program, param_node->param.type);
+				if (!param_name || !param_type)
+				{
+					fprintf(stderr,
+					        "Failed to lower parameter "
+					        "%zu for function '%s'. "
+					        "(Error)\n",
+					        j, func_name);
+					continue;
+				}
+				IRValue* param_val =
+				    ir_param_create(ir_func, param_name, param_type);
+				if (param_val)
+				{
+					IRBlock* entry_alloc_block = ir_func->blocks;
+					if (!entry_alloc_block)
+					{
+						entry_alloc_block =
+						    ir_block_create_in_function(ir_func, "entry");
+					}
+					IRValue* alloca =
+					    ir_emit_alloca(entry_alloc_block, param_type);
+					if (alloca)
+					{
+						ir_emit_store(entry_alloc_block, alloca, param_val);
+						sym_put(param_name, alloca, 1);
+					}
+					else
+					{
+						sym_put(param_name, param_val, 0);
+					}
+				}
+			}
+			if (decl->func_decl.body)
+			{
+				lower_statement(program, decl->func_decl.body);
+			}
+			if (current_block)
+			{
+				if (!current_block->last || current_block->last->kind != IR_RET)
+				{
+					ir_emit_ret(current_block, NULL);
+				}
+			}
+			current_function = NULL;
+			current_block = NULL;
 		}
 	}
 
