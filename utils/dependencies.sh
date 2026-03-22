@@ -116,7 +116,7 @@ install_packages() {
 get_package_names() {
     case $PKG_MGR in
     apt)
-        PACKAGES="build-essential cmake clang-format gdb"
+        PACKAGES="build-essential cmake clang-format gdb less"
         ;;
     dnf | yum)
         PACKAGES="gcc make cmake clang-tools-extra gdb"

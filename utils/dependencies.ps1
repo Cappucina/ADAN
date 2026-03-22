@@ -140,7 +140,7 @@ function Install-DevPackages {
 
 function Get-PackageList {
     switch ($script:PkgMgr) {
-        "choco"  { return @("mingw", "cmake", "llvm", "ninja", "zig") }
+        "choco"  { return @("mingw", "cmake", "llvm", "ninja", "zig", "less") }
         "scoop"  { return @("gcc", "cmake", "llvm") }
         "winget" { return @("Kitware.CMake", "LLVM.LLVM") }
         "brew"   { return @("cmake", "clang-format") }
