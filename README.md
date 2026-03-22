@@ -27,8 +27,8 @@ Before compiling the compiler you need to have each dependency installed first.
 > This is only required if you plan on compiling the compiler manually instead of using the pre-compiled compiler binary.
 
 ```powershell
-$ chmod +x ./dependencies.sh
-$ ./dependencies.sh
+$ chmod +x ./utils/dependencies.sh
+$ ./utils/dependencies.sh
 ```
 
 Compiler ADAN's binary file using `make`.
@@ -56,12 +56,14 @@ $ make push                # Run the push.sh script (for maintainers).
 
 ADAN's compiler provides flags to modify default compilation behaviors:
 
+- `-f <file>` / `--file <file>`: Source file to compile (`.adn` or `.adan`). This argument is required.
+- `-o <path>` / `--output <path>`: Specifies the output executable path. If `<path>` is a directory, the binary is placed inside it named after the source file. Defaults to the input source file name in the current directory if not provided.
 - `-r` / `--rawir`: Emits the LLVM IR (`.ll` file) instead of compiling into an executable binary.
-- `-o <output_path>`: Specifies the output executable path. Defaults to the input source file name if not provided.
+- `-h` / `--help`: Show the help message and exit.
 
 ```powershell
-$ ./adan main.adn -r        # Output 'main.ll' LLVM IR.
-$ ./adan main.adn           # Outputs a 'main' executable.
+$ ./adan -f main.adn -r        # Output 'main.ll' LLVM IR.
+$ ./adan --file main.adn       # Outputs a 'main' executable.
 ```
 
 <br>
