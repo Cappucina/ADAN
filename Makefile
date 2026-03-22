@@ -37,12 +37,23 @@ build-macos-x86_64:
 	@cmake -S . -B build-macos-x86_64 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-macos-x86_64.cmake
 	@cmake --build build-macos-x86_64
 	@echo "macOS x86_64 binary: build-macos-x86_64/adan"
+	@echo "macOS arm64 binary: build-macos-arm64/adan"
+
+build-windows-x86_64:
+	@mkdir -p build-windows-x86_64
+	@cmake -S . -B build-windows-x86_64 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-windows-x86_64.cmake
+	@cmake --build build-windows-x86_64
+	@echo "Windows x86_64 binary: build-windows-x86_64/adan"
 
 build-macos: build-macos-arm64 build-macos-x86_64
 	@echo "Both macOS binaries built."
+	@echo "Windows x86_64 binary: build-windows-x86_64/adan"
+
+build-windows: build-windows-x86_64
+	@echo "Windows binary built."
 
 clean:
-	@rm -rf $(BUILD_DIR) build-macos-arm64 build-macos-x86_64
+	@rm -rf $(BUILD_DIR) build-macos-arm64 build-macos-x86_64 build-windows-x86_64
 	@rm -f $(SAMPLE_LL) $(SAMPLE_OUT)
 
 format:
