@@ -1,94 +1,94 @@
 name: ADAN Nightly Release
-
 on:
   push:
     branches: ["main"]
-
 permissions:
   contents: write
-
 jobs:
   build-linux:
     name: Build Linux (x86_64)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install dependencies
         run: bash ./dependencies.sh
-
       - name: Build
         run: make build
-
       - name: Rename binary
         run: cp build/adan ADAN-Linux-Nightly
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ADAN-Linux-Nightly
           path: ADAN-Linux-Nightly
-
   build-macos-arm64:
     name: Build macOS (arm64)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install dependencies
         run: bash ./dependencies.sh
-
       - name: Install zig
         run: brew install zig
-
       - name: Build
         run: make build-macos-arm64
-
       - name: Rename binary
         run: cp build-macos-arm64/adan ADAN-macOS-arm64-Nightly
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ADAN-macOS-arm64-Nightly
           path: ADAN-macOS-arm64-Nightly
-
   build-macos-x86_64:
     name: Build macOS (x86_64)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install dependencies
         run: bash ./dependencies.sh
-
       - name: Install zig
         run: brew install zig
-
       - name: Build
         run: make build-macos-x86_64
-
       - name: Rename binary
         run: cp build-macos-x86_64/adan ADAN-macOS-x86_64-Nightly
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ADAN-macOS-x86_64-Nightly
           path: ADAN-macOS-x86_64-Nightly
-
+  build-windows-x86_64:
+    name: Build Windows (x86_64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install zig
+        run: choco install zig -y
+      - name: Install ninja
+        run: choco install ninja -y
+      - name: Build
+        shell: pwsh
+        run: |
+          cmake -S . -B build-windows-x86_64 -G Ninja "-DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-windows-x86_64.cmake"
+          cmake --build build-windows-x86_64
+      - name: Rename binary
+        shell: pwsh
+        run: cp build-windows-x86_64/adan.exe ADAN-Windows-x86_64-Nightly.exe
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ADAN-Windows-x86_64-Nightly
+          path: ADAN-Windows-x86_64-Nightly.exe
   release:
     name: Update latest release
-    needs: [build-linux, build-macos-arm64, build-macos-x86_64]
+    needs: [build-linux, build-macos-arm64, build-macos-x86_64, build-windows-x86_64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           merge-multiple: true
-
       - name: Move and re-tag latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -97,13 +97,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -f latest
           git push origin latest --force
-
       - name: Update latest release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NOTES: |
             The Nightly releases may contain unstable, untested, or incomplete features. It's recommended to use these builds for testing purposes or if developing anything for newer versions of ADAN.
-
             > Read ADAN documentations @ **https://docs.adan.sh/** and learn compiler flags at **https://install.adan.sh/**.
         run: |
           gh release delete latest --yes 2>/dev/null || true
@@ -113,4 +111,5 @@ jobs:
             --notes-file release_notes.md \
             ADAN-Linux-Nightly \
             ADAN-macOS-arm64-Nightly \
-            ADAN-macOS-x86_64-Nightly
+            ADAN-macOS-x86_64-Nightly \
+            ADAN-Windows-x86_64-Nightly.exe
