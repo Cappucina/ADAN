@@ -15,6 +15,7 @@ const Keyword keywords[] = {
     {"return", TOKEN_RETURN},
     {"if", TOKEN_IF},
     {"else", TOKEN_ELSE},
+    {"while", TOKEN_WHILE},
     {"or", TOKEN_OR},
     {"and", TOKEN_AND},
     {"not", TOKEN_NOT},
@@ -503,18 +504,48 @@ Token* scan_next_token(Scanner* scanner)
 				return make_token(TOKEN_PLUS_EQUALS, token_col, token_line,
 				                  clone_string("+=", 2), 2);
 			}
+			if (peek(scanner) == '+')
+			{
+				advance(scanner);
+				return make_token(TOKEN_PLUS_PLUS, token_col, token_line,
+				                  clone_string("++", 2), 2);
+			}
 			return make_token(TOKEN_PLUS, token_col, token_line, clone_string("+", 1),
 			                  1);
 		case '-':
 			advance(scanner);
+			if (peek(scanner) == '=')
+			{
+				advance(scanner);
+				return make_token(TOKEN_MINUS_EQUALS, token_col, token_line,
+				                  clone_string("-=", 2), 2);
+			}
+			if (peek(scanner) == '-')
+			{
+				advance(scanner);
+				return make_token(TOKEN_MINUS_MINUS, token_col, token_line,
+				                  clone_string("--", 2), 2);
+			}
 			return make_token(TOKEN_MINUS, token_col, token_line, clone_string("-", 1),
 			                  1);
 		case '*':
 			advance(scanner);
+			if (peek(scanner) == '=')
+			{
+				advance(scanner);
+				return make_token(TOKEN_STAR_EQUALS, token_col, token_line,
+				                  clone_string("*=", 2), 2);
+			}
 			return make_token(TOKEN_STAR, token_col, token_line, clone_string("*", 1),
 			                  1);
 		case '/':
 			advance(scanner);
+			if (peek(scanner) == '=')
+			{
+				advance(scanner);
+				return make_token(TOKEN_SLASH_EQUALS, token_col, token_line,
+				                  clone_string("/=", 2), 2);
+			}
 			return make_token(TOKEN_SLASH, token_col, token_line, clone_string("/", 1),
 			                  1);
 		case '^':

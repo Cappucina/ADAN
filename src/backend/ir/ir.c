@@ -443,7 +443,8 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 
 	size_t len = strlen(str);
 	char* copy = NULL;
-	if (len >= 2 && str[0] == '"' && str[len - 1] == '"')
+	if (len >= 2 &&
+	    ((str[0] == '"' && str[len - 1] == '"') || (str[0] == '`' && str[len - 1] == '`')))
 	{
 		size_t inner_len = len - 2;
 		copy = (char*)malloc(inner_len + 1);

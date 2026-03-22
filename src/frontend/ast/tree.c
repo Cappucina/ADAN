@@ -55,6 +55,10 @@ void ast_free(ASTNode* node)
 				ast_free(node->if_stmt.else_branch);
 			}
 			break;
+		case AST_WHILE_STMT:
+			ast_free(node->while_stmt.condition);
+			ast_free(node->while_stmt.body);
+			break;
 		case AST_VARIABLE_DECLARATION:
 			free(node->var_decl.name);
 			ast_free(node->var_decl.type);
@@ -401,6 +405,19 @@ ASTNode* ast_create_cast(ASTNode* target_type, ASTNode* expr, size_t line, size_
 	return node;
 }
 
+ASTNode* ast_create_while(ASTNode* condition, ASTNode* body, size_t line, size_t column)
+{
+	ASTNode* node = ast_init(AST_WHILE_STMT, line, column);
+	if (!node)
+	{
+		fprintf(stderr, "Failed to create AST while node! (Error)\n");
+		return NULL;
+	}
+	node->while_stmt.condition = condition;
+	node->while_stmt.body = body;
+	return node;
+}
+
 ASTNode* ast_create_boolean_literal(bool value, size_t line, size_t column)
 {
 	ASTNode* node = ast_init(AST_BOOLEAN_LITERAL, line, column);
@@ -491,6 +508,25 @@ void ast_print(ASTNode* node, int indent)
 				printf("Else:\n");
 				ast_print(node->if_stmt.else_branch, indent + 2);
 			}
+			break;
+		case AST_WHILE_STMT:
+			for (int i = 0; i < indent; i++)
+			{
+				printf("  ");
+			}
+			printf("WhileStatement:\n");
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Condition:\n");
+			ast_print(node->while_stmt.condition, indent + 2);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Body:\n");
+			ast_print(node->while_stmt.body, indent + 2);
 			break;
 		case AST_VARIABLE_DECLARATION:
 			printf("Variable Declaration: %s\n", node->var_decl.name);

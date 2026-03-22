@@ -301,13 +301,23 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				size_t ll = strlen(ls);
 				size_t rl = strlen(rs);
 				const char* raw_l =
-				    (ll >= 2 && ls[0] == '"' && ls[ll - 1] == '"') ? ls + 1 : ls;
-				size_t raw_ll =
-				    (ll >= 2 && ls[0] == '"' && ls[ll - 1] == '"') ? ll - 2 : ll;
+				    (ll >= 2 && ((ls[0] == '"' && ls[ll - 1] == '"') ||
+				                 (ls[0] == '`' && ls[ll - 1] == '`')))
+				        ? ls + 1
+				        : ls;
+				size_t raw_ll = (ll >= 2 && ((ls[0] == '"' && ls[ll - 1] == '"') ||
+				                             (ls[0] == '`' && ls[ll - 1] == '`')))
+				                    ? ll - 2
+				                    : ll;
 				const char* raw_r =
-				    (rl >= 2 && rs[0] == '"' && rs[rl - 1] == '"') ? rs + 1 : rs;
-				size_t raw_rl =
-				    (rl >= 2 && rs[0] == '"' && rs[rl - 1] == '"') ? rl - 2 : rl;
+				    (rl >= 2 && ((rs[0] == '"' && rs[rl - 1] == '"') ||
+				                 (rs[0] == '`' && rs[rl - 1] == '`')))
+				        ? rs + 1
+				        : rs;
+				size_t raw_rl = (rl >= 2 && ((rs[0] == '"' && rs[rl - 1] == '"') ||
+				                             (rs[0] == '`' && rs[rl - 1] == '`')))
+				                    ? rl - 2
+				                    : rl;
 				char* folded = (char*)malloc(raw_ll + raw_rl + 1);
 				if (folded)
 				{
@@ -526,6 +536,35 @@ void lower_statement(Program* program, ASTNode* node)
 				lower_statement(program, node->if_stmt.else_branch);
 				ir_emit_br(current_block, merge_b);
 			}
+
+			current_block = merge_b;
+			break;
+		}
+		case AST_WHILE_STMT:
+		{
+			if (!current_block)
+			{
+				fprintf(stderr,
+				        "No current block to emit while statement into. (Error)\n");
+				return;
+			}
+
+			IRBlock* cond_b =
+			    ir_block_create_in_function(current_function, "while_cond");
+			IRBlock* body_b =
+			    ir_block_create_in_function(current_function, "while_body");
+			IRBlock* merge_b =
+			    ir_block_create_in_function(current_function, "while_merge");
+
+			ir_emit_br(current_block, cond_b);
+
+			current_block = cond_b;
+			IRValue* cond = lower_expression(program, node->while_stmt.condition);
+			ir_emit_cbr(current_block, cond, body_b, merge_b);
+
+			current_block = body_b;
+			lower_statement(program, node->while_stmt.body);
+			ir_emit_br(current_block, cond_b);
 
 			current_block = merge_b;
 			break;

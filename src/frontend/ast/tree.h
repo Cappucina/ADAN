@@ -22,6 +22,7 @@ typedef enum ASTNodeType
 	AST_TYPE,  // i32, u32, string, etc.
 	AST_RETURN_STATEMENT,
 	AST_EXPRESSION_STATEMENT,  // Expression used as a statement.
+	AST_WHILE_STMT,            // While loop
 	AST_BINARY_OP,             // Binary arithmetic/logic expression.
 	AST_ASSIGNMENT,            // Reassignment. `set name = expr;`
 	AST_CAST,                  // Type cast expression. `(type)expr`
@@ -53,6 +54,12 @@ typedef struct
 	ASTNode* then_branch;
 	ASTNode* else_branch;  // May be NULL if no else branch is provided.
 } ASTIfStmt;
+
+typedef struct
+{
+	ASTNode* condition;
+	ASTNode* body;
+} ASTWhileStmt;
 
 typedef struct
 {
@@ -166,6 +173,7 @@ struct ASTNode
 		ASTAssignment assignment;
 		ASTCast cast;
 		ASTBooleanLiteral boolean_literal;
+		ASTWhileStmt while_stmt;
 	};
 };
 
@@ -208,16 +216,16 @@ ASTNode* ast_create_expression_statement(ASTNode* expr, size_t line, size_t colu
 ASTNode* ast_create_binary_op(const char* op, ASTNode* left, ASTNode* right, size_t line,
                               size_t column);
 
-ASTNode* ast_create_expression_statement(ASTNode* expr, size_t line, size_t column);
+ASTNode* ast_create_if(ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch, size_t line,
+                       size_t column);
+
+ASTNode* ast_create_while(ASTNode* condition, ASTNode* body, size_t line, size_t column);
 
 ASTNode* ast_create_assignment(const char* name, ASTNode* value, size_t line, size_t column);
 
 ASTNode* ast_create_cast(ASTNode* target_type, ASTNode* expr, size_t line, size_t column);
 
 ASTNode* ast_create_boolean_literal(bool value, size_t line, size_t column);
-
-ASTNode* ast_create_if(ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch, size_t line,
-                       size_t column);
 
 // Debugging functions
 

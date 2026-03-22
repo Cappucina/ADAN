@@ -17,6 +17,8 @@ void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_if_statement(SemanticAnalyzer* analyzer, ASTNode* node);
 
+void validate_while_statement(SemanticAnalyzer* analyzer, ASTNode* node);
+
 void validate_variable_declaration(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_import_statement(SemanticAnalyzer* analyzer, ASTNode* node);
@@ -62,6 +64,9 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 			break;
 		case AST_IF_STATEMENT:
 			validate_if_statement(analyzer, node);
+			break;
+		case AST_WHILE_STMT:
+			validate_while_statement(analyzer, node);
 			break;
 		case AST_VARIABLE_DECLARATION:
 			validate_variable_declaration(analyzer, node);
@@ -694,8 +699,25 @@ void validate_if_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 
 	if (node->if_stmt.else_branch)
 	{
-		validate_block(analyzer, node->if_stmt.else_branch);
+		validate_node(analyzer, node->if_stmt.else_branch);
 	}
+}
+
+void validate_while_statement(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	if (!analyzer || !node)
+	{
+		return;
+	}
+
+	if (!node->while_stmt.condition || !node->while_stmt.body)
+	{
+		semantic_error(analyzer, node, "While statement missing condition or body.");
+		return;
+	}
+
+	validate_node(analyzer, node->while_stmt.condition);
+	validate_node(analyzer, node->while_stmt.body);
 }
 
 void validate_variable_declaration(SemanticAnalyzer* analyzer, ASTNode* node)

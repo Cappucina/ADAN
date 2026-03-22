@@ -1,0 +1,13 @@
+import "adan/io";
+
+set goal: i32 = 10;
+set current: i32 = 0;
+
+fun main(): i32 {
+    while current < goal {
+        println(`Iteration: ${current + 1}/${goal}`);
+        current++;
+    }
+
+    return 0;
+}

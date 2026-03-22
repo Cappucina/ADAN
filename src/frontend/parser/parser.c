@@ -76,7 +76,7 @@ static ASTNode* parse_statement(Parser* parser);
 static ASTNode* parse_function_declaration(Parser* parser);
 
 static ASTNode* parse_if_statement(Parser* parser);
-
+static ASTNode* parse_while_statement(Parser* parser);
 static ASTNode* parse_variable_declaration(Parser* parser);
 
 static ASTNode* parse_import_statement(Parser* parser);
@@ -101,7 +101,7 @@ static ASTNode* parse_primary(Parser* parser);
 
 static ASTNode* parse_call(Parser* parser);
 
-static ASTNode* parse_call_statement(Parser* parser);
+static ASTNode* parse_identifier_statement(Parser* parser);
 
 static ASTNode* parse_type(Parser* parser);
 
@@ -324,29 +324,98 @@ static ASTNode* parse_call(Parser* parser)
 	return call;
 }
 
-static ASTNode* parse_call_statement(Parser* parser)
+static ASTNode* parse_identifier_statement(Parser* parser)
 {
-	char* name =
-	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
+	Token* ident = peek_current(parser);
+	size_t tok_line = ident->line;
+	size_t tok_column = ident->column;
+	char* name = clone_string(ident->lexeme, ident->length);
 
-	ASTNode* call = parse_call(parser);
-
-	size_t stmt_line = call ? call->line : peek_current(parser)->line;
-	size_t stmt_column = call ? call->column : peek_current(parser)->column;
-
-	consume(parser, TOKEN_SEMICOLON, "Expected ';' after call statement.");
-
-	if (name)
+	// Lookahead to see what kind of statement this is
+	Token* next = peek_lookahead1(parser);
+	if (next && next->type == TOKEN_LPAREN)
 	{
+		ASTNode* call = parse_call(parser);
+		consume(parser, TOKEN_SEMICOLON, "Expected ';' after call statement.");
 		parser_use_symbol(parser, name);
+		free(name);
+		return ast_create_expression_statement(call, tok_line, tok_column);
 	}
-	free(name);
 
-	if (call)
+	advance_token(parser);  // Consume identifier
+
+	ASTNode* value = NULL;
+	if (match(parser, TOKEN_EQUALS))
 	{
-		return ast_create_expression_statement(call, stmt_line, stmt_column);
+		advance_token(parser);
+		value = parse_expression(parser);
 	}
-	return NULL;
+	else if (match(parser, TOKEN_PLUS_EQUALS))
+	{
+		advance_token(parser);
+		ASTNode* right = parse_expression(parser);
+		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column),
+		                             right, tok_line, tok_column);
+	}
+	else if (match(parser, TOKEN_MINUS_EQUALS))
+	{
+		advance_token(parser);
+		ASTNode* right = parse_expression(parser);
+		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column),
+		                             right, tok_line, tok_column);
+	}
+	else if (match(parser, TOKEN_STAR_EQUALS))
+	{
+		advance_token(parser);
+		ASTNode* right = parse_expression(parser);
+		value = ast_create_binary_op("*", ast_create_identifier(name, tok_line, tok_column),
+		                             right, tok_line, tok_column);
+	}
+	else if (match(parser, TOKEN_SLASH_EQUALS))
+	{
+		advance_token(parser);
+		ASTNode* right = parse_expression(parser);
+		value = ast_create_binary_op("/", ast_create_identifier(name, tok_line, tok_column),
+		                             right, tok_line, tok_column);
+	}
+	else if (match(parser, TOKEN_PLUS_PLUS))
+	{
+		advance_token(parser);
+		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column),
+		                             ast_create_number_literal("1", tok_line, tok_column),
+		                             tok_line, tok_column);
+	}
+	else if (match(parser, TOKEN_MINUS_MINUS))
+	{
+		advance_token(parser);
+		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column),
+		                             ast_create_number_literal("1", tok_line, tok_column),
+		                             tok_line, tok_column);
+	}
+	else
+	{
+		error_expected(parser, "assignment or call");
+		free(name);
+		return NULL;
+	}
+
+	consume(parser, TOKEN_SEMICOLON, "Expected ';' after identifier statement.");
+	parser_use_symbol(parser, name);
+	ASTNode* assign = ast_create_assignment(name, value, tok_line, tok_column);
+	free(name);
+	return assign;
+}
+
+static ASTNode* parse_while_statement(Parser* parser)
+{
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	consume(parser, TOKEN_WHILE, "Expected 'while' keyword.");
+
+	ASTNode* condition = parse_expression(parser);
+	ASTNode* body = parse_block(parser);
+
+	return ast_create_while(condition, body, tok_line, tok_column);
 }
 
 static ASTNode* parse_expression(Parser* parser)
@@ -727,12 +796,14 @@ static ASTNode* parse_statement(Parser* parser)
 			return parse_import_statement(parser);
 		case TOKEN_IF:
 			return parse_if_statement(parser);
+		case TOKEN_WHILE:
+			return parse_while_statement(parser);
 		case TOKEN_SET:
 			return parse_variable_declaration(parser);
 		case TOKEN_RETURN:
 			return parse_return_statement(parser);
 		case TOKEN_IDENT:
-			return parse_call_statement(parser);
+			return parse_identifier_statement(parser);
 		default:
 			error_expected(parser, "statement");
 			enter_recovery_mode(parser);
