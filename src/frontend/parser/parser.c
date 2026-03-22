@@ -683,10 +683,16 @@ static ASTNode* parse_if_statement(Parser* parser)
 	ASTNode* then_branch = parse_block(parser);
 	if (match(parser, TOKEN_ELSE))
 	{
-		// i think this properly handles `else if` since the else branch can be another if
-		// statement with its own else? idk
 		advance_token(parser);
-		ASTNode* else_branch = parse_block(parser);
+		ASTNode* else_branch = NULL;
+		if (peek_current(parser) && peek_current(parser)->type == TOKEN_IF)
+		{
+			else_branch = parse_if_statement(parser);
+		}
+		else
+		{
+			else_branch = parse_block(parser);
+		}
 		return ast_create_if(condition, then_branch, else_branch, tok_line, tok_column);
 	}
 	return ast_create_if(condition, then_branch, NULL, tok_line, tok_column);
