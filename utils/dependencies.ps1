@@ -190,6 +190,8 @@ function Test-AllDependencies {
 
             if (-not (Test-Dependency "cmake"        "CMake"))        { $allPresent = $false }
             if (-not (Test-Dependency "clang-format"  "clang-format")) { $allPresent = $false }
+            if (-not (Test-Dependency "zig"           "Zig compiler")) { $allPresent = $false }
+            if (-not (Test-Dependency "ninja"         "Ninja build"))  { $allPresent = $false }
             if (-not (Test-Dependency "gdb"           "GDB debugger")) {
                 Write-Warn "GDB not found - use Visual Studio debugger or install MinGW"
             }
