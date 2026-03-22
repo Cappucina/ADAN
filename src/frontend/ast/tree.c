@@ -47,6 +47,14 @@ void ast_free(ASTNode* node)
 			ast_free(node->func_decl.return_type);
 			ast_free(node->func_decl.body);
 			break;
+		case AST_IF_STATEMENT:
+			ast_free(node->if_stmt.condition);
+			ast_free(node->if_stmt.then_branch);
+			if (node->if_stmt.else_branch)
+			{
+				ast_free(node->if_stmt.else_branch);
+			}
+			break;
 		case AST_VARIABLE_DECLARATION:
 			free(node->var_decl.name);
 			ast_free(node->var_decl.type);
@@ -393,6 +401,33 @@ ASTNode* ast_create_cast(ASTNode* target_type, ASTNode* expr, size_t line, size_
 	return node;
 }
 
+ASTNode* ast_create_boolean_literal(bool value, size_t line, size_t column)
+{
+	ASTNode* node = ast_init(AST_BOOLEAN_LITERAL, line, column);
+	if (!node)
+	{
+		fprintf(stderr, "Failed to create AST boolean literal node! (Error)\n");
+		return NULL;
+	}
+	node->boolean_literal.value = value;
+	return node;
+}
+
+ASTNode* ast_create_if(ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch, size_t line,
+                       size_t column)
+{
+	ASTNode* node = ast_init(AST_IF_STATEMENT, line, column);
+	if (!node)
+	{
+		fprintf(stderr, "Failed to create AST if statement node! (Error)\n");
+		return NULL;
+	}
+	node->if_stmt.condition = condition;
+	node->if_stmt.then_branch = then_branch;
+	node->if_stmt.else_branch = else_branch;
+	return node;
+}
+
 void ast_print(ASTNode* node, int indent)
 {
 	if (!node)
@@ -432,6 +467,30 @@ void ast_print(ASTNode* node, int indent)
 			}
 			printf("Body:\n");
 			ast_print(node->func_decl.body, indent + 2);
+			break;
+		case AST_IF_STATEMENT:
+			printf("If Statement:\n");
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Condition:\n");
+			ast_print(node->if_stmt.condition, indent + 2);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Then:\n");
+			ast_print(node->if_stmt.then_branch, indent + 2);
+			if (node->if_stmt.else_branch)
+			{
+				for (int i = 0; i < indent + 1; i++)
+				{
+					printf("  ");
+				}
+				printf("Else:\n");
+				ast_print(node->if_stmt.else_branch, indent + 2);
+			}
 			break;
 		case AST_VARIABLE_DECLARATION:
 			printf("Variable Declaration: %s\n", node->var_decl.name);
@@ -487,6 +546,10 @@ void ast_print(ASTNode* node, int indent)
 			break;
 		case AST_NUMBER_LITERAL:
 			printf("Number Literal: %s\n", node->number_literal.value);
+			break;
+		case AST_BOOLEAN_LITERAL:
+			printf("Boolean Literal: %s\n",
+			       node->boolean_literal.value ? "true" : "false");
 			break;
 		case AST_TYPE:
 			printf("Type: %s\n", node->type_node.name);

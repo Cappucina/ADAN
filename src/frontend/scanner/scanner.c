@@ -13,6 +13,11 @@ const Keyword keywords[] = {
     {"import", TOKEN_IMPORT},
     {"set", TOKEN_SET},
     {"return", TOKEN_RETURN},
+    {"if", TOKEN_IF},
+    {"else", TOKEN_ELSE},
+    {"or", TOKEN_OR},
+    {"and", TOKEN_AND},
+    {"not", TOKEN_NOT},
 
     {"string", TOKEN_STRING_TYPE},
     {"i32", TOKEN_I32_TYPE},
@@ -22,6 +27,10 @@ const Keyword keywords[] = {
     {"f32", TOKEN_F32_TYPE},
     {"f64", TOKEN_F64_TYPE},
     {"void", TOKEN_VOID_TYPE},
+    {"bool", TOKEN_BOOL_TYPE},
+
+    {"true", TOKEN_TRUE},
+    {"false", TOKEN_FALSE},
 };
 
 Scanner* scanner_init(char* source)
@@ -143,10 +152,12 @@ Token* scan_next_token(Scanner* scanner)
 	if (scanner->emit_interp_start)
 	{
 		scanner->emit_interp_start = false;
-		return make_token(TOKEN_INTERP_START, scanner->column - 2, scanner->line, clone_string("${", 2), 2);
+		return make_token(TOKEN_INTERP_START, scanner->column - 2, scanner->line,
+		                  clone_string("${", 2), 2);
 	}
 
-	if (scanner->in_string_quote) {
+	if (scanner->in_string_quote)
+	{
 		char quote_type = scanner->in_string_quote;
 		size_t start_col = scanner->column;
 		size_t start_line = scanner->line;
@@ -172,15 +183,17 @@ Token* scan_next_token(Scanner* scanner)
 				lexeme[length + 1] = quote_type;
 				lexeme[length + 2] = '\0';
 
-				advance(scanner); // $
-				advance(scanner); // {
-				scanner->interp_brace_stack[scanner->interp_depth] = scanner->brace_depth;
+				advance(scanner);  // $
+				advance(scanner);  // {
+				scanner->interp_brace_stack[scanner->interp_depth] =
+				    scanner->brace_depth;
 				scanner->interp_depth++;
 				scanner->emit_interp_start = true;
 				scanner->quote_stack[scanner->quote_depth++] = quote_type;
-				scanner->in_string_quote = 0; // drop from string mode
-				
-				return make_token(TOKEN_STRING, start_col, start_line, lexeme, length + 2);
+				scanner->in_string_quote = 0;  // drop from string mode
+
+				return make_token(TOKEN_STRING, start_col, start_line, lexeme,
+				                  length + 2);
 			}
 			else
 			{
@@ -190,13 +203,14 @@ Token* scan_next_token(Scanner* scanner)
 
 		if (peek(scanner) == '$' && peek_next(scanner) == '{')
 		{
-			advance(scanner); // $
-			advance(scanner); // {
+			advance(scanner);  // $
+			advance(scanner);  // {
 			scanner->interp_brace_stack[scanner->interp_depth] = scanner->brace_depth;
 			scanner->interp_depth++;
 			scanner->in_string_quote = 0;
 			scanner->quote_stack[scanner->quote_depth++] = quote_type;
-			return make_token(TOKEN_INTERP_START, scanner->column - 2, scanner->line, clone_string("${", 2), 2);
+			return make_token(TOKEN_INTERP_START, scanner->column - 2, scanner->line,
+			                  clone_string("${", 2), 2);
 		}
 
 		if (is_at_end(scanner))
@@ -206,9 +220,10 @@ Token* scan_next_token(Scanner* scanner)
 			return make_token(TOKEN_EOF, start_col, start_line, NULL, 0);
 		}
 
-		advance(scanner); // skip closing quote
+		advance(scanner);  // skip closing quote
 
-		size_t length = scanner->position - start_pos - 1; // don't count the closing quote in length for extraction
+		size_t length = scanner->position - start_pos -
+		                1;  // don't count the closing quote in length for extraction
 		scanner->in_string_quote = 0;
 
 		char* lexeme = (char*)malloc(length + 3);
@@ -276,7 +291,7 @@ Token* scan_next_token(Scanner* scanner)
 		size_t start_col = scanner->column;
 		size_t start_line = scanner->line;
 
-		advance(scanner); // skip opening quote
+		advance(scanner);  // skip opening quote
 		scanner->in_string_quote = quote_type;
 
 		size_t start_pos = scanner->position;
@@ -302,15 +317,17 @@ Token* scan_next_token(Scanner* scanner)
 				lexeme[length + 1] = quote_type;
 				lexeme[length + 2] = '\0';
 
-				advance(scanner); // $
-				advance(scanner); // {
-				scanner->interp_brace_stack[scanner->interp_depth] = scanner->brace_depth;
+				advance(scanner);  // $
+				advance(scanner);  // {
+				scanner->interp_brace_stack[scanner->interp_depth] =
+				    scanner->brace_depth;
 				scanner->interp_depth++;
 				scanner->emit_interp_start = true;
 				scanner->quote_stack[scanner->quote_depth++] = quote_type;
-				scanner->in_string_quote = 0; // drop from string mode
-				
-				return make_token(TOKEN_STRING, start_col, start_line, lexeme, length + 2);
+				scanner->in_string_quote = 0;  // drop from string mode
+
+				return make_token(TOKEN_STRING, start_col, start_line, lexeme,
+				                  length + 2);
 			}
 			else
 			{
@@ -320,13 +337,14 @@ Token* scan_next_token(Scanner* scanner)
 
 		if (peek(scanner) == '$' && peek_next(scanner) == '{')
 		{
-			advance(scanner); // $
-			advance(scanner); // {
+			advance(scanner);  // $
+			advance(scanner);  // {
 			scanner->interp_brace_stack[scanner->interp_depth] = scanner->brace_depth;
 			scanner->interp_depth++;
 			scanner->in_string_quote = 0;
 			scanner->quote_stack[scanner->quote_depth++] = quote_type;
-			return make_token(TOKEN_INTERP_START, scanner->column - 2, scanner->line, clone_string("${", 2), 2);
+			return make_token(TOKEN_INTERP_START, scanner->column - 2, scanner->line,
+			                  clone_string("${", 2), 2);
 		}
 
 		if (is_at_end(scanner))
@@ -336,9 +354,10 @@ Token* scan_next_token(Scanner* scanner)
 			return make_token(TOKEN_EOF, start_col, start_line, NULL, 0);
 		}
 
-		advance(scanner); // skip closing quote
+		advance(scanner);  // skip closing quote
 
-		size_t length = scanner->position - start_pos - 1; // don't count the closing quote in length for extraction
+		size_t length = scanner->position - start_pos -
+		                1;  // don't count the closing quote in length for extraction
 		scanner->in_string_quote = 0;
 
 		char* lexeme = (char*)malloc(length + 3);
@@ -397,23 +416,32 @@ Token* scan_next_token(Scanner* scanner)
 			                  1);
 		case '}':
 			advance(scanner);
-			printf("DEBUG }: interp_depth=%d, brace_depth=%d, expected_brace_depth=%d\n", 
-				scanner->interp_depth, scanner->brace_depth, 
-				scanner->interp_depth > 0 ? scanner->interp_brace_stack[scanner->interp_depth - 1] : -1);
+			printf(
+			    "DEBUG }: interp_depth=%d, brace_depth=%d, expected_brace_depth=%d\n",
+			    scanner->interp_depth, scanner->brace_depth,
+			    scanner->interp_depth > 0
+			        ? scanner->interp_brace_stack[scanner->interp_depth - 1]
+			        : -1);
 
-			if (scanner->interp_depth > 0 && scanner->brace_depth == scanner->interp_brace_stack[scanner->interp_depth - 1])
+			if (scanner->interp_depth > 0 &&
+			    scanner->brace_depth ==
+			        scanner->interp_brace_stack[scanner->interp_depth - 1])
 			{
 				scanner->interp_depth--;
-				if (scanner->quote_depth > 0) {
-					scanner->in_string_quote = scanner->quote_stack[--scanner->quote_depth];
+				if (scanner->quote_depth > 0)
+				{
+					scanner->in_string_quote =
+					    scanner->quote_stack[--scanner->quote_depth];
 				}
-				return make_token(TOKEN_INTERP_END, token_col, token_line, clone_string("}", 1), 1);
+				return make_token(TOKEN_INTERP_END, token_col, token_line,
+				                  clone_string("}", 1), 1);
 			}
 			if (scanner->brace_depth > 0)
 			{
 				scanner->brace_depth--;
 			}
-			return make_token(TOKEN_RBRACE, token_col, token_line, clone_string("}", 1), 1);
+			return make_token(TOKEN_RBRACE, token_col, token_line, clone_string("}", 1),
+			                  1);
 		case ':':
 			advance(scanner);
 			return make_token(TOKEN_COLON, token_col, token_line, clone_string(":", 1),
@@ -424,8 +452,45 @@ Token* scan_next_token(Scanner* scanner)
 			                  clone_string(";", 1), 1);
 		case '=':
 			advance(scanner);
+			if (peek(scanner) == '=')
+			{
+				advance(scanner);
+				return make_token(TOKEN_EQUALS_EQUALS, token_col, token_line,
+				                  clone_string("==", 2), 2);
+			}
 			return make_token(TOKEN_EQUALS, token_col, token_line, clone_string("=", 1),
 			                  1);
+		case '!':
+			advance(scanner);
+			if (peek(scanner) == '=')
+			{
+				advance(scanner);
+				return make_token(TOKEN_BANG_EQUALS, token_col, token_line,
+				                  clone_string("!=", 2), 2);
+			}
+			printf("Unexpected character '!' at line %zu, column %zu\n", token_line,
+			       token_col);
+			return scan_next_token(scanner);
+		case '<':
+			advance(scanner);
+			if (peek(scanner) == '=')
+			{
+				advance(scanner);
+				return make_token(TOKEN_LESS_EQUAL, token_col, token_line,
+				                  clone_string("<=", 2), 2);
+			}
+			return make_token(TOKEN_LESS, token_col, token_line, clone_string("<", 1),
+			                  1);
+		case '>':
+			advance(scanner);
+			if (peek(scanner) == '=')
+			{
+				advance(scanner);
+				return make_token(TOKEN_GREATER_EQUAL, token_col, token_line,
+				                  clone_string(">=", 2), 2);
+			}
+			return make_token(TOKEN_GREATER, token_col, token_line,
+			                  clone_string(">", 1), 1);
 		case ',':
 			advance(scanner);
 			return make_token(TOKEN_COMMA, token_col, token_line, clone_string(",", 1),

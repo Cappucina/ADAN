@@ -60,7 +60,10 @@ format:
 	@find ./src ./libs -type f \( -name "*.c" -o -name "*.h" \) -exec clang-format -i {} +
 
 install:
-	@bash ./dependencies.sh
+	@bash ./utils/dependencies.sh
+
+install-win:
+	@powershell -ExecutionPolicy Bypass -File .\utils\dependencies.ps1
 
 push:
-	@bash ./push.sh
+	@bash ./utils/push.sh

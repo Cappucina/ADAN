@@ -2,6 +2,7 @@
 #define TREE_H
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 typedef enum ASTNodeType
 {
@@ -9,6 +10,7 @@ typedef enum ASTNodeType
 	AST_FUNCTION_DECLARATION,
 	AST_VARIABLE_DECLARATION,
 	AST_IMPORT_STATEMENT,
+	AST_IF_STATEMENT,
 	AST_PARAMETER,  // Goes inside of a parameter list.
 	AST_BLOCK,
 	AST_CALL,  // Function call. `callee(arg, ...)`.
@@ -22,7 +24,8 @@ typedef enum ASTNodeType
 	AST_EXPRESSION_STATEMENT,  // Expression used as a statement.
 	AST_BINARY_OP,             // Binary arithmetic/logic expression.
 	AST_ASSIGNMENT,            // Reassignment. `set name = expr;`
-	AST_CAST                   // Type cast expression. `(type)expr`
+	AST_CAST,                  // Type cast expression. `(type)expr`
+	AST_BOOLEAN_LITERAL        // Boolean literal. `true` or `false`
 } ASTNodeType;
 
 typedef struct ASTNode ASTNode;
@@ -43,6 +46,13 @@ typedef struct
 	ASTNode* return_type;
 	ASTNode* body;
 } ASTFuncDecl;
+
+typedef struct
+{
+	ASTNode* condition;
+	ASTNode* then_branch;
+	ASTNode* else_branch;  // May be NULL if no else branch is provided.
+} ASTIfStmt;
 
 typedef struct
 {
@@ -102,6 +112,11 @@ typedef struct
 
 typedef struct
 {
+	bool value;
+} ASTBooleanLiteral;
+
+typedef struct
+{
 	ASTNode* expr;  // The expression being used as a statement
 } ASTExprStmt;
 
@@ -137,6 +152,7 @@ struct ASTNode
 		ASTFuncDecl func_decl;
 		ASTVarDecl var_decl;
 		ASTImport import;
+		ASTIfStmt if_stmt;
 		ASTParam param;
 		ASTBlock block;
 		ASTCall call;
@@ -149,6 +165,7 @@ struct ASTNode
 		ASTBinaryOp binary_op;
 		ASTAssignment assignment;
 		ASTCast cast;
+		ASTBooleanLiteral boolean_literal;
 	};
 };
 
@@ -196,6 +213,11 @@ ASTNode* ast_create_expression_statement(ASTNode* expr, size_t line, size_t colu
 ASTNode* ast_create_assignment(const char* name, ASTNode* value, size_t line, size_t column);
 
 ASTNode* ast_create_cast(ASTNode* target_type, ASTNode* expr, size_t line, size_t column);
+
+ASTNode* ast_create_boolean_literal(bool value, size_t line, size_t column);
+
+ASTNode* ast_create_if(ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch, size_t line,
+                       size_t column);
 
 // Debugging functions
 

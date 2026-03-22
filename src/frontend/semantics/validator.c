@@ -15,6 +15,8 @@ void validate_program(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node);
 
+void validate_if_statement(SemanticAnalyzer* analyzer, ASTNode* node);
+
 void validate_variable_declaration(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_import_statement(SemanticAnalyzer* analyzer, ASTNode* node);
@@ -58,6 +60,9 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 		case AST_FUNCTION_DECLARATION:
 			validate_function_declaration(analyzer, node);
 			break;
+		case AST_IF_STATEMENT:
+			validate_if_statement(analyzer, node);
+			break;
 		case AST_VARIABLE_DECLARATION:
 			validate_variable_declaration(analyzer, node);
 			break;
@@ -75,6 +80,8 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 			break;
 		case AST_STRING_LITERAL:
 			validate_string_literal(analyzer, node);
+			break;
+		case AST_BOOLEAN_LITERAL:
 			break;
 		case AST_NUMBER_LITERAL:
 			validate_number_literal(analyzer, node);
@@ -364,6 +371,8 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 
 	switch (node->type)
 	{
+		case AST_BOOLEAN_LITERAL:
+			return "bool";
 		case AST_STRING_LITERAL:
 			return "string";
 		case AST_NUMBER_LITERAL:
@@ -390,12 +399,27 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 			return NULL;
 		case AST_BINARY_OP:
 		{
-			const char* lt = resolve_expression_type(analyzer, node->binary_op.left);
-			const char* rt = resolve_expression_type(analyzer, node->binary_op.right);
-			if (lt && strcmp(lt, "string") == 0 && rt && strcmp(rt, "string") == 0 &&
-			    node->binary_op.op && strcmp(node->binary_op.op, "+") == 0)
+			const char* op = node->binary_op.op;
+			if (op)
 			{
-				return "string";
+				if (strcmp(op, "==") == 0 || strcmp(op, "!=") == 0 ||
+				    strcmp(op, "<") == 0 || strcmp(op, "<=") == 0 ||
+				    strcmp(op, ">") == 0 || strcmp(op, ">=") == 0 ||
+				    strcmp(op, "and") == 0 || strcmp(op, "or") == 0 ||
+				    strcmp(op, "not") == 0)
+				{
+					return "bool";
+				}
+
+				const char* lt =
+				    resolve_expression_type(analyzer, node->binary_op.left);
+				const char* rt =
+				    resolve_expression_type(analyzer, node->binary_op.right);
+				if (lt && strcmp(lt, "string") == 0 && rt &&
+				    strcmp(rt, "string") == 0 && strcmp(op, "+") == 0)
+				{
+					return "string";
+				}
 			}
 			return "i32";
 		}
@@ -418,7 +442,8 @@ static bool is_known_type_name(const char* name)
 	{
 		return false;
 	}
-	static const char* types[] = {"string", "i32", "i64", "u32", "u64", "f32", "f64", "void"};
+	static const char* types[] = {"string", "bool", "i8",  "u8",  "i32", "i64",
+	                              "u32",    "u64",  "f32", "f64", "void"};
 	for (size_t i = 0; i < sizeof(types) / sizeof(types[0]); i++)
 	{
 		if (strcmp(types[i], name) == 0)
@@ -648,6 +673,28 @@ void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 		    node->func_decl.return_type->type_node.name;
 		validate_block(analyzer, node->func_decl.body);
 		analyzer->current_function_return_type = previous;
+	}
+}
+
+void validate_if_statement(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	if (!analyzer || !node)
+	{
+		return;
+	}
+
+	if (!node->if_stmt.condition || !node->if_stmt.then_branch)
+	{
+		semantic_error(analyzer, node, "If statement missing condition or then branch.");
+		return;
+	}
+
+	validate_node(analyzer, node->if_stmt.condition);
+	validate_block(analyzer, node->if_stmt.then_branch);
+
+	if (node->if_stmt.else_branch)
+	{
+		validate_block(analyzer, node->if_stmt.else_branch);
 	}
 }
 

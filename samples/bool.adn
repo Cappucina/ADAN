@@ -1,0 +1,14 @@
+import "adan/io";
+
+set age: i32 = 18;
+set isAdult: bool = age >= 18 or false;
+
+fun main(): i32 {
+    if isAdult {
+        println("Is over the age of 18.");
+    } else {
+        println("Is not over 18!");
+    }
+
+    return 0;
+}

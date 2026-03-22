@@ -1,11 +1,30 @@
 ASSIGNMENT = 'set', LETTERS, '=', EXPRESSION, ';' ;
-VAR_DECL   = 'set', LETTERS, ':', TYPE, '=', VALUE, ';' ;
 
-EXPRESSION = TERM, { ('+' | '-'), TERM } ;
+VAR_DECL   = 'set', LETTERS, ':', TYPE, '=', EXPRESSION, ';' ;
+
+EXPRESSION = OR_EXPR ;
+
+OR_EXPR = AND_EXPR, { 'or', AND_EXPR } ;
+
+AND_EXPR = NOT_EXPR, { 'and', NOT_EXPR } ;
+
+NOT_EXPR = [ 'not' ], COMP_EXPR ;
+
+COMP_EXPR = ARITH_EXPR, { ( '==' | '!=' | '<' | '<=' | '>' | '>=' ), ARITH_EXPR } ;
+
+ARITH_EXPR = TERM, { ('+' | '-'), TERM } ;
 
 TERM = FACTOR, { ('*' | '/'), FACTOR } ;
 
+STATEMENTS = { IF_STMT | ASSIGNMENT | VAR_DECL | EXPRESSION_STATEMENT | RETURN_STMT } ;
+
+IF_STMT = 'if', EXPRESSION, '{', STATEMENTS, '}', [ 'else', ( IF_STMT | '{', STATEMENTS, '}' ) ] ;
+
 FACTOR = VALUE | LETTERS | '(', EXPRESSION, ')' | FUNCTION_CALL | INTERPOLATED_STRING ;
+
+VALUE = NUMBER | STRING | 'true' | 'false' ;
+
+TYPE = 'i32' | 'i64' | 'u32' | 'u64' | 'f32' | 'f64' | 'string' | 'bool' | 'void' ;
 
 INTERPOLATED_STRING = '"', { CHAR | '${', EXPRESSION, '}' }, '"' ;
 

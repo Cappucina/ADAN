@@ -52,6 +52,18 @@ $ make build-macos         # Build both macOS binaries (ARM64 and x86_64).
 $ make push                # Run the push.sh script (for maintainers).
 ```
 
+## Compiler Arguments
+
+ADAN's compiler provides flags to modify default compilation behaviors:
+
+- `-r` / `--rawir`: Emits the LLVM IR (`.ll` file) instead of compiling into an executable binary.
+- `-o <output_path>`: Specifies the output executable path. Defaults to the input source file name if not provided.
+
+```powershell
+$ ./adan main.adn -r        # Output 'main.ll' LLVM IR.
+$ ./adan main.adn           # Outputs a 'main' executable.
+```
+
 <br>
 <div align="center">
   <table>

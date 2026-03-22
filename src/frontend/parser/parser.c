@@ -75,11 +75,21 @@ static ASTNode* parse_statement(Parser* parser);
 
 static ASTNode* parse_function_declaration(Parser* parser);
 
+static ASTNode* parse_if_statement(Parser* parser);
+
 static ASTNode* parse_variable_declaration(Parser* parser);
 
 static ASTNode* parse_import_statement(Parser* parser);
 
 static ASTNode* parse_expression(Parser* parser);
+
+static ASTNode* parse_or(Parser* parser);
+
+static ASTNode* parse_and(Parser* parser);
+
+static ASTNode* parse_not(Parser* parser);
+
+static ASTNode* parse_comparison(Parser* parser);
 
 static ASTNode* parse_additive(Parser* parser);
 
@@ -153,7 +163,8 @@ static ASTNode* parse_type(Parser* parser)
 	if (match(parser, TOKEN_STRING_TYPE) || match(parser, TOKEN_I32_TYPE) ||
 	    match(parser, TOKEN_I64_TYPE) || match(parser, TOKEN_U32_TYPE) ||
 	    match(parser, TOKEN_U64_TYPE) || match(parser, TOKEN_VOID_TYPE) ||
-	    match(parser, TOKEN_F32_TYPE) || match(parser, TOKEN_F64_TYPE))
+	    match(parser, TOKEN_F32_TYPE) || match(parser, TOKEN_F64_TYPE) ||
+	    match(parser, TOKEN_BOOL_TYPE))
 	{
 		size_t tok_line = peek_current(parser)->line;
 		size_t tok_column = peek_current(parser)->column;
@@ -204,7 +215,8 @@ static ASTNode* parse_primary(Parser* parser)
 		{
 			advance_token(parser);
 			ASTNode* expr = parse_expression(parser);
-			consume(parser, TOKEN_INTERP_END, "Expected '}' to close interpolated expression.");
+			consume(parser, TOKEN_INTERP_END,
+			        "Expected '}' to close interpolated expression.");
 			node = ast_create_binary_op("+", node, expr, tok_line, tok_column);
 
 			if (match(parser, TOKEN_STRING))
@@ -214,9 +226,11 @@ static ASTNode* parse_primary(Parser* parser)
 				size_t next_line = peek_current(parser)->line;
 				size_t next_col = peek_current(parser)->column;
 				advance_token(parser);
-				ASTNode* next_node = ast_create_string_literal(next_str, next_line, next_col);
+				ASTNode* next_node =
+				    ast_create_string_literal(next_str, next_line, next_col);
 				free(next_str);
-				node = ast_create_binary_op("+", node, next_node, tok_line, tok_column);
+				node = ast_create_binary_op("+", node, next_node, tok_line,
+				                            tok_column);
 			}
 		}
 
@@ -233,16 +247,24 @@ static ASTNode* parse_primary(Parser* parser)
 		free(value);
 		return node;
 	}
+	else if (match(parser, TOKEN_TRUE) || match(parser, TOKEN_FALSE))
+	{
+		size_t tok_line = peek_current(parser)->line;
+		size_t tok_column = peek_current(parser)->column;
+		bool b_val = (peek_current(parser)->type == TOKEN_TRUE);
+		advance_token(parser);
+		return ast_create_boolean_literal(b_val, tok_line, tok_column);
+	}
 	else if (match(parser, TOKEN_LPAREN))
 	{
-		// Check if this is a cast expression: (type)expr
 		Token* la1 = peek_lookahead1(parser);
 		Token* la2 = peek_lookahead2(parser);
 		if (la1 && la2 && la2->type == TOKEN_RPAREN &&
 		    (la1->type == TOKEN_STRING_TYPE || la1->type == TOKEN_I32_TYPE ||
 		     la1->type == TOKEN_I64_TYPE || la1->type == TOKEN_U32_TYPE ||
 		     la1->type == TOKEN_U64_TYPE || la1->type == TOKEN_VOID_TYPE ||
-		     la1->type == TOKEN_F32_TYPE || la1->type == TOKEN_F64_TYPE))
+		     la1->type == TOKEN_F32_TYPE || la1->type == TOKEN_F64_TYPE ||
+		     la1->type == TOKEN_BOOL_TYPE))
 		{
 			size_t cast_line = peek_current(parser)->line;
 			size_t cast_col = peek_current(parser)->column;
@@ -329,7 +351,84 @@ static ASTNode* parse_call_statement(Parser* parser)
 
 static ASTNode* parse_expression(Parser* parser)
 {
-	return parse_additive(parser);
+	return parse_or(parser);
+}
+
+static ASTNode* parse_or(Parser* parser)
+{
+	ASTNode* left = parse_and(parser);
+
+	while (match(parser, TOKEN_OR))
+	{
+		size_t op_line = peek_current(parser)->line;
+		size_t op_col = peek_current(parser)->column;
+		advance_token(parser);
+		ASTNode* right = parse_and(parser);
+		if (!right)
+			return left;
+		left = ast_create_binary_op("or", left, right, op_line, op_col);
+	}
+	return left;
+}
+
+static ASTNode* parse_and(Parser* parser)
+{
+	ASTNode* left = parse_not(parser);
+
+	while (match(parser, TOKEN_AND))
+	{
+		size_t op_line = peek_current(parser)->line;
+		size_t op_col = peek_current(parser)->column;
+		advance_token(parser);
+		ASTNode* right = parse_not(parser);
+		if (!right)
+			return left;
+		left = ast_create_binary_op("and", left, right, op_line, op_col);
+	}
+	return left;
+}
+
+static ASTNode* parse_not(Parser* parser)
+{
+	if (match(parser, TOKEN_NOT))
+	{
+		size_t op_line = peek_current(parser)->line;
+		size_t op_col = peek_current(parser)->column;
+		advance_token(parser);
+		ASTNode* right = parse_comparison(parser);
+		if (!right)
+			return NULL;
+		// A NOT operator is essentially a bitwise or logical inversion. Wait, ADAN uses
+		// `not` right? Can represented as binary op with NULL left, or unary. Our binary op
+		// supports left and right. For unary, usually left is NULL.
+		return ast_create_binary_op("not", NULL, right, op_line, op_col);
+	}
+	return parse_comparison(parser);
+}
+
+static ASTNode* parse_comparison(Parser* parser)
+{
+	ASTNode* left = parse_additive(parser);
+
+	while (match(parser, TOKEN_EQUALS_EQUALS) || match(parser, TOKEN_BANG_EQUALS) ||
+	       match(parser, TOKEN_LESS) || match(parser, TOKEN_LESS_EQUAL) ||
+	       match(parser, TOKEN_GREATER) || match(parser, TOKEN_GREATER_EQUAL))
+	{
+		size_t op_line = peek_current(parser)->line;
+		size_t op_col = peek_current(parser)->column;
+		char* op_str = clone_string(peek_current(parser)->lexeme,
+		                            strlen(peek_current(parser)->lexeme));
+		advance_token(parser);
+		ASTNode* right = parse_additive(parser);
+		if (!right)
+		{
+			free(op_str);
+			return left;
+		}
+		left = ast_create_binary_op(op_str, left, right, op_line, op_col);
+		free(op_str);
+	}
+	return left;
 }
 
 static ASTNode* parse_additive(Parser* parser)
@@ -575,6 +674,24 @@ static ASTNode* parse_function_declaration(Parser* parser)
 	return func_decl;
 }
 
+static ASTNode* parse_if_statement(Parser* parser)
+{
+	consume(parser, TOKEN_IF, "Expected 'if' keyword for if statement.");
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	ASTNode* condition = parse_expression(parser);
+	ASTNode* then_branch = parse_block(parser);
+	if (match(parser, TOKEN_ELSE))
+	{
+		// i think this properly handles `else if` since the else branch can be another if
+		// statement with its own else? idk
+		advance_token(parser);
+		ASTNode* else_branch = parse_block(parser);
+		return ast_create_if(condition, then_branch, else_branch, tok_line, tok_column);
+	}
+	return ast_create_if(condition, then_branch, NULL, tok_line, tok_column);
+}
+
 static ASTNode* parse_return_statement(Parser* parser)
 {
 	size_t tok_line = peek_current(parser)->line;
@@ -602,6 +719,8 @@ static ASTNode* parse_statement(Parser* parser)
 			return parse_function_declaration(parser);
 		case TOKEN_IMPORT:
 			return parse_import_statement(parser);
+		case TOKEN_IF:
+			return parse_if_statement(parser);
 		case TOKEN_SET:
 			return parse_variable_declaration(parser);
 		case TOKEN_RETURN:

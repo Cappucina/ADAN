@@ -277,6 +277,11 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			return ir_const_i64(v);
 		}
 
+		case AST_BOOLEAN_LITERAL:
+		{
+			return ir_const_i64(node->boolean_literal.value ? 1 : 0);
+		}
+
 		case AST_BINARY_OP:
 		{
 			if (!current_block)
@@ -382,8 +387,9 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			// Determine source type from inner value
 			int src_is_ptr = (inner->type && inner->type->kind == IR_T_PTR);
 			int dst_is_string = (strcmp(target, "string") == 0);
-			int dst_is_int = (strcmp(target, "i32") == 0 || strcmp(target, "i64") == 0 ||
-			                  strcmp(target, "u32") == 0 || strcmp(target, "u64") == 0);
+			int dst_is_int =
+			    (strcmp(target, "i32") == 0 || strcmp(target, "i64") == 0 ||
+			     strcmp(target, "u32") == 0 || strcmp(target, "u64") == 0);
 
 			if (dst_is_string && !src_is_ptr)
 			{
@@ -426,8 +432,7 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				if (!conv_fn)
 				{
 					conv_fn = ir_function_create_in_module(
-					    program->ir, "adn_string_to_i32",
-					    ir_type_i64());
+					    program->ir, "adn_string_to_i32", ir_type_i64());
 					ir_param_create(conv_fn, NULL, ir_type_ptr(ir_type_i64()));
 				}
 				IRValue* cargs[1] = {inner};
@@ -491,6 +496,38 @@ void lower_statement(Program* program, ASTNode* node)
 			{
 				lower_statement(program, node->block.statements[i]);
 			}
+			break;
+		}
+		case AST_IF_STATEMENT:
+		{
+			if (!current_block)
+			{
+				fprintf(stderr,
+				        "No current block to emit if statement into. (Error)\n");
+				return;
+			}
+			IRValue* cond = lower_expression(program, node->if_stmt.condition);
+			IRBlock* then_b = ir_block_create_in_function(current_function, "then_b");
+			IRBlock* else_b =
+			    node->if_stmt.else_branch
+			        ? ir_block_create_in_function(current_function, "else_b")
+			        : NULL;
+			IRBlock* merge_b = ir_block_create_in_function(current_function, "merge_b");
+
+			ir_emit_cbr(current_block, cond, then_b, else_b ? else_b : merge_b);
+
+			current_block = then_b;
+			lower_statement(program, node->if_stmt.then_branch);
+			ir_emit_br(current_block, merge_b);
+
+			if (else_b)
+			{
+				current_block = else_b;
+				lower_statement(program, node->if_stmt.else_branch);
+				ir_emit_br(current_block, merge_b);
+			}
+
+			current_block = merge_b;
 			break;
 		}
 		case AST_VARIABLE_DECLARATION:
@@ -653,7 +690,8 @@ static IRType* lower_type(Program* program, ASTNode* node)
 	}
 
 	if (strcmp(type_name, "i64") == 0 || strcmp(type_name, "i32") == 0 ||
-	    strcmp(type_name, "u32") == 0 || strcmp(type_name, "u64") == 0)
+	    strcmp(type_name, "u32") == 0 || strcmp(type_name, "u64") == 0 ||
+	    strcmp(type_name, "bool") == 0)
 	{
 		return ir_type_i64();
 	}

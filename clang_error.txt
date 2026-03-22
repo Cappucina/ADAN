@@ -1,4 +1,0 @@
-<stdin>:16:1: error: expected instruction opcode
-   16 | }
-      | ^
-1 error generated.

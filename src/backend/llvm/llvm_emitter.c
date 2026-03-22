@@ -161,7 +161,8 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 			    llvm_type_to_string(gv->type ? gv->type->pointee : ir_type_i64());
 			if (g->initial)
 			{
-				if (gv->type && gv->type->kind == IR_T_PTR)
+				if (gv->type && gv->type->pointee &&
+				    gv->type->pointee->kind == IR_T_PTR)
 				{
 					fprintf(out, "@%s = global %s null\n", g->name,
 					        tstr ? tstr : "i64*");
@@ -321,13 +322,10 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 							skip = 1;
 						break;
 					case IR_BR:
-						if (!IS_DEFINED(ins->operands[0]))
-							skip = 1;
+						// block operand doesn't need IS_DEFINED
 						break;
 					case IR_CBR:
-						if (!IS_DEFINED(ins->operands[0]) ||
-						    !IS_DEFINED(ins->operands[1]) ||
-						    !IS_DEFINED(ins->operands[2]))
+						if (!IS_DEFINED(ins->operands[0]))
 							skip = 1;
 						break;
 					case IR_BINOP:
@@ -498,7 +496,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 					case IR_BR:
 					{
 						IRBlock* tgt = (IRBlock*)(void*)ins->operands[0];
-						fprintf(out, "  br label %s\n",
+						fprintf(out, "  br label %%%s\n",
 						        tgt && tgt->name ? tgt->name : "<label>");
 						break;
 					}
@@ -507,11 +505,42 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						IRValue* cond = ins->operands[0];
 						IRBlock* tb = (IRBlock*)(void*)ins->operands[1];
 						IRBlock* fb = (IRBlock*)(void*)ins->operands[2];
-						fprintf(out, "  br i1 ");
-						es_emit_value_rep(&st, out, cond);
-						fprintf(out, ", label %s, label %s\n",
-						        tb && tb->name ? tb->name : "<t>",
-						        fb && fb->name ? fb->name : "<f>");
+						char* cond_name = es_get_val_name(&st, cond);
+						char* t = llvm_type_to_string(cond->type);
+						if (cond->type && cond->type->kind == IR_T_I64)
+						{
+							// Convert i64 to i1
+							fprintf(out,
+							        "  %%cbr_cond_%lu = icmp ne i64 ",
+							        st.tmp_counter++);
+							if (cond->kind == IRV_CONST)
+							{
+								fprintf(out, "%lld",
+								        (long long)cond->u.i64);
+							}
+							else
+							{
+								fprintf(out, "%s",
+								        cond_name ? cond_name
+								                  : "<cond>");
+							}
+							fprintf(out, ", 0\n");
+							fprintf(out,
+							        "  br i1 %%cbr_cond_%lu, label "
+							        "%%%s, label %%%s\n",
+							        st.tmp_counter - 1,
+							        tb && tb->name ? tb->name : "<t>",
+							        fb && fb->name ? fb->name : "<f>");
+						}
+						else
+						{
+							fprintf(out, "  br i1 ");
+							es_emit_value_rep(&st, out, cond);
+							fprintf(out, ", label %%%s, label %%%s\n",
+							        tb && tb->name ? tb->name : "<t>",
+							        fb && fb->name ? fb->name : "<f>");
+						}
+						free(t);
 						break;
 					}
 					case IR_BINOP:
@@ -584,8 +613,43 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								fprintf(out, ")\n");
 								break;
 							}
-							case 6:  // ==
-								fprintf(out, "  %s = icmp eq %s ",
+							case 6:   // ==
+							case 7:   // !=
+							case 8:   // <
+							case 9:   // >
+							case 10:  // <=
+							case 11:  // >=
+							{
+								const char* icmp_op = "eq";
+								if (ins->opcode == 7)
+									icmp_op = "ne";
+								if (ins->opcode == 8)
+									icmp_op = "slt";
+								if (ins->opcode == 9)
+									icmp_op = "sgt";
+								if (ins->opcode == 10)
+									icmp_op = "sle";
+								if (ins->opcode == 11)
+									icmp_op = "sge";
+
+								fprintf(out,
+								        "  %%cmp_%lu = icmp %s %s ",
+								        st.tmp_counter++, icmp_op,
+								        tstr ? tstr : "i64");
+								es_emit_value_rep(&st, out, lhs);
+								fprintf(out, ", ");
+								es_emit_value_rep(&st, out, rhs);
+								fprintf(out, "\n");
+								fprintf(out,
+								        "  %s = zext i1 %%cmp_%lu "
+								        "to %s\n",
+								        dst ? dst : "<dst>",
+								        st.tmp_counter - 1,
+								        tstr ? tstr : "i64");
+								break;
+							}
+							case 13:  // or
+								fprintf(out, "  %s = or %s ",
 								        dst ? dst : "<dst>",
 								        tstr ? tstr : "i64");
 								es_emit_value_rep(&st, out, lhs);
@@ -593,14 +657,31 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 7:  // !=
-								fprintf(out, "  %s = icmp ne %s ",
+							case 14:  // and
+								fprintf(out, "  %s = and %s ",
 								        dst ? dst : "<dst>",
 								        tstr ? tstr : "i64");
 								es_emit_value_rep(&st, out, lhs);
 								fprintf(out, ", ");
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
+								break;
+							case 15:  // not (unary trick)
+								// ADAN expects boolean as i64 (0 or
+								// 1). NOT of 0 is 1. NOT of 1 is 0.
+								// Wait, NOT of non-zero is 0.
+								fprintf(out,
+								        "  %%cmp_%lu = icmp eq %s ",
+								        st.tmp_counter++,
+								        tstr ? tstr : "i64");
+								es_emit_value_rep(&st, out, rhs);
+								fprintf(out, ", 0\n");
+								fprintf(out,
+								        "  %s = zext i1 %%cmp_%lu "
+								        "to %s\n",
+								        dst ? dst : "<dst>",
+								        st.tmp_counter - 1,
+								        tstr ? tstr : "i64");
 								break;
 							default:
 								fprintf(out,
@@ -640,7 +721,9 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 				ins = ins->next;
 			}
 			int needs_ret = 1;
-			if (last_emitted && last_emitted->kind == IR_RET)
+			if (last_emitted &&
+			    (last_emitted->kind == IR_RET || last_emitted->kind == IR_BR ||
+			     last_emitted->kind == IR_CBR))
 			{
 				needs_ret = 0;
 			}

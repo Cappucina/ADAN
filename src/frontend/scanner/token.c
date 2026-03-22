@@ -45,12 +45,16 @@ char* token_type_to_string(TokenType type)
 			return "RETURN";
 		case TOKEN_STRING_TYPE:
 			return "STRING_TYPE";
+		case TOKEN_I8_TYPE:
+			return "I8_TYPE";
 		case TOKEN_I32_TYPE:
 			return "I32_TYPE";
 		case TOKEN_I64_TYPE:
 			return "I64_TYPE";
 		case TOKEN_VOID_TYPE:
 			return "VOID_TYPE";
+		case TOKEN_U8_TYPE:
+			return "U8_TYPE";
 		case TOKEN_U32_TYPE:
 			return "U32_TYPE";
 		case TOKEN_U64_TYPE:
@@ -91,6 +95,34 @@ char* token_type_to_string(TokenType type)
 			return "DIV";
 		case TOKEN_PERCENT:
 			return "MOD";
+		case TOKEN_BOOL_TYPE:
+			return "BOOL_TYPE";
+		case TOKEN_TRUE:
+			return "TRUE";
+		case TOKEN_FALSE:
+			return "FALSE";
+		case TOKEN_IF:
+			return "IF";
+		case TOKEN_ELSE:
+			return "ELSE";
+		case TOKEN_OR:
+			return "OR";
+		case TOKEN_AND:
+			return "AND";
+		case TOKEN_NOT:
+			return "NOT";
+		case TOKEN_EQUALS_EQUALS:
+			return "EQUALS_EQUALS";
+		case TOKEN_BANG_EQUALS:
+			return "BANG_EQUALS";
+		case TOKEN_LESS:
+			return "LESS";
+		case TOKEN_LESS_EQUAL:
+			return "LESS_EQUAL";
+		case TOKEN_GREATER:
+			return "GREATER";
+		case TOKEN_GREATER_EQUAL:
+			return "GREATER_EQUAL";
 		default:
 			return "UNKNOWN";
 	}

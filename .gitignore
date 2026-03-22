@@ -8,3 +8,4 @@ _codeql_detected_source_root
 *.ll
 samples/hello
 build*/
+clang_error.txt

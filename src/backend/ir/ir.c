@@ -357,6 +357,18 @@ IRValue* ir_emit_binop(IRBlock* block, const char* op, IRValue* lhs, IRValue* rh
 	{
 		ins->opcode = 12;
 	}
+	else if (strcmp(op, "or") == 0)
+	{
+		ins->opcode = 13;
+	}
+	else if (strcmp(op, "and") == 0)
+	{
+		ins->opcode = 14;
+	}
+	else if (strcmp(op, "not") == 0)
+	{
+		ins->opcode = 15;
+	}
 	else
 	{
 		ins->opcode = 0;
