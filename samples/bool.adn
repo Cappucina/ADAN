@@ -1,7 +1,7 @@
 import "adan/io";
 
 set age: i32 = 18;
-set isAdult: bool = age >= 18 or false;
+set isAdult: bool = age >= 18;
 
 fun main(): i32 {
     if isAdult {
