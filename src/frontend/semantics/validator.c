@@ -41,6 +41,8 @@ void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_assignment(SemanticAnalyzer* analyzer, ASTNode* node);
 
+void validate_cast(SemanticAnalyzer* analyzer, ASTNode* node);
+
 void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 {
 	if (!node)
@@ -94,6 +96,9 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 			break;
 		case AST_ASSIGNMENT:
 			validate_assignment(analyzer, node);
+			break;
+		case AST_CAST:
+			validate_cast(analyzer, node);
 			break;
 		default:
 			fprintf(stderr, "Unknown AST node type! (Error)\n");
@@ -393,6 +398,14 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 				return "string";
 			}
 			return "i32";
+		}
+		case AST_CAST:
+		{
+			if (node->cast.target_type && node->cast.target_type->type_node.name)
+			{
+				return node->cast.target_type->type_node.name;
+			}
+			return NULL;
 		}
 		default:
 			return NULL;
@@ -848,11 +861,27 @@ void validate_call_expression(SemanticAnalyzer* analyzer, ASTNode* node)
 				if (arg_type && param_type &&
 				    !semantic_types_compatible(param_type, arg_type))
 				{
-					char message[128];
-					snprintf(message, sizeof(message),
-					         "Argument %zu type does not match parameter type.",
-					         i + 1);
-					semantic_error(analyzer, node, message);
+					if (strcmp(param_type, "string") == 0 &&
+					    (strcmp(arg_type, "i32") == 0 ||
+					     strcmp(arg_type, "i64") == 0))
+					{
+						ASTNode* cast_type = ast_create_type(
+						    "string", node->call.args[i]->line,
+						    node->call.args[i]->column);
+						node->call.args[i] =
+						    ast_create_cast(cast_type, node->call.args[i],
+						                    node->call.args[i]->line,
+						                    node->call.args[i]->column);
+					}
+					else
+					{
+						char message[128];
+						snprintf(message, sizeof(message),
+						         "Argument %zu type does not match "
+						         "parameter type.",
+						         i + 1);
+						semantic_error(analyzer, node, message);
+					}
 				}
 			}
 		}
@@ -958,7 +987,27 @@ void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node)
 	const char* rt = resolve_expression_type(analyzer, node->binary_op.right);
 	if ((lt && strcmp(lt, "string") == 0) || (rt && strcmp(rt, "string") == 0))
 	{
-		if (!lt || !rt || strcmp(lt, "string") != 0 || strcmp(rt, "string") != 0)
+		if (lt && rt && strcmp(lt, "string") == 0 &&
+		    (strcmp(rt, "i32") == 0 || strcmp(rt, "i64") == 0) && node->binary_op.op &&
+		    strcmp(node->binary_op.op, "+") == 0)
+		{
+			ASTNode* cast_type = ast_create_type("string", node->binary_op.right->line,
+			                                     node->binary_op.right->column);
+			node->binary_op.right = ast_create_cast(cast_type, node->binary_op.right,
+			                                        node->binary_op.right->line,
+			                                        node->binary_op.right->column);
+		}
+		else if (lt && rt && strcmp(rt, "string") == 0 &&
+		         (strcmp(lt, "i32") == 0 || strcmp(lt, "i64") == 0) && node->binary_op.op &&
+		         strcmp(node->binary_op.op, "+") == 0)
+		{
+			ASTNode* cast_type = ast_create_type("string", node->binary_op.left->line,
+			                                     node->binary_op.left->column);
+			node->binary_op.left = ast_create_cast(cast_type, node->binary_op.left,
+			                                       node->binary_op.left->line,
+			                                       node->binary_op.left->column);
+		}
+		else if (!lt || !rt || strcmp(lt, "string") != 0 || strcmp(rt, "string") != 0)
 		{
 			semantic_error(
 			    analyzer, node,
@@ -1083,5 +1132,31 @@ void validate_expression_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 	if (expr)
 	{
 		validate_node(analyzer, expr);
+	}
+}
+
+void validate_cast(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	if (!analyzer || !node || node->type != AST_CAST)
+	{
+		return;
+	}
+
+	if (node->cast.target_type)
+	{
+		validate_type_node(analyzer, node->cast.target_type);
+	}
+	else
+	{
+		semantic_error(analyzer, node, "Cast expression missing target type.");
+	}
+
+	if (node->cast.expr)
+	{
+		validate_node(analyzer, node->cast.expr);
+	}
+	else
+	{
+		semantic_error(analyzer, node, "Cast expression missing inner expression.");
 	}
 }

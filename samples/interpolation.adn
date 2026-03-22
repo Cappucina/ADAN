@@ -1,8 +1,11 @@
 import "adan/io";
 
-set partial: string = "World!";
+set name: string = "world";
+set greeting: string = "Hello, ${name}!";
 
 fun main(): i32 {
-    println(`Hello, ${partial}`);
-    return 0;
+  println(greeting);
+  println("1 + 1 = ${1 + 1}... just kidding");
+  println("${name} says hi");
+  return 0;
 }

@@ -1,6 +1,7 @@
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "runtime.h"
 
 // base^exp for integer exponentiation
@@ -53,4 +54,30 @@ char* adn_strconcat(const char* s1, const char* s2)
 	strcat(result, s2);
 
 	return result;
+}
+
+char* adn_i32_to_string(int64_t val)
+{
+	char buf[32];
+	int len = snprintf(buf, sizeof(buf), "%lld", (long long)val);
+	if (len < 0)
+	{
+		return NULL;
+	}
+	char* result = (char*)malloc((size_t)len + 1);
+	if (!result)
+	{
+		return NULL;
+	}
+	memcpy(result, buf, (size_t)len + 1);
+	return result;
+}
+
+int64_t adn_string_to_i32(const char* s)
+{
+	if (!s)
+	{
+		return 0;
+	}
+	return (int64_t)strtoll(s, NULL, 10);
 }

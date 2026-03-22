@@ -101,6 +101,10 @@ void ast_free(ASTNode* node)
 			free(node->assignment.name);
 			ast_free(node->assignment.value);
 			break;
+		case AST_CAST:
+			ast_free(node->cast.target_type);
+			ast_free(node->cast.expr);
+			break;
 		default:
 			break;
 	}
@@ -376,6 +380,19 @@ ASTNode* ast_create_assignment(const char* name, ASTNode* value, size_t line, si
 	return node;
 }
 
+ASTNode* ast_create_cast(ASTNode* target_type, ASTNode* expr, size_t line, size_t column)
+{
+	ASTNode* node = ast_init(AST_CAST, line, column);
+	if (!node)
+	{
+		fprintf(stderr, "Failed to create AST cast node! (Error)\n");
+		return NULL;
+	}
+	node->cast.target_type = target_type;
+	node->cast.expr = expr;
+	return node;
+}
+
 void ast_print(ASTNode* node, int indent)
 {
 	if (!node)
@@ -481,6 +498,48 @@ void ast_print(ASTNode* node, int indent)
 		case AST_EXPRESSION_STATEMENT:
 			printf("Expression Statement:\n");
 			ast_print(node->expr_stmt.expr, indent + 1);
+			break;
+		case AST_INTERPOLATED_STRING:
+			printf("Interpolated String (desugared):\n");
+			break;
+		case AST_BINARY_OP:
+			printf("Binary Op: %s\n", node->binary_op.op);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Left:\n");
+			ast_print(node->binary_op.left, indent + 2);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Right:\n");
+			ast_print(node->binary_op.right, indent + 2);
+			break;
+		case AST_ASSIGNMENT:
+			printf("Assignment: %s\n", node->assignment.name);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Value:\n");
+			ast_print(node->assignment.value, indent + 2);
+			break;
+		case AST_CAST:
+			printf("Cast:\n");
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Target Type:\n");
+			ast_print(node->cast.target_type, indent + 2);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Expression:\n");
+			ast_print(node->cast.expr, indent + 2);
 			break;
 	}
 }

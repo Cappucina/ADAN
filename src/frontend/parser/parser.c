@@ -199,6 +199,27 @@ static ASTNode* parse_primary(Parser* parser)
 		advance_token(parser);
 		ASTNode* node = ast_create_string_literal(value, tok_line, tok_column);
 		free(value);
+
+		while (match(parser, TOKEN_INTERP_START))
+		{
+			advance_token(parser);
+			ASTNode* expr = parse_expression(parser);
+			consume(parser, TOKEN_INTERP_END, "Expected '}' to close interpolated expression.");
+			node = ast_create_binary_op("+", node, expr, tok_line, tok_column);
+
+			if (match(parser, TOKEN_STRING))
+			{
+				char* next_str = clone_string(peek_current(parser)->lexeme,
+				                              strlen(peek_current(parser)->lexeme));
+				size_t next_line = peek_current(parser)->line;
+				size_t next_col = peek_current(parser)->column;
+				advance_token(parser);
+				ASTNode* next_node = ast_create_string_literal(next_str, next_line, next_col);
+				free(next_str);
+				node = ast_create_binary_op("+", node, next_node, tok_line, tok_column);
+			}
+		}
+
 		return node;
 	}
 	else if (match(parser, TOKEN_NUMBER))
@@ -214,6 +235,23 @@ static ASTNode* parse_primary(Parser* parser)
 	}
 	else if (match(parser, TOKEN_LPAREN))
 	{
+		// Check if this is a cast expression: (type)expr
+		Token* la1 = peek_lookahead1(parser);
+		Token* la2 = peek_lookahead2(parser);
+		if (la1 && la2 && la2->type == TOKEN_RPAREN &&
+		    (la1->type == TOKEN_STRING_TYPE || la1->type == TOKEN_I32_TYPE ||
+		     la1->type == TOKEN_I64_TYPE || la1->type == TOKEN_U32_TYPE ||
+		     la1->type == TOKEN_U64_TYPE || la1->type == TOKEN_VOID_TYPE ||
+		     la1->type == TOKEN_F32_TYPE || la1->type == TOKEN_F64_TYPE))
+		{
+			size_t cast_line = peek_current(parser)->line;
+			size_t cast_col = peek_current(parser)->column;
+			advance_token(parser);  // consume '('
+			ASTNode* target_type = parse_type(parser);
+			consume(parser, TOKEN_RPAREN, "Expected ')' after cast type.");
+			ASTNode* expr = parse_primary(parser);
+			return ast_create_cast(target_type, expr, cast_line, cast_col);
+		}
 		advance_token(parser);
 		ASTNode* expr = parse_expression(parser);
 		consume(parser, TOKEN_RPAREN, "Expected ')' after grouped expression.");

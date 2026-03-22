@@ -38,6 +38,11 @@ Scanner* scanner_init(char* source)
 	scanner->start = 0;
 	scanner->column = 1;
 	scanner->line = 1;
+	scanner->interp_depth = 0;
+	scanner->brace_depth = 0;
+	scanner->in_string_quote = 0;
+	scanner->emit_interp_start = false;
+	scanner->quote_depth = 0;
 	return scanner;
 }
 
@@ -135,6 +140,86 @@ void skip_spaces(Scanner* scanner)
 
 Token* scan_next_token(Scanner* scanner)
 {
+	if (scanner->emit_interp_start)
+	{
+		scanner->emit_interp_start = false;
+		return make_token(TOKEN_INTERP_START, scanner->column - 2, scanner->line, clone_string("${", 2), 2);
+	}
+
+	if (scanner->in_string_quote) {
+		char quote_type = scanner->in_string_quote;
+		size_t start_col = scanner->column;
+		size_t start_line = scanner->line;
+		size_t start_pos = scanner->position;
+
+		while (!is_at_end(scanner) && peek(scanner) != quote_type)
+		{
+			if (peek(scanner) == '\\' && !is_at_end(scanner))
+			{
+				advance(scanner);
+				if (!is_at_end(scanner))
+				{
+					advance(scanner);
+				}
+			}
+			else if (peek(scanner) == '$' && peek_next(scanner) == '{')
+			{
+				size_t length = scanner->position - start_pos;
+				char* lexeme;
+				lexeme = (char*)malloc(length + 3);
+				lexeme[0] = quote_type;
+				memcpy(lexeme + 1, scanner->source + start_pos, length);
+				lexeme[length + 1] = quote_type;
+				lexeme[length + 2] = '\0';
+
+				advance(scanner); // $
+				advance(scanner); // {
+				scanner->interp_brace_stack[scanner->interp_depth] = scanner->brace_depth;
+				scanner->interp_depth++;
+				scanner->emit_interp_start = true;
+				scanner->quote_stack[scanner->quote_depth++] = quote_type;
+				scanner->in_string_quote = 0; // drop from string mode
+				
+				return make_token(TOKEN_STRING, start_col, start_line, lexeme, length + 2);
+			}
+			else
+			{
+				advance(scanner);
+			}
+		}
+
+		if (peek(scanner) == '$' && peek_next(scanner) == '{')
+		{
+			advance(scanner); // $
+			advance(scanner); // {
+			scanner->interp_brace_stack[scanner->interp_depth] = scanner->brace_depth;
+			scanner->interp_depth++;
+			scanner->in_string_quote = 0;
+			scanner->quote_stack[scanner->quote_depth++] = quote_type;
+			return make_token(TOKEN_INTERP_START, scanner->column - 2, scanner->line, clone_string("${", 2), 2);
+		}
+
+		if (is_at_end(scanner))
+		{
+			printf("Unterminated string at line %zu, column %zu\n", start_line,
+			       start_col);
+			return make_token(TOKEN_EOF, start_col, start_line, NULL, 0);
+		}
+
+		advance(scanner); // skip closing quote
+
+		size_t length = scanner->position - start_pos - 1; // don't count the closing quote in length for extraction
+		scanner->in_string_quote = 0;
+
+		char* lexeme = (char*)malloc(length + 3);
+		lexeme[0] = quote_type;
+		memcpy(lexeme + 1, scanner->source + start_pos, length);
+		lexeme[length + 1] = quote_type;
+		lexeme[length + 2] = '\0';
+
+		return make_token(TOKEN_STRING, start_col, start_line, lexeme, length + 2);
+	}
+
 	skip_spaces(scanner);
 	if (is_at_end(scanner))
 	{
@@ -188,11 +273,13 @@ Token* scan_next_token(Scanner* scanner)
 	if (current == '"' || current == '\'' || current == '`')
 	{
 		char quote_type = current;
-		size_t start_pos = scanner->position;
 		size_t start_col = scanner->column;
 		size_t start_line = scanner->line;
 
-		advance(scanner);
+		advance(scanner); // skip opening quote
+		scanner->in_string_quote = quote_type;
+
+		size_t start_pos = scanner->position;
 
 		while (!is_at_end(scanner) && peek(scanner) != quote_type)
 		{
@@ -204,28 +291,42 @@ Token* scan_next_token(Scanner* scanner)
 					advance(scanner);
 				}
 			}
-			// else if (peek(scanner) == '$' && peek_next(scanner) == '{')
-			// {
-			// 	advance(scanner);
-			// 	advance(scanner);
-			// 	int bcount = 1;
-			// 	while (!is_at_end(scanner) && bcount > 0)
-			// 	{
-			// 		if (peek(scanner) == '{')
-			// 		{
-			// 			bcount++;
-			// 		}
-			// 		else if (peek(scanner) == '}')
-			// 		{
-			// 			bcount--;
-			// 		}
-			// 		advance(scanner);
-			// 	}
-			// }
+			else if (peek(scanner) == '$' && peek_next(scanner) == '{')
+			{
+				size_t length = scanner->position - start_pos;
+				char* lexeme;
+				// create a quoted string fragment: " + fragment + "
+				lexeme = (char*)malloc(length + 3);
+				lexeme[0] = quote_type;
+				memcpy(lexeme + 1, scanner->source + start_pos, length);
+				lexeme[length + 1] = quote_type;
+				lexeme[length + 2] = '\0';
+
+				advance(scanner); // $
+				advance(scanner); // {
+				scanner->interp_brace_stack[scanner->interp_depth] = scanner->brace_depth;
+				scanner->interp_depth++;
+				scanner->emit_interp_start = true;
+				scanner->quote_stack[scanner->quote_depth++] = quote_type;
+				scanner->in_string_quote = 0; // drop from string mode
+				
+				return make_token(TOKEN_STRING, start_col, start_line, lexeme, length + 2);
+			}
 			else
 			{
 				advance(scanner);
 			}
+		}
+
+		if (peek(scanner) == '$' && peek_next(scanner) == '{')
+		{
+			advance(scanner); // $
+			advance(scanner); // {
+			scanner->interp_brace_stack[scanner->interp_depth] = scanner->brace_depth;
+			scanner->interp_depth++;
+			scanner->in_string_quote = 0;
+			scanner->quote_stack[scanner->quote_depth++] = quote_type;
+			return make_token(TOKEN_INTERP_START, scanner->column - 2, scanner->line, clone_string("${", 2), 2);
 		}
 
 		if (is_at_end(scanner))
@@ -235,11 +336,18 @@ Token* scan_next_token(Scanner* scanner)
 			return make_token(TOKEN_EOF, start_col, start_line, NULL, 0);
 		}
 
-		advance(scanner);
+		advance(scanner); // skip closing quote
 
-		size_t length = scanner->position - start_pos;
-		char* lexeme = clone_string(scanner->source + start_pos, length);
-		return make_token(TOKEN_STRING, start_col, start_line, lexeme, length);
+		size_t length = scanner->position - start_pos - 1; // don't count the closing quote in length for extraction
+		scanner->in_string_quote = 0;
+
+		char* lexeme = (char*)malloc(length + 3);
+		lexeme[0] = quote_type;
+		memcpy(lexeme + 1, scanner->source + start_pos, length);
+		lexeme[length + 1] = quote_type;
+		lexeme[length + 2] = '\0';
+
+		return make_token(TOKEN_STRING, start_col, start_line, lexeme, length + 2);
 	}
 
 	if (current == '/' && peek_next(scanner) == '/')
@@ -284,12 +392,28 @@ Token* scan_next_token(Scanner* scanner)
 			                  1);
 		case '{':
 			advance(scanner);
+			scanner->brace_depth++;
 			return make_token(TOKEN_LBRACE, token_col, token_line, clone_string("{", 1),
 			                  1);
 		case '}':
 			advance(scanner);
-			return make_token(TOKEN_RBRACE, token_col, token_line, clone_string("}", 1),
-			                  1);
+			printf("DEBUG }: interp_depth=%d, brace_depth=%d, expected_brace_depth=%d\n", 
+				scanner->interp_depth, scanner->brace_depth, 
+				scanner->interp_depth > 0 ? scanner->interp_brace_stack[scanner->interp_depth - 1] : -1);
+
+			if (scanner->interp_depth > 0 && scanner->brace_depth == scanner->interp_brace_stack[scanner->interp_depth - 1])
+			{
+				scanner->interp_depth--;
+				if (scanner->quote_depth > 0) {
+					scanner->in_string_quote = scanner->quote_stack[--scanner->quote_depth];
+				}
+				return make_token(TOKEN_INTERP_END, token_col, token_line, clone_string("}", 1), 1);
+			}
+			if (scanner->brace_depth > 0)
+			{
+				scanner->brace_depth--;
+			}
+			return make_token(TOKEN_RBRACE, token_col, token_line, clone_string("}", 1), 1);
 		case ':':
 			advance(scanner);
 			return make_token(TOKEN_COLON, token_col, token_line, clone_string(":", 1),

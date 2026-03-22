@@ -13,21 +13,34 @@ void adn_println(const char* message)
 		return;
 	}
 	size_t len = strlen(message);
-	if (len > 0 && message[len - 1] == '\n')
+	// Strip surrounding quotes if present
+	const char* start = message;
+	size_t print_len = len;
+	if (len >= 2 && ((message[0] == '"' && message[len - 1] == '"') ||
+	                 (message[0] == '\'' && message[len - 1] == '\'') ||
+	                 (message[0] == '`' && message[len - 1] == '`')))
 	{
-		fputs(message, stdout);
+		start = message + 1;
+		print_len = len - 2;
 	}
-	else
-	{
-		printf("%s\n", message);
-	}
+	printf("%.*s\n", (int)print_len, start);
 }
 
 char* adn_input(const char* prompt)
 {
 	if (prompt && prompt[0] != '\0')
 	{
-		fputs(prompt, stdout);
+		const char* start = prompt;
+		size_t len = strlen(prompt);
+		size_t print_len = len;
+		if (len >= 2 && ((prompt[0] == '"' && prompt[len - 1] == '"') ||
+		                 (prompt[0] == '\'' && prompt[len - 1] == '\'') ||
+		                 (prompt[0] == '`' && prompt[len - 1] == '`')))
+		{
+			start = prompt + 1;
+			print_len = len - 2;
+		}
+		printf("%.*s", (int)print_len, start);
 		fflush(stdout);
 	}
 #ifdef _POSIX_C_SOURCE

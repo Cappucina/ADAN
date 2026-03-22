@@ -364,6 +364,82 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			return ir_emit_binop(current_block, node->binary_op.op, lhs, rhs);
 		}
 
+		case AST_CAST:
+		{
+			if (!node->cast.target_type || !node->cast.expr)
+			{
+				fprintf(stderr, "Invalid cast node. (Error)\n");
+				return NULL;
+			}
+			const char* target = node->cast.target_type->type_node.name;
+			IRValue* inner = lower_expression(program, node->cast.expr);
+			if (!inner || !target)
+			{
+				fprintf(stderr, "Failed to lower cast expression. (Error)\n");
+				return NULL;
+			}
+
+			// Determine source type from inner value
+			int src_is_ptr = (inner->type && inner->type->kind == IR_T_PTR);
+			int dst_is_string = (strcmp(target, "string") == 0);
+			int dst_is_int = (strcmp(target, "i32") == 0 || strcmp(target, "i64") == 0 ||
+			                  strcmp(target, "u32") == 0 || strcmp(target, "u64") == 0);
+
+			if (dst_is_string && !src_is_ptr)
+			{
+				// int -> string: call adn_i32_to_string
+				IRFunction* conv_fn = NULL;
+				IRFunction* it = program->ir->functions;
+				while (it)
+				{
+					if (it->name && strcmp(it->name, "adn_i32_to_string") == 0)
+					{
+						conv_fn = it;
+						break;
+					}
+					it = it->next;
+				}
+				if (!conv_fn)
+				{
+					conv_fn = ir_function_create_in_module(
+					    program->ir, "adn_i32_to_string",
+					    ir_type_ptr(ir_type_i64()));
+					ir_param_create(conv_fn, NULL, ir_type_i64());
+				}
+				IRValue* cargs[1] = {inner};
+				return ir_emit_call(current_block, conv_fn, cargs, 1);
+			}
+			else if (dst_is_int && src_is_ptr)
+			{
+				// string -> int: call adn_string_to_i32
+				IRFunction* conv_fn = NULL;
+				IRFunction* it = program->ir->functions;
+				while (it)
+				{
+					if (it->name && strcmp(it->name, "adn_string_to_i32") == 0)
+					{
+						conv_fn = it;
+						break;
+					}
+					it = it->next;
+				}
+				if (!conv_fn)
+				{
+					conv_fn = ir_function_create_in_module(
+					    program->ir, "adn_string_to_i32",
+					    ir_type_i64());
+					ir_param_create(conv_fn, NULL, ir_type_ptr(ir_type_i64()));
+				}
+				IRValue* cargs[1] = {inner};
+				return ir_emit_call(current_block, conv_fn, cargs, 1);
+			}
+			else
+			{
+				// Same type or unsupported — pass through
+				return inner;
+			}
+		}
+
 		default:
 			fprintf(stderr,
 			        "Unsupported AST node type in "
