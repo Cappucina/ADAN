@@ -15,5 +15,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: bash ./utils/dependencies.sh
       - name: test
         run: make build

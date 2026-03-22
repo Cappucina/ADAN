@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: bash ./dependencies.sh
+        run: bash ./utils/dependencies.sh
       - name: Build
         run: make build
       - name: Rename binary
@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: bash ./dependencies.sh
+        run: bash ./utils/dependencies.sh
       - name: Install zig
         run: brew install zig
       - name: Build
@@ -45,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: bash ./dependencies.sh
+        run: bash ./utils/dependencies.sh
       - name: Install zig
         run: brew install zig
       - name: Build
@@ -62,10 +62,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install zig
-        run: choco install zig -y
-      - name: Install ninja
-        run: choco install ninja -y
+      - name: Install dependencies
+        shell: pwsh
+        run: ./utils/dependencies.ps1
       - name: Build
         shell: pwsh
         run: |
