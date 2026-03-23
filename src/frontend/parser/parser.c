@@ -774,7 +774,7 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 	consume(parser, TOKEN_EQUALS, "Expected '=' after variable type.");
 	ASTNode* initializer = parse_expression(parser);
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after variable declaration.");
-s
+
 	if (name && type_name && !parser->recovery_mode)
 	{
 		parser_declare_variable(parser, name, type_name, 0);
