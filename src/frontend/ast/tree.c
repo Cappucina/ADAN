@@ -436,7 +436,8 @@ ASTNode* ast_create_boolean_literal(bool value, size_t line, size_t column)
 	return node;
 }
 
-ASTNode* ast_create_for(ASTNode* var_decl, ASTNode* condition, ASTNode* increment, ASTNode* body, size_t line, size_t column)
+ASTNode* ast_create_for(ASTNode* var_decl, ASTNode* condition, ASTNode* increment, ASTNode* body,
+                        size_t line, size_t column)
 {
 	ASTNode* node = ast_init(AST_FOR_STMT, line, column);
 	if (!node)

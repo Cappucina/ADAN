@@ -125,6 +125,10 @@ char* token_type_to_string(TokenType type)
 			return "GREATER_EQUAL";
 		case TOKEN_FOR:
 			return "FOR";
+		case TOKEN_LBRACKET:
+			return "LBRACKET";
+		case TOKEN_RBRACKET:
+			return "RBRACKET";
 		default:
 			return "UNKNOWN";
 	}

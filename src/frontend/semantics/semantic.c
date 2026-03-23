@@ -50,10 +50,10 @@ bool semantic_analyze(SemanticAnalyzer* analyzer)
 
 bool is_integer_type(const char* name)
 {
-	if (!name) return false;
-	return strcmp(name, "i8") == 0 || strcmp(name, "u8") == 0 ||
-	       strcmp(name, "i32") == 0 || strcmp(name, "u32") == 0 ||
-	       strcmp(name, "i64") == 0 || strcmp(name, "u64") == 0;
+	if (!name)
+		return false;
+	return strcmp(name, "i8") == 0 || strcmp(name, "u8") == 0 || strcmp(name, "i32") == 0 ||
+	       strcmp(name, "u32") == 0 || strcmp(name, "i64") == 0 || strcmp(name, "u64") == 0;
 }
 
 bool semantic_types_compatible(const char* expected, const char* actual)

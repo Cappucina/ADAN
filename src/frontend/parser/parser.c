@@ -346,7 +346,7 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 		return ast_create_expression_statement(call, tok_line, tok_column);
 	}
 
-	advance_token(parser); // Consume identifier
+	advance_token(parser);  // Consume identifier
 
 	ASTNode* value = NULL;
 	if (match(parser, TOKEN_EQUALS))
@@ -358,35 +358,43 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 	{
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
-		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column), right, tok_line, tok_column);
+		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column),
+		                             right, tok_line, tok_column);
 	}
 	else if (match(parser, TOKEN_MINUS_EQUALS))
 	{
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
-		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column), right, tok_line, tok_column);
+		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column),
+		                             right, tok_line, tok_column);
 	}
 	else if (match(parser, TOKEN_STAR_EQUALS))
 	{
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
-		value = ast_create_binary_op("*", ast_create_identifier(name, tok_line, tok_column), right, tok_line, tok_column);
+		value = ast_create_binary_op("*", ast_create_identifier(name, tok_line, tok_column),
+		                             right, tok_line, tok_column);
 	}
 	else if (match(parser, TOKEN_SLASH_EQUALS))
 	{
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
-		value = ast_create_binary_op("/", ast_create_identifier(name, tok_line, tok_column), right, tok_line, tok_column);
+		value = ast_create_binary_op("/", ast_create_identifier(name, tok_line, tok_column),
+		                             right, tok_line, tok_column);
 	}
 	else if (match(parser, TOKEN_PLUS_PLUS))
 	{
 		advance_token(parser);
-		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column), ast_create_number_literal("1", tok_line, tok_column), tok_line, tok_column);
+		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column),
+		                             ast_create_number_literal("1", tok_line, tok_column),
+		                             tok_line, tok_column);
 	}
 	else if (match(parser, TOKEN_MINUS_MINUS))
 	{
 		advance_token(parser);
-		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column), ast_create_number_literal("1", tok_line, tok_column), tok_line, tok_column);
+		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column),
+		                             ast_create_number_literal("1", tok_line, tok_column),
+		                             tok_line, tok_column);
 	}
 	else
 	{
@@ -417,13 +425,13 @@ static ASTNode* parse_while_statement(Parser* parser)
 static ASTNode* parse_for_statement(Parser* parser)
 {
 	size_t tok_line = peek_current(parser)->line;
-	size_t tok_col=peek_current(parser)->column;
+	size_t tok_col = peek_current(parser)->column;
 	consume(parser, TOKEN_FOR, "Expected 'for' keyword.");
 
 	ASTNode* var_decl = parse_variable_declaration(parser);
 	ASTNode* condition = parse_expression(parser);
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after for loop condition.");
-	
+
 	Token* inc_ident = peek_current(parser);
 	size_t tok_line_inc = inc_ident->line;
 	size_t tok_col_inc = inc_ident->column;
@@ -440,23 +448,33 @@ static ASTNode* parse_for_statement(Parser* parser)
 	{
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
-		inc_value = ast_create_binary_op("+", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc), right, tok_line_inc, tok_col_inc);
+		inc_value = ast_create_binary_op(
+		    "+", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc), right,
+		    tok_line_inc, tok_col_inc);
 	}
 	else if (match(parser, TOKEN_MINUS_EQUALS))
 	{
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
-		inc_value = ast_create_binary_op("-", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc), right, tok_line_inc, tok_col_inc);
+		inc_value = ast_create_binary_op(
+		    "-", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc), right,
+		    tok_line_inc, tok_col_inc);
 	}
 	else if (match(parser, TOKEN_PLUS_PLUS))
 	{
 		advance_token(parser);
-		inc_value = ast_create_binary_op("+", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc), ast_create_number_literal("1", tok_line_inc, tok_col_inc), tok_line_inc, tok_col_inc);
+		inc_value = ast_create_binary_op(
+		    "+", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc),
+		    ast_create_number_literal("1", tok_line_inc, tok_col_inc), tok_line_inc,
+		    tok_col_inc);
 	}
 	else if (match(parser, TOKEN_MINUS_MINUS))
 	{
 		advance_token(parser);
-		inc_value = ast_create_binary_op("-", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc), ast_create_number_literal("1", tok_line_inc, tok_col_inc), tok_line_inc, tok_col_inc);
+		inc_value = ast_create_binary_op(
+		    "-", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc),
+		    ast_create_number_literal("1", tok_line_inc, tok_col_inc), tok_line_inc,
+		    tok_col_inc);
 	}
 	else
 	{
@@ -740,13 +758,23 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 
 	char* type_name =
 	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
+	// probably works
+	if (peek_lookahead1(parser) && peek_lookahead1(parser)->type == TOKEN_LBRACKET &&
+		peek_lookahead2(parser) && peek_lookahead2(parser)->type == TOKEN_RBRACKET)
+	{
+		type_name = realloc(type_name, strlen(type_name) + 3);
+		strcat(type_name, "[]");
+		advance_token(parser); // consume '['
+		advance_token(parser); // consume ']'
+	}
+
 	printf("Parsing variable declaration for '%s' of type '%s'\n", name, type_name);
 	ASTNode* type = parse_type(parser);
 
 	consume(parser, TOKEN_EQUALS, "Expected '=' after variable type.");
 	ASTNode* initializer = parse_expression(parser);
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after variable declaration.");
-
+s
 	if (name && type_name && !parser->recovery_mode)
 	{
 		parser_declare_variable(parser, name, type_name, 0);

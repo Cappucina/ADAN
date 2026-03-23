@@ -64,10 +64,10 @@ typedef struct
 
 typedef struct
 {
-	ASTNode* var_decl;    // Variable declaration for loop variable
-	ASTNode* condition;   // Loop continuation condition
-	ASTNode* increment;   // Increment expression executed at the end of each loop iteration
-	ASTNode* body;        // Body of the for loop
+	ASTNode* var_decl;   // Variable declaration for loop variable
+	ASTNode* condition;  // Loop continuation condition
+	ASTNode* increment;  // Increment expression executed at the end of each loop iteration
+	ASTNode* body;       // Body of the for loop
 } ASTForStmt;
 
 typedef struct
@@ -237,7 +237,8 @@ ASTNode* ast_create_cast(ASTNode* target_type, ASTNode* expr, size_t line, size_
 
 ASTNode* ast_create_boolean_literal(bool value, size_t line, size_t column);
 
-ASTNode* ast_create_for(ASTNode* var_decl, ASTNode* condition, ASTNode* increment, ASTNode* body, size_t line, size_t column);
+ASTNode* ast_create_for(ASTNode* var_decl, ASTNode* condition, ASTNode* increment, ASTNode* body,
+                        size_t line, size_t column);
 
 // Debugging functions
 

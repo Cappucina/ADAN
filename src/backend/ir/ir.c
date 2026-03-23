@@ -301,11 +301,9 @@ IRValue* ir_emit_binop(IRBlock* block, const char* op, IRValue* lhs, IRValue* rh
 	}
 	ins->kind = IR_BINOP;
 	IRType* dest_type = lhs->type;
-	if (op && (strcmp(op, "==") == 0 || strcmp(op, "!==") == 0 ||
-	           strcmp(op, "<") == 0 || strcmp(op, ">") == 0 ||
-	           strcmp(op, "<=") == 0 || strcmp(op, ">=") == 0 ||
-	           strcmp(op, "and") == 0 || strcmp(op, "or") == 0 ||
-	           strcmp(op, "not") == 0))
+	if (op && (strcmp(op, "==") == 0 || strcmp(op, "!==") == 0 || strcmp(op, "<") == 0 ||
+	           strcmp(op, ">") == 0 || strcmp(op, "<=") == 0 || strcmp(op, ">=") == 0 ||
+	           strcmp(op, "and") == 0 || strcmp(op, "or") == 0 || strcmp(op, "not") == 0))
 	{
 		dest_type = ir_type_i64();
 	}
@@ -687,7 +685,7 @@ IRValue* ir_temp(IRBlock* block, IRType* type)
 		return NULL;
 	}
 	v->kind = IRV_TEMP;
-	v->u.i64 = 0; // Initialize union
+	v->u.i64 = 0;  // Initialize union
 	v->u.temp_id = next_temp++;
 	v->type = type;
 
@@ -748,7 +746,7 @@ IRValue* ir_param_create(IRFunction* f, const char* name, IRType* type)
 	}
 	static int next_param = 1;
 	v->kind = IRV_PARAM;
-	v->u.i64 = 0; // Initialize union
+	v->u.i64 = 0;  // Initialize union
 	v->u.temp_id = next_param++;
 	v->type = type;
 
@@ -786,7 +784,7 @@ IRValue* ir_global_create(IRModule* m, const char* name, IRType* type, IRValue* 
 		return NULL;
 	}
 	v->kind = IRV_GLOBAL;
-	v->u.i64 = 0; // Initialize union
+	v->u.i64 = 0;  // Initialize union
 	v->u.temp_id = 0;
 	v->type = ir_type_ptr(type);
 

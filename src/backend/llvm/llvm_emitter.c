@@ -632,7 +632,8 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								if (ins->opcode == 11)
 									icmp_op = "sge";
 
-								char* op_tstr = llvm_type_to_string(lhs->type);
+								char* op_tstr =
+								    llvm_type_to_string(lhs->type);
 								fprintf(out,
 								        "  %%cmp_%lu = icmp %s %s ",
 								        st.tmp_counter++, icmp_op,

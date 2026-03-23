@@ -301,13 +301,23 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				size_t ll = strlen(ls);
 				size_t rl = strlen(rs);
 				const char* raw_l =
-				    (ll >= 2 && ((ls[0] == '"' && ls[ll - 1] == '"') || (ls[0] == '`' && ls[ll - 1] == '`'))) ? ls + 1 : ls;
-				size_t raw_ll =
-				    (ll >= 2 && ((ls[0] == '"' && ls[ll - 1] == '"') || (ls[0] == '`' && ls[ll - 1] == '`'))) ? ll - 2 : ll;
+				    (ll >= 2 && ((ls[0] == '"' && ls[ll - 1] == '"') ||
+				                 (ls[0] == '`' && ls[ll - 1] == '`')))
+				        ? ls + 1
+				        : ls;
+				size_t raw_ll = (ll >= 2 && ((ls[0] == '"' && ls[ll - 1] == '"') ||
+				                             (ls[0] == '`' && ls[ll - 1] == '`')))
+				                    ? ll - 2
+				                    : ll;
 				const char* raw_r =
-				    (rl >= 2 && ((rs[0] == '"' && rs[rl - 1] == '"') || (rs[0] == '`' && rs[rl - 1] == '`'))) ? rs + 1 : rs;
-				size_t raw_rl =
-				    (rl >= 2 && ((rs[0] == '"' && rs[rl - 1] == '"') || (rs[0] == '`' && rs[rl - 1] == '`'))) ? rl - 2 : rl;
+				    (rl >= 2 && ((rs[0] == '"' && rs[rl - 1] == '"') ||
+				                 (rs[0] == '`' && rs[rl - 1] == '`')))
+				        ? rs + 1
+				        : rs;
+				size_t raw_rl = (rl >= 2 && ((rs[0] == '"' && rs[rl - 1] == '"') ||
+				                             (rs[0] == '`' && rs[rl - 1] == '`')))
+				                    ? rl - 2
+				                    : rl;
 				char* folded = (char*)malloc(raw_ll + raw_rl + 1);
 				if (folded)
 				{
@@ -515,7 +525,10 @@ void lower_statement(Program* program, ASTNode* node)
 
 			current_block = then_b;
 			lower_statement(program, node->if_stmt.then_branch);
-			if (current_block && (!current_block->last || (current_block->last->kind != IR_RET && current_block->last->kind != IR_BR && current_block->last->kind != IR_CBR)))
+			if (current_block &&
+			    (!current_block->last || (current_block->last->kind != IR_RET &&
+			                              current_block->last->kind != IR_BR &&
+			                              current_block->last->kind != IR_CBR)))
 			{
 				ir_emit_br(current_block, merge_b);
 			}
@@ -524,7 +537,10 @@ void lower_statement(Program* program, ASTNode* node)
 			{
 				current_block = else_b;
 				lower_statement(program, node->if_stmt.else_branch);
-				if (current_block && (!current_block->last || (current_block->last->kind != IR_RET && current_block->last->kind != IR_BR && current_block->last->kind != IR_CBR)))
+				if (current_block &&
+				    (!current_block->last || (current_block->last->kind != IR_RET &&
+				                              current_block->last->kind != IR_BR &&
+				                              current_block->last->kind != IR_CBR)))
 				{
 					ir_emit_br(current_block, merge_b);
 				}
@@ -542,9 +558,12 @@ void lower_statement(Program* program, ASTNode* node)
 				return;
 			}
 
-			IRBlock* cond_b = ir_block_create_in_function(current_function, "while_cond");
-			IRBlock* body_b = ir_block_create_in_function(current_function, "while_body");
-			IRBlock* merge_b = ir_block_create_in_function(current_function, "while_merge");
+			IRBlock* cond_b =
+			    ir_block_create_in_function(current_function, "while_cond");
+			IRBlock* body_b =
+			    ir_block_create_in_function(current_function, "while_body");
+			IRBlock* merge_b =
+			    ir_block_create_in_function(current_function, "while_merge");
 
 			ir_emit_br(current_block, cond_b);
 
@@ -554,7 +573,10 @@ void lower_statement(Program* program, ASTNode* node)
 
 			current_block = body_b;
 			lower_statement(program, node->while_stmt.body);
-			if (current_block && (!current_block->last || (current_block->last->kind != IR_RET && current_block->last->kind != IR_BR && current_block->last->kind != IR_CBR)))
+			if (current_block &&
+			    (!current_block->last || (current_block->last->kind != IR_RET &&
+			                              current_block->last->kind != IR_BR &&
+			                              current_block->last->kind != IR_CBR)))
 			{
 				ir_emit_br(current_block, cond_b);
 			}
@@ -578,8 +600,9 @@ void lower_statement(Program* program, ASTNode* node)
 
 			IRBlock* cond_b = ir_block_create_in_function(current_function, "for_cond");
 			IRBlock* body_b = ir_block_create_in_function(current_function, "for_body");
-			IRBlock* inc_b  = ir_block_create_in_function(current_function, "for_inc");
-			IRBlock* merge_b = ir_block_create_in_function(current_function, "for_merge");
+			IRBlock* inc_b = ir_block_create_in_function(current_function, "for_inc");
+			IRBlock* merge_b =
+			    ir_block_create_in_function(current_function, "for_merge");
 
 			ir_emit_br(current_block, cond_b);
 
@@ -592,7 +615,10 @@ void lower_statement(Program* program, ASTNode* node)
 			{
 				lower_statement(program, node->for_stmt.body);
 			}
-			if (current_block && (!current_block->last || (current_block->last->kind != IR_RET && current_block->last->kind != IR_BR && current_block->last->kind != IR_CBR)))
+			if (current_block &&
+			    (!current_block->last || (current_block->last->kind != IR_RET &&
+			                              current_block->last->kind != IR_BR &&
+			                              current_block->last->kind != IR_CBR)))
 			{
 				ir_emit_br(current_block, inc_b);
 			}
@@ -600,7 +626,9 @@ void lower_statement(Program* program, ASTNode* node)
 			current_block = inc_b;
 			if (node->for_stmt.increment)
 			{
-				if (node->for_stmt.increment->type == AST_ASSIGNMENT || node->for_stmt.increment->type == AST_EXPRESSION_STATEMENT || node->for_stmt.increment->type == AST_CALL)
+				if (node->for_stmt.increment->type == AST_ASSIGNMENT ||
+				    node->for_stmt.increment->type == AST_EXPRESSION_STATEMENT ||
+				    node->for_stmt.increment->type == AST_CALL)
 				{
 					lower_statement(program, node->for_stmt.increment);
 				}
