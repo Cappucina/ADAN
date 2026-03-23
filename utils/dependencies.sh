@@ -116,22 +116,22 @@ install_packages() {
 get_package_names() {
     case $PKG_MGR in
     apt)
-        PACKAGES="build-essential cmake clang-format gdb less binutils"
+        PACKAGES="build-essential cmake clang clang-format gdb less binutils"
         ;;
     dnf | yum)
-        PACKAGES="gcc make cmake clang-tools-extra gdb"
+        PACKAGES="gcc make cmake clang clang-tools-extra gdb"
         ;;
     pacman)
-        PACKAGES="base-devel cmake clang gdb"
+        PACKAGES="base-devel cmake clang clang-format gdb"
         ;;
     zypper)
-        PACKAGES="gcc make cmake clang-tools gdb"
+        PACKAGES="gcc make cmake clang clang-tools gdb"
         ;;
     apk)
-        PACKAGES="build-base cmake clang-extra-tools gdb"
+        PACKAGES="build-base cmake clang clang-extra-tools gdb"
         ;;
     brew)
-        PACKAGES="cmake clang-format"
+        PACKAGES="cmake clang clang-format"
         ;;
     esac
 }

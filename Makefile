@@ -7,7 +7,7 @@ SAMPLE_OUT = samples/testing
 
 .PHONY: all build run emit link clean format build-macos-arm64 build-macos-x86_64 build-macos
 
-all: build run
+all: install build run
 
 build: clean
 	@mkdir -p $(BUILD_DIR)
