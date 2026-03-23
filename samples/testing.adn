@@ -1,12 +1,7 @@
 import "adan/io";
 
-set dihthon: bool = false;
-
 fun main(): i32 {
-    //println("The ADAN compiler is working as expected!");
-    if not dihthon {
-        println("dih");
-    }
+    println("The ADAN compiler is working as expected!");
 
     return 0; // Success; 1 = Failure.
 }
