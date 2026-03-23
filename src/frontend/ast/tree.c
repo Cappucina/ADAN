@@ -59,6 +59,12 @@ void ast_free(ASTNode* node)
 			ast_free(node->while_stmt.condition);
 			ast_free(node->while_stmt.body);
 			break;
+		case AST_FOR_STMT:
+			ast_free(node->for_stmt.var_decl);
+			ast_free(node->for_stmt.condition);
+			ast_free(node->for_stmt.increment);
+			ast_free(node->for_stmt.body);
+			break;
 		case AST_VARIABLE_DECLARATION:
 			free(node->var_decl.name);
 			ast_free(node->var_decl.type);
@@ -430,6 +436,21 @@ ASTNode* ast_create_boolean_literal(bool value, size_t line, size_t column)
 	return node;
 }
 
+ASTNode* ast_create_for(ASTNode* var_decl, ASTNode* condition, ASTNode* increment, ASTNode* body, size_t line, size_t column)
+{
+	ASTNode* node = ast_init(AST_FOR_STMT, line, column);
+	if (!node)
+	{
+		fprintf(stderr, "Failed to create AST for node! (Error)\n");
+		return NULL;
+	}
+	node->for_stmt.var_decl = var_decl;
+	node->for_stmt.condition = condition;
+	node->for_stmt.increment = increment;
+	node->for_stmt.body = body;
+	return node;
+}
+
 ASTNode* ast_create_if(ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch, size_t line,
                        size_t column)
 {
@@ -527,6 +548,37 @@ void ast_print(ASTNode* node, int indent)
 			}
 			printf("Body:\n");
 			ast_print(node->while_stmt.body, indent + 2);
+			break;
+		case AST_FOR_STMT:
+			for (int i = 0; i < indent; i++)
+			{
+				printf("  ");
+			}
+			printf("ForStatement:\n");
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("VarDecl:\n");
+			ast_print(node->for_stmt.var_decl, indent + 2);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Condition:\n");
+			ast_print(node->for_stmt.condition, indent + 2);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Increment:\n");
+			ast_print(node->for_stmt.increment, indent + 2);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Body:\n");
+			ast_print(node->for_stmt.body, indent + 2);
 			break;
 		case AST_VARIABLE_DECLARATION:
 			printf("Variable Declaration: %s\n", node->var_decl.name);

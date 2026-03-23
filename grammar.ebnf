@@ -10,7 +10,7 @@ AND_EXPR = NOT_EXPR, { 'and', NOT_EXPR } ;
 
 NOT_EXPR = [ 'not' ], COMP_EXPR ;
 
-COMP_EXPR = ARITH_EXPR, { ( '==' | '!=' | '<' | '<=' | '>' | '>=' ), ARITH_EXPR } ;
+COMP_EXPR = ARITH_EXPR, { ( '==' | '!==' | '<' | '<=' | '>' | '>=' ), ARITH_EXPR } ;
 
 ARITH_EXPR = TERM, { ('+' | '-'), TERM } ;
 
@@ -20,11 +20,13 @@ COMMAND    = LETTERS, ( '=' | '+=' | '-=' | '*=' | '/=' ), EXPRESSION, ';' ;
 
 INCREMENT  = LETTERS, ( '++' | '--' ), ';' ;
 
-STATEMENTS = { IF_STMT | WHILE_STMT | COMMAND | INCREMENT | VAR_DECL | EXPRESSION_STATEMENT | RETURN_STMT } ;
+STATEMENTS = { IF_STMT | WHILE_STMT | FOR_STMT | COMMAND | INCREMENT | VAR_DECL | EXPRESSION_STATEMENT | RETURN_STMT } ;
 
 IF_STMT = 'if', EXPRESSION, '{', STATEMENTS, '}', [ 'else', ( IF_STMT | '{', STATEMENTS, '}' ) ] ;
 
 WHILE_STMT = 'while', EXPRESSION, '{', STATEMENTS, '}' ;
+
+FOR_STMT = 'for', VAR_DECL, EXPRESSION, ';', EXPRESSION, '{', STATEMENTS, '}' ;
 
 FACTOR = VALUE | LETTERS | '(', EXPRESSION, ')' | FUNCTION_CALL | INTERPOLATED_STRING ;
 

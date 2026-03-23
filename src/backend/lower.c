@@ -301,23 +301,13 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				size_t ll = strlen(ls);
 				size_t rl = strlen(rs);
 				const char* raw_l =
-				    (ll >= 2 && ((ls[0] == '"' && ls[ll - 1] == '"') ||
-				                 (ls[0] == '`' && ls[ll - 1] == '`')))
-				        ? ls + 1
-				        : ls;
-				size_t raw_ll = (ll >= 2 && ((ls[0] == '"' && ls[ll - 1] == '"') ||
-				                             (ls[0] == '`' && ls[ll - 1] == '`')))
-				                    ? ll - 2
-				                    : ll;
+				    (ll >= 2 && ((ls[0] == '"' && ls[ll - 1] == '"') || (ls[0] == '`' && ls[ll - 1] == '`'))) ? ls + 1 : ls;
+				size_t raw_ll =
+				    (ll >= 2 && ((ls[0] == '"' && ls[ll - 1] == '"') || (ls[0] == '`' && ls[ll - 1] == '`'))) ? ll - 2 : ll;
 				const char* raw_r =
-				    (rl >= 2 && ((rs[0] == '"' && rs[rl - 1] == '"') ||
-				                 (rs[0] == '`' && rs[rl - 1] == '`')))
-				        ? rs + 1
-				        : rs;
-				size_t raw_rl = (rl >= 2 && ((rs[0] == '"' && rs[rl - 1] == '"') ||
-				                             (rs[0] == '`' && rs[rl - 1] == '`')))
-				                    ? rl - 2
-				                    : rl;
+				    (rl >= 2 && ((rs[0] == '"' && rs[rl - 1] == '"') || (rs[0] == '`' && rs[rl - 1] == '`'))) ? rs + 1 : rs;
+				size_t raw_rl =
+				    (rl >= 2 && ((rs[0] == '"' && rs[rl - 1] == '"') || (rs[0] == '`' && rs[rl - 1] == '`'))) ? rl - 2 : rl;
 				char* folded = (char*)malloc(raw_ll + raw_rl + 1);
 				if (folded)
 				{
@@ -394,7 +384,6 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				return NULL;
 			}
 
-			// Determine source type from inner value
 			int src_is_ptr = (inner->type && inner->type->kind == IR_T_PTR);
 			int dst_is_string = (strcmp(target, "string") == 0);
 			int dst_is_int =
@@ -427,7 +416,6 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			}
 			else if (dst_is_int && src_is_ptr)
 			{
-				// string -> int: call adn_string_to_i32
 				IRFunction* conv_fn = NULL;
 				IRFunction* it = program->ir->functions;
 				while (it)
@@ -450,7 +438,6 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			}
 			else
 			{
-				// Same type or unsupported — pass through
 				return inner;
 			}
 		}
@@ -528,13 +515,19 @@ void lower_statement(Program* program, ASTNode* node)
 
 			current_block = then_b;
 			lower_statement(program, node->if_stmt.then_branch);
-			ir_emit_br(current_block, merge_b);
+			if (current_block && (!current_block->last || (current_block->last->kind != IR_RET && current_block->last->kind != IR_BR && current_block->last->kind != IR_CBR)))
+			{
+				ir_emit_br(current_block, merge_b);
+			}
 
 			if (else_b)
 			{
 				current_block = else_b;
 				lower_statement(program, node->if_stmt.else_branch);
-				ir_emit_br(current_block, merge_b);
+				if (current_block && (!current_block->last || (current_block->last->kind != IR_RET && current_block->last->kind != IR_BR && current_block->last->kind != IR_CBR)))
+				{
+					ir_emit_br(current_block, merge_b);
+				}
 			}
 
 			current_block = merge_b;
@@ -549,12 +542,9 @@ void lower_statement(Program* program, ASTNode* node)
 				return;
 			}
 
-			IRBlock* cond_b =
-			    ir_block_create_in_function(current_function, "while_cond");
-			IRBlock* body_b =
-			    ir_block_create_in_function(current_function, "while_body");
-			IRBlock* merge_b =
-			    ir_block_create_in_function(current_function, "while_merge");
+			IRBlock* cond_b = ir_block_create_in_function(current_function, "while_cond");
+			IRBlock* body_b = ir_block_create_in_function(current_function, "while_body");
+			IRBlock* merge_b = ir_block_create_in_function(current_function, "while_merge");
 
 			ir_emit_br(current_block, cond_b);
 
@@ -564,6 +554,61 @@ void lower_statement(Program* program, ASTNode* node)
 
 			current_block = body_b;
 			lower_statement(program, node->while_stmt.body);
+			if (current_block && (!current_block->last || (current_block->last->kind != IR_RET && current_block->last->kind != IR_BR && current_block->last->kind != IR_CBR)))
+			{
+				ir_emit_br(current_block, cond_b);
+			}
+
+			current_block = merge_b;
+			break;
+		}
+		case AST_FOR_STMT:
+		{
+			if (!current_block)
+			{
+				fprintf(stderr,
+				        "No current block to emit for statement into. (Error)\n");
+				return;
+			}
+
+			if (node->for_stmt.var_decl)
+			{
+				lower_statement(program, node->for_stmt.var_decl);
+			}
+
+			IRBlock* cond_b = ir_block_create_in_function(current_function, "for_cond");
+			IRBlock* body_b = ir_block_create_in_function(current_function, "for_body");
+			IRBlock* inc_b  = ir_block_create_in_function(current_function, "for_inc");
+			IRBlock* merge_b = ir_block_create_in_function(current_function, "for_merge");
+
+			ir_emit_br(current_block, cond_b);
+
+			current_block = cond_b;
+			IRValue* cond = lower_expression(program, node->for_stmt.condition);
+			ir_emit_cbr(current_block, cond, body_b, merge_b);
+
+			current_block = body_b;
+			if (node->for_stmt.body)
+			{
+				lower_statement(program, node->for_stmt.body);
+			}
+			if (current_block && (!current_block->last || (current_block->last->kind != IR_RET && current_block->last->kind != IR_BR && current_block->last->kind != IR_CBR)))
+			{
+				ir_emit_br(current_block, inc_b);
+			}
+
+			current_block = inc_b;
+			if (node->for_stmt.increment)
+			{
+				if (node->for_stmt.increment->type == AST_ASSIGNMENT || node->for_stmt.increment->type == AST_EXPRESSION_STATEMENT || node->for_stmt.increment->type == AST_CALL)
+				{
+					lower_statement(program, node->for_stmt.increment);
+				}
+				else
+				{
+					lower_expression(program, node->for_stmt.increment);
+				}
+			}
 			ir_emit_br(current_block, cond_b);
 
 			current_block = merge_b;
@@ -730,7 +775,8 @@ static IRType* lower_type(Program* program, ASTNode* node)
 
 	if (strcmp(type_name, "i64") == 0 || strcmp(type_name, "i32") == 0 ||
 	    strcmp(type_name, "u32") == 0 || strcmp(type_name, "u64") == 0 ||
-	    strcmp(type_name, "bool") == 0)
+	    strcmp(type_name, "bool") == 0 || strcmp(type_name, "i8") == 0 ||
+	    strcmp(type_name, "u8") == 0)
 	{
 		return ir_type_i64();
 	}

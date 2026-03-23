@@ -19,8 +19,11 @@ const Keyword keywords[] = {
     {"or", TOKEN_OR},
     {"and", TOKEN_AND},
     {"not", TOKEN_NOT},
+	{"for", TOKEN_FOR},
 
     {"string", TOKEN_STRING_TYPE},
+	{"u8", TOKEN_U8_TYPE},
+	{"i8", TOKEN_I8_TYPE},
     {"i32", TOKEN_I32_TYPE},
     {"i64", TOKEN_I64_TYPE},
     {"u32", TOKEN_U32_TYPE},
@@ -466,11 +469,20 @@ Token* scan_next_token(Scanner* scanner)
 			if (peek(scanner) == '=')
 			{
 				advance(scanner);
-				return make_token(TOKEN_BANG_EQUALS, token_col, token_line,
-				                  clone_string("!=", 2), 2);
+				if (peek(scanner) == '=')
+				{
+					advance(scanner);
+					return make_token(TOKEN_BANG_EQUALS, token_col, token_line,
+					                  clone_string("!==", 3), 3);
+				}
+				fprintf(stderr,
+				        "Unexpected character '=' after '!' at line %zu, column %zu. "
+				        "Did you mean '!=='?\n",
+				        token_line, token_col + 1);
+				return scan_next_token(scanner);
 			}
-			printf("Unexpected character '!' at line %zu, column %zu\n", token_line,
-			       token_col);
+			fprintf(stderr, "Unexpected character '!' at line %zu, column %zu\n",
+			        token_line, token_col);
 			return scan_next_token(scanner);
 		case '<':
 			advance(scanner);

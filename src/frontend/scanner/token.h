@@ -21,6 +21,7 @@ typedef enum TokenType
 	TOKEN_OR,   // or
 	TOKEN_AND,  // and
 	TOKEN_NOT,  // not
+	TOKEN_FOR,
 
 	// Types
 	TOKEN_STRING_TYPE,

@@ -23,6 +23,7 @@ typedef enum ASTNodeType
 	AST_RETURN_STATEMENT,
 	AST_EXPRESSION_STATEMENT,  // Expression used as a statement.
 	AST_WHILE_STMT,            // While loop
+	AST_FOR_STMT,              // For loop
 	AST_BINARY_OP,             // Binary arithmetic/logic expression.
 	AST_ASSIGNMENT,            // Reassignment. `set name = expr;`
 	AST_CAST,                  // Type cast expression. `(type)expr`
@@ -60,6 +61,14 @@ typedef struct
 	ASTNode* condition;
 	ASTNode* body;
 } ASTWhileStmt;
+
+typedef struct
+{
+	ASTNode* var_decl;    // Variable declaration for loop variable
+	ASTNode* condition;   // Loop continuation condition
+	ASTNode* increment;   // Increment expression executed at the end of each loop iteration
+	ASTNode* body;        // Body of the for loop
+} ASTForStmt;
 
 typedef struct
 {
@@ -174,6 +183,7 @@ struct ASTNode
 		ASTCast cast;
 		ASTBooleanLiteral boolean_literal;
 		ASTWhileStmt while_stmt;
+		ASTForStmt for_stmt;
 	};
 };
 
@@ -226,6 +236,8 @@ ASTNode* ast_create_assignment(const char* name, ASTNode* value, size_t line, si
 ASTNode* ast_create_cast(ASTNode* target_type, ASTNode* expr, size_t line, size_t column);
 
 ASTNode* ast_create_boolean_literal(bool value, size_t line, size_t column);
+
+ASTNode* ast_create_for(ASTNode* var_decl, ASTNode* condition, ASTNode* increment, ASTNode* body, size_t line, size_t column);
 
 // Debugging functions
 

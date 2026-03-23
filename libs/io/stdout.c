@@ -13,7 +13,6 @@ void adn_println(const char* message)
 		return;
 	}
 	size_t len = strlen(message);
-	// Strip surrounding quotes if present
 	const char* start = message;
 	size_t print_len = len;
 	if (len >= 2 && ((message[0] == '"' && message[len - 1] == '"') ||

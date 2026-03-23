@@ -26,6 +26,8 @@ bool semantic_types_compatible(const char* expected, const char* actual);
 
 void semantic_error(SemanticAnalyzer* analyzer, ASTNode* node, const char* message);
 
+bool is_integer_type(const char* name);
+
 void semantic_warning(SemanticAnalyzer* analyzer, ASTNode* node, const char* message);
 
 #endif

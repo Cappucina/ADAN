@@ -124,7 +124,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 			continue;
 		}
 		IRValue* gv = g->value;
-		if (gv->u.i64)
+		if (gv->type && gv->type->kind == IR_T_PTR && gv->u.i64)
 		{
 			const char* s = (const char*)(intptr_t)gv->u.i64;
 			if (s)
@@ -632,14 +632,16 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								if (ins->opcode == 11)
 									icmp_op = "sge";
 
+								char* op_tstr = llvm_type_to_string(lhs->type);
 								fprintf(out,
 								        "  %%cmp_%lu = icmp %s %s ",
 								        st.tmp_counter++, icmp_op,
-								        tstr ? tstr : "i64");
+								        op_tstr ? op_tstr : "i64");
 								es_emit_value_rep(&st, out, lhs);
 								fprintf(out, ", ");
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
+								free(op_tstr);
 								fprintf(out,
 								        "  %s = zext i1 %%cmp_%lu "
 								        "to %s\n",
@@ -667,9 +669,6 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								fprintf(out, "\n");
 								break;
 							case 15:  // not (unary trick)
-								// ADAN expects boolean as i64 (0 or
-								// 1). NOT of 0 is 1. NOT of 1 is 0.
-								// Wait, NOT of non-zero is 0.
 								fprintf(out,
 								        "  %%cmp_%lu = icmp eq %s ",
 								        st.tmp_counter++,

@@ -48,13 +48,31 @@ bool semantic_analyze(SemanticAnalyzer* analyzer)
 	return !analyzer->has_errors;
 }
 
+bool is_integer_type(const char* name)
+{
+	if (!name) return false;
+	return strcmp(name, "i8") == 0 || strcmp(name, "u8") == 0 ||
+	       strcmp(name, "i32") == 0 || strcmp(name, "u32") == 0 ||
+	       strcmp(name, "i64") == 0 || strcmp(name, "u64") == 0;
+}
+
 bool semantic_types_compatible(const char* expected, const char* actual)
 {
 	if (!expected || !actual)
 	{
 		return false;
 	}
-	return strcmp(expected, actual) == 0;
+	// Strict match
+	if (strcmp(expected, actual) == 0)
+	{
+		return true;
+	}
+	// Interchangeable integers
+	if (is_integer_type(expected) && is_integer_type(actual))
+	{
+		return true;
+	}
+	return false;
 }
 
 void semantic_error(SemanticAnalyzer* analyzer, ASTNode* node, const char* message)

@@ -19,6 +19,8 @@ void validate_if_statement(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_while_statement(SemanticAnalyzer* analyzer, ASTNode* node);
 
+void validate_for_statement(SemanticAnalyzer* analyzer, ASTNode* node);
+
 void validate_variable_declaration(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_import_statement(SemanticAnalyzer* analyzer, ASTNode* node);
@@ -67,6 +69,9 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 			break;
 		case AST_WHILE_STMT:
 			validate_while_statement(analyzer, node);
+			break;
+		case AST_FOR_STMT:
+			validate_for_statement(analyzer, node);
 			break;
 		case AST_VARIABLE_DECLARATION:
 			validate_variable_declaration(analyzer, node);
@@ -407,7 +412,7 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 			const char* op = node->binary_op.op;
 			if (op)
 			{
-				if (strcmp(op, "==") == 0 || strcmp(op, "!=") == 0 ||
+				if (strcmp(op, "==") == 0 || strcmp(op, "!==") == 0 ||
 				    strcmp(op, "<") == 0 || strcmp(op, "<=") == 0 ||
 				    strcmp(op, ">") == 0 || strcmp(op, ">=") == 0 ||
 				    strcmp(op, "and") == 0 || strcmp(op, "or") == 0 ||
@@ -718,6 +723,33 @@ void validate_while_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 
 	validate_node(analyzer, node->while_stmt.condition);
 	validate_node(analyzer, node->while_stmt.body);
+}
+
+void validate_for_statement(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	if (!analyzer || !node)
+	{
+		return;
+	}
+
+	if (!node->for_stmt.var_decl || !node->for_stmt.condition || !node->for_stmt.increment ||
+	    !node->for_stmt.body)
+	{
+		semantic_error(
+		    analyzer, node,
+		    "For statement missing variable declaration, condition, increment, or body.");
+		return;
+	}
+
+	sts_push_scope(analyzer->symbol_table_stack);
+
+	validate_variable_declaration(analyzer, node->for_stmt.var_decl);
+	validate_node(analyzer, node->for_stmt.condition);
+	validate_node(analyzer, node->for_stmt.increment);
+
+	validate_node(analyzer, node->for_stmt.body);
+
+	sts_pop_scope(analyzer->symbol_table_stack);
 }
 
 void validate_variable_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
@@ -1056,9 +1088,8 @@ void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node)
 	const char* rt = resolve_expression_type(analyzer, node->binary_op.right);
 	if ((lt && strcmp(lt, "string") == 0) || (rt && strcmp(rt, "string") == 0))
 	{
-		if (lt && rt && strcmp(lt, "string") == 0 &&
-		    (strcmp(rt, "i32") == 0 || strcmp(rt, "i64") == 0) && node->binary_op.op &&
-		    strcmp(node->binary_op.op, "+") == 0)
+		if (lt && rt && strcmp(lt, "string") == 0 && is_integer_type(rt) &&
+		    node->binary_op.op && strcmp(node->binary_op.op, "+") == 0)
 		{
 			ASTNode* cast_type = ast_create_type("string", node->binary_op.right->line,
 			                                     node->binary_op.right->column);
@@ -1066,9 +1097,8 @@ void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node)
 			                                        node->binary_op.right->line,
 			                                        node->binary_op.right->column);
 		}
-		else if (lt && rt && strcmp(rt, "string") == 0 &&
-		         (strcmp(lt, "i32") == 0 || strcmp(lt, "i64") == 0) && node->binary_op.op &&
-		         strcmp(node->binary_op.op, "+") == 0)
+		else if (lt && rt && strcmp(rt, "string") == 0 && is_integer_type(lt) &&
+		         node->binary_op.op && strcmp(node->binary_op.op, "+") == 0)
 		{
 			ASTNode* cast_type = ast_create_type("string", node->binary_op.left->line,
 			                                     node->binary_op.left->column);
@@ -1082,11 +1112,13 @@ void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node)
 			    analyzer, node,
 			    "Type mismatch: cannot mix string and non-string in binary operation.");
 		}
-		else if (!node->binary_op.op || strcmp(node->binary_op.op, "+") != 0)
+		else if (!node->binary_op.op || (strcmp(node->binary_op.op, "+") != 0 &&
+		                                 strcmp(node->binary_op.op, "==") != 0 &&
+		                                 strcmp(node->binary_op.op, "!==") != 0))
 		{
-			semantic_error(
-			    analyzer, node,
-			    "Operator not supported for string type; only '+' is allowed.");
+			semantic_error(analyzer, node,
+			               "Operator not supported for string type; only '+', '==', "
+			               "and '!==' are allowed.");
 		}
 	}
 }

@@ -76,7 +76,11 @@ static ASTNode* parse_statement(Parser* parser);
 static ASTNode* parse_function_declaration(Parser* parser);
 
 static ASTNode* parse_if_statement(Parser* parser);
+
 static ASTNode* parse_while_statement(Parser* parser);
+
+static ASTNode* parse_for_statement(Parser* parser);
+
 static ASTNode* parse_variable_declaration(Parser* parser);
 
 static ASTNode* parse_import_statement(Parser* parser);
@@ -164,7 +168,8 @@ static ASTNode* parse_type(Parser* parser)
 	    match(parser, TOKEN_I64_TYPE) || match(parser, TOKEN_U32_TYPE) ||
 	    match(parser, TOKEN_U64_TYPE) || match(parser, TOKEN_VOID_TYPE) ||
 	    match(parser, TOKEN_F32_TYPE) || match(parser, TOKEN_F64_TYPE) ||
-	    match(parser, TOKEN_BOOL_TYPE))
+	    match(parser, TOKEN_BOOL_TYPE) || match(parser, TOKEN_I8_TYPE) ||
+	    match(parser, TOKEN_U8_TYPE))
 	{
 		size_t tok_line = peek_current(parser)->line;
 		size_t tok_column = peek_current(parser)->column;
@@ -331,7 +336,6 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 	size_t tok_column = ident->column;
 	char* name = clone_string(ident->lexeme, ident->length);
 
-	// Lookahead to see what kind of statement this is
 	Token* next = peek_lookahead1(parser);
 	if (next && next->type == TOKEN_LPAREN)
 	{
@@ -342,7 +346,7 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 		return ast_create_expression_statement(call, tok_line, tok_column);
 	}
 
-	advance_token(parser);  // Consume identifier
+	advance_token(parser); // Consume identifier
 
 	ASTNode* value = NULL;
 	if (match(parser, TOKEN_EQUALS))
@@ -354,43 +358,35 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 	{
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
-		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column),
-		                             right, tok_line, tok_column);
+		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column), right, tok_line, tok_column);
 	}
 	else if (match(parser, TOKEN_MINUS_EQUALS))
 	{
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
-		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column),
-		                             right, tok_line, tok_column);
+		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column), right, tok_line, tok_column);
 	}
 	else if (match(parser, TOKEN_STAR_EQUALS))
 	{
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
-		value = ast_create_binary_op("*", ast_create_identifier(name, tok_line, tok_column),
-		                             right, tok_line, tok_column);
+		value = ast_create_binary_op("*", ast_create_identifier(name, tok_line, tok_column), right, tok_line, tok_column);
 	}
 	else if (match(parser, TOKEN_SLASH_EQUALS))
 	{
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
-		value = ast_create_binary_op("/", ast_create_identifier(name, tok_line, tok_column),
-		                             right, tok_line, tok_column);
+		value = ast_create_binary_op("/", ast_create_identifier(name, tok_line, tok_column), right, tok_line, tok_column);
 	}
 	else if (match(parser, TOKEN_PLUS_PLUS))
 	{
 		advance_token(parser);
-		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column),
-		                             ast_create_number_literal("1", tok_line, tok_column),
-		                             tok_line, tok_column);
+		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column), ast_create_number_literal("1", tok_line, tok_column), tok_line, tok_column);
 	}
 	else if (match(parser, TOKEN_MINUS_MINUS))
 	{
 		advance_token(parser);
-		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column),
-		                             ast_create_number_literal("1", tok_line, tok_column),
-		                             tok_line, tok_column);
+		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column), ast_create_number_literal("1", tok_line, tok_column), tok_line, tok_column);
 	}
 	else
 	{
@@ -416,6 +412,63 @@ static ASTNode* parse_while_statement(Parser* parser)
 	ASTNode* body = parse_block(parser);
 
 	return ast_create_while(condition, body, tok_line, tok_column);
+}
+
+static ASTNode* parse_for_statement(Parser* parser)
+{
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_col=peek_current(parser)->column;
+	consume(parser, TOKEN_FOR, "Expected 'for' keyword.");
+
+	ASTNode* var_decl = parse_variable_declaration(parser);
+	ASTNode* condition = parse_expression(parser);
+	consume(parser, TOKEN_SEMICOLON, "Expected ';' after for loop condition.");
+	
+	Token* inc_ident = peek_current(parser);
+	size_t tok_line_inc = inc_ident->line;
+	size_t tok_col_inc = inc_ident->column;
+	char* inc_name = clone_string(inc_ident->lexeme, inc_ident->length);
+	consume(parser, TOKEN_IDENT, "Expected identifier for loop increment.");
+
+	ASTNode* inc_value = NULL;
+	if (match(parser, TOKEN_EQUALS))
+	{
+		advance_token(parser);
+		inc_value = parse_expression(parser);
+	}
+	else if (match(parser, TOKEN_PLUS_EQUALS))
+	{
+		advance_token(parser);
+		ASTNode* right = parse_expression(parser);
+		inc_value = ast_create_binary_op("+", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc), right, tok_line_inc, tok_col_inc);
+	}
+	else if (match(parser, TOKEN_MINUS_EQUALS))
+	{
+		advance_token(parser);
+		ASTNode* right = parse_expression(parser);
+		inc_value = ast_create_binary_op("-", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc), right, tok_line_inc, tok_col_inc);
+	}
+	else if (match(parser, TOKEN_PLUS_PLUS))
+	{
+		advance_token(parser);
+		inc_value = ast_create_binary_op("+", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc), ast_create_number_literal("1", tok_line_inc, tok_col_inc), tok_line_inc, tok_col_inc);
+	}
+	else if (match(parser, TOKEN_MINUS_MINUS))
+	{
+		advance_token(parser);
+		inc_value = ast_create_binary_op("-", ast_create_identifier(inc_name, tok_line_inc, tok_col_inc), ast_create_number_literal("1", tok_line_inc, tok_col_inc), tok_line_inc, tok_col_inc);
+	}
+	else
+	{
+		error_expected(parser, "assignment or increment operator");
+	}
+
+	ASTNode* increment = ast_create_assignment(inc_name, inc_value, tok_line_inc, tok_col_inc);
+	free(inc_name);
+
+	ASTNode* body = parse_block(parser);
+
+	return ast_create_for(var_decl, condition, increment, body, tok_line, tok_col);
 }
 
 static ASTNode* parse_expression(Parser* parser)
@@ -467,9 +520,6 @@ static ASTNode* parse_not(Parser* parser)
 		ASTNode* right = parse_comparison(parser);
 		if (!right)
 			return NULL;
-		// A NOT operator is essentially a bitwise or logical inversion. Wait, ADAN uses
-		// `not` right? Can represented as binary op with NULL left, or unary. Our binary op
-		// supports left and right. For unary, usually left is NULL.
 		return ast_create_binary_op("not", NULL, right, op_line, op_col);
 	}
 	return parse_comparison(parser);
@@ -798,6 +848,8 @@ static ASTNode* parse_statement(Parser* parser)
 			return parse_if_statement(parser);
 		case TOKEN_WHILE:
 			return parse_while_statement(parser);
+		case TOKEN_FOR:
+			return parse_for_statement(parser);
 		case TOKEN_SET:
 			return parse_variable_declaration(parser);
 		case TOKEN_RETURN:

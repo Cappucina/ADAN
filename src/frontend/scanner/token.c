@@ -123,6 +123,8 @@ char* token_type_to_string(TokenType type)
 			return "GREATER";
 		case TOKEN_GREATER_EQUAL:
 			return "GREATER_EQUAL";
+		case TOKEN_FOR:
+			return "FOR";
 		default:
 			return "UNKNOWN";
 	}

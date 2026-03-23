@@ -300,7 +300,16 @@ IRValue* ir_emit_binop(IRBlock* block, const char* op, IRValue* lhs, IRValue* rh
 		return NULL;
 	}
 	ins->kind = IR_BINOP;
-	IRValue* dst = ir_temp(block, lhs->type);
+	IRType* dest_type = lhs->type;
+	if (op && (strcmp(op, "==") == 0 || strcmp(op, "!==") == 0 ||
+	           strcmp(op, "<") == 0 || strcmp(op, ">") == 0 ||
+	           strcmp(op, "<=") == 0 || strcmp(op, ">=") == 0 ||
+	           strcmp(op, "and") == 0 || strcmp(op, "or") == 0 ||
+	           strcmp(op, "not") == 0))
+	{
+		dest_type = ir_type_i64();
+	}
+	IRValue* dst = ir_temp(block, dest_type);
 	ins->dest = dst;
 	ins->operands[0] = lhs;
 	ins->operands[1] = rhs;
@@ -333,7 +342,7 @@ IRValue* ir_emit_binop(IRBlock* block, const char* op, IRValue* lhs, IRValue* rh
 	{
 		ins->opcode = 6;
 	}
-	else if (strcmp(op, "!=") == 0)
+	else if (strcmp(op, "!==") == 0)
 	{
 		ins->opcode = 7;
 	}
@@ -410,6 +419,15 @@ void ir_emit_ret(IRBlock* block, IRValue* value)
 	ins->call_nargs = 0;
 	if (block->last)
 	{
+		if (block->last->kind == IR_RET || block->last->kind == IR_BR ||
+		    block->last->kind == IR_CBR)
+		{
+			fprintf(stderr,
+			        "Attempted to emit return into a block that already has a "
+			        "terminator. (Warning)\n");
+			free(ins);
+			return;
+		}
 		block->last->next = ins;
 		block->last = ins;
 	}
@@ -430,6 +448,7 @@ IRValue* ir_const_i64(int64_t value)
 	v->kind = IRV_CONST;
 	v->u.i64 = value;
 	v->type = ir_type_i64();
+
 	fprintf(stderr, "IR constant (i64) created: %lld. (Info)\n", (long long)value);
 	return v;
 }
@@ -668,8 +687,10 @@ IRValue* ir_temp(IRBlock* block, IRType* type)
 		return NULL;
 	}
 	v->kind = IRV_TEMP;
+	v->u.i64 = 0; // Initialize union
 	v->u.temp_id = next_temp++;
 	v->type = type;
+
 	fprintf(stderr, "Temporary IRValue t%d created. (Info)\n", v->u.temp_id);
 	return v;
 }
@@ -698,7 +719,10 @@ IRBlock* ir_block_create_in_function(IRFunction* f, const char* name)
 		fprintf(stderr, "Invalid arguments to ir_block_create_in_function. (Error)\n");
 		return NULL;
 	}
-	IRBlock* b = ir_block_create(name);
+	static int block_counter = 0;
+	char unique_name[256];
+	snprintf(unique_name, sizeof(unique_name), "%s_%d", name, block_counter++);
+	IRBlock* b = ir_block_create(unique_name);
 	if (!b)
 	{
 		return NULL;
@@ -724,8 +748,10 @@ IRValue* ir_param_create(IRFunction* f, const char* name, IRType* type)
 	}
 	static int next_param = 1;
 	v->kind = IRV_PARAM;
+	v->u.i64 = 0; // Initialize union
 	v->u.temp_id = next_param++;
 	v->type = type;
+
 	v->name = name ? strdup(name) : NULL;
 	v->next = NULL;
 	if (!f->params)
@@ -760,8 +786,10 @@ IRValue* ir_global_create(IRModule* m, const char* name, IRType* type, IRValue* 
 		return NULL;
 	}
 	v->kind = IRV_GLOBAL;
+	v->u.i64 = 0; // Initialize union
 	v->u.temp_id = 0;
 	v->type = ir_type_ptr(type);
+
 	v->name = strdup(name);
 	fprintf(stderr, "ir_global_create: strdup for v->name -> %p\n", (void*)v->name);
 	v->next = NULL;
@@ -816,15 +844,11 @@ IRValue* ir_emit_alloca(IRBlock* b, IRType* type)
 	ins->operands[2] = NULL;
 	ins->call_args = NULL;
 	ins->call_nargs = 0;
-	ins->next = NULL;
-	if (b->last)
+	ins->next = b->first;
+	b->first = ins;
+	if (!b->last)
 	{
-		b->last->next = ins;
 		b->last = ins;
-	}
-	else
-	{
-		b->first = b->last = ins;
 	}
 	return dst;
 }
@@ -973,6 +997,14 @@ void ir_emit_br(IRBlock* b, IRBlock* target)
 	ins->next = NULL;
 	if (b->last)
 	{
+		if (b->last->kind == IR_RET || b->last->kind == IR_BR || b->last->kind == IR_CBR)
+		{
+			fprintf(stderr,
+			        "Attempted to emit branch into a block that already has a "
+			        "terminator. (Warning)\n");
+			free(ins);
+			return;
+		}
 		b->last->next = ins;
 		b->last = ins;
 	}
@@ -1004,6 +1036,14 @@ void ir_emit_cbr(IRBlock* b, IRValue* cond, IRBlock* true_b, IRBlock* false_b)
 	ins->next = NULL;
 	if (b->last)
 	{
+		if (b->last->kind == IR_RET || b->last->kind == IR_BR || b->last->kind == IR_CBR)
+		{
+			fprintf(stderr,
+			        "Attempted to emit conditional branch into a block that "
+			        "already has a terminator. (Warning)\n");
+			free(ins);
+			return;
+		}
 		b->last->next = ins;
 		b->last = ins;
 	}
