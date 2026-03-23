@@ -758,15 +758,6 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 
 	char* type_name =
 	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
-	// probably works
-	if (peek_lookahead1(parser) && peek_lookahead1(parser)->type == TOKEN_LBRACKET &&
-		peek_lookahead2(parser) && peek_lookahead2(parser)->type == TOKEN_RBRACKET)
-	{
-		type_name = realloc(type_name, strlen(type_name) + 3);
-		strcat(type_name, "[]");
-		advance_token(parser); // consume '['
-		advance_token(parser); // consume ']'
-	}
 
 	printf("Parsing variable declaration for '%s' of type '%s'\n", name, type_name);
 	ASTNode* type = parse_type(parser);
