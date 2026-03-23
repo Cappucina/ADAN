@@ -25,6 +25,7 @@ link: build
 run: link
 	@clear
 	@./$(SAMPLE_OUT)
+	@rm -f $(SAMPLE_LL) $(SAMPLE_OUT)
 
 build-macos-arm64:
 	@mkdir -p build-macos-arm64
