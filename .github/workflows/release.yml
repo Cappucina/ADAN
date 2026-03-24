@@ -13,9 +13,9 @@ jobs:
       - name: Install dependencies
         run: bash ./utils/dependencies.sh
       - name: Build
-        run: make build
+        run: xmake
       - name: Rename binary
-        run: cp build/adan ADAN-Linux-Nightly
+        run: cp build/linux/x86_64/release/adan ADAN-Linux-Nightly
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -31,9 +31,9 @@ jobs:
       - name: Install zig
         run: brew install zig
       - name: Build
-        run: make build-macos-arm64
+        run: xmake f -y -a arm64 && xmake
       - name: Rename binary
-        run: cp build-macos-arm64/adan ADAN-macOS-arm64-Nightly
+        run: cp build/macosx/arm64/release/adan ADAN-macOS-arm64-Nightly
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -49,9 +49,9 @@ jobs:
       - name: Install zig
         run: brew install zig
       - name: Build
-        run: make build-macos-x86_64
+        run: xmake f -y -a x86_64 && xmake
       - name: Rename binary
-        run: cp build-macos-x86_64/adan ADAN-macOS-x86_64-Nightly
+        run: cp build/macosx/x86_64/release/adan ADAN-macOS-x86_64-Nightly
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -67,12 +67,10 @@ jobs:
         run: ./utils/dependencies.ps1
       - name: Build
         shell: pwsh
-        run: |
-          cmake -S . -B build-windows-x86_64 -G Ninja "-DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-windows-x86_64.cmake"
-          cmake --build build-windows-x86_64
+        run: xmake f -y && xmake
       - name: Rename binary
         shell: pwsh
-        run: cp build-windows-x86_64/adan.exe ADAN-Windows-x86_64-Nightly.exe
+        run: cp build/windows/x86_64/release/adan.exe ADAN-Windows-x86_64-Nightly.exe
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

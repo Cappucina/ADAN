@@ -116,22 +116,22 @@ install_packages() {
 get_package_names() {
     case $PKG_MGR in
     apt)
-        PACKAGES="build-essential cmake clang clang-format gdb less binutils"
+        PACKAGES="build-essential clang clang-format gdb less binutils xmake"
         ;;
     dnf | yum)
-        PACKAGES="gcc make cmake clang clang-tools-extra gdb"
+        PACKAGES="gcc clang clang-tools-extra gdb xmake"
         ;;
     pacman)
-        PACKAGES="base-devel cmake clang clang-format gdb"
+        PACKAGES="base-devel clang gdb xmake"
         ;;
     zypper)
-        PACKAGES="gcc make cmake clang clang-tools gdb"
+        PACKAGES="gcc clang clang-tools gdb xmake"
         ;;
     apk)
-        PACKAGES="build-base cmake clang clang-extra-tools gdb"
+        PACKAGES="build-base clang-extra-tools gdb xmake"
         ;;
     brew)
-        PACKAGES="cmake clang clang-format"
+        PACKAGES="clang clang-format xmake"
         ;;
     esac
 }
@@ -163,16 +163,13 @@ main() {
     NEED_INSTALL=false
     if [ "$DISTRO" = "darwin" ]; then
         check_dependency "clang" "Clang compiler" || NEED_INSTALL=true
-        check_dependency "make" "Make" || NEED_INSTALL=true
-        check_dependency "cmake" "CMake" || NEED_INSTALL=true
         check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
-        # lldb ships with Xcode Command Line Tools and is not available via brew
+        check_dependency "xmake" "XMake" || NEED_INSTALL=true
         check_dependency "lldb" "LLDB debugger" || print_warn "LLDB is not installed — run: xcode-select --install"
     else
         check_dependency "gcc" "GCC compiler" || NEED_INSTALL=true
-        check_dependency "make" "Make" || NEED_INSTALL=true
-        check_dependency "cmake" "CMake" || NEED_INSTALL=true
         check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
+        check_dependency "xmake" "XMake" || NEED_INSTALL=true
         check_dependency "gdb" "GDB debugger" || NEED_INSTALL=true
     fi
 
@@ -195,15 +192,13 @@ main() {
         echo
         if [ "$DISTRO" = "darwin" ]; then
             check_dependency "clang" "Clang compiler"
-            check_dependency "make" "Make"
-            check_dependency "cmake" "CMake"
             check_dependency "clang-format" "clang-format"
+            check_dependency "xmake" "XMake"
             check_dependency "lldb" "LLDB debugger" || print_warn "LLDB not found — run: xcode-select --install"
         else
             check_dependency "gcc" "GCC compiler"
-            check_dependency "make" "Make"
-            check_dependency "cmake" "CMake"
             check_dependency "clang-format" "clang-format"
+            check_dependency "xmake" "XMake"
             check_dependency "gdb" "GDB debugger"
         fi
     else

@@ -140,16 +140,16 @@ function Install-DevPackages {
 
 function Get-PackageList {
     switch ($script:PkgMgr) {
-        "choco"  { return @("mingw", "cmake", "llvm", "ninja", "zig", "less") }
-        "scoop"  { return @("gcc", "cmake", "llvm") }
-        "winget" { return @("Kitware.CMake", "LLVM.LLVM") }
-        "brew"   { return @("cmake", "clang-format") }
-        "apt"    { return @("build-essential", "cmake", "clang-format", "gdb") }
-        "dnf"    { return @("gcc", "make", "cmake", "clang-tools-extra", "gdb") }
-        "yum"    { return @("gcc", "make", "cmake", "clang-tools-extra", "gdb") }
-        "pacman" { return @("base-devel", "cmake", "clang", "gdb") }
-        "zypper" { return @("gcc", "make", "cmake", "clang-tools", "gdb") }
-        "apk"    { return @("build-base", "cmake", "clang-extra-tools", "gdb") }
+        "choco"  { return @("llvm", "less", "xmake") }
+        "scoop"  { return @("gcc", "llvm", "xmake") }
+        "winget" { return @("LLVM.LLVM", "xmake.xmake") }
+        "brew"   { return @("clang-format", "xmake") }
+        "apt"    { return @("build-essential", "clang-format", "gdb", "xmake") }
+        "dnf"    { return @("gcc", "clang-tools-extra", "gdb", "xmake") }
+        "yum"    { return @("gcc", "clang-tools-extra", "gdb", "xmake") }
+        "pacman" { return @("base-devel", "clang", "gdb", "xmake") }
+        "zypper" { return @("gcc", "clang-tools", "gdb", "xmake") }
+        "apk"    { return @("build-base", "clang-extra-tools", "gdb", "xmake") }
     }
 }
 
@@ -188,28 +188,24 @@ function Test-AllDependencies {
                 $allPresent = $false
             }
 
-            if (-not (Test-Dependency "cmake"        "CMake"))        { $allPresent = $false }
             if (-not (Test-Dependency "clang-format"  "clang-format")) { $allPresent = $false }
-            if (-not (Test-Dependency "zig"           "Zig compiler")) { $allPresent = $false }
-            if (-not (Test-Dependency "ninja"         "Ninja build"))  { $allPresent = $false }
+            if (-not (Test-Dependency "xmake"         "XMake"))        { $allPresent = $false }
             if (-not (Test-Dependency "gdb"           "GDB debugger")) {
                 Write-Warn "GDB not found - use Visual Studio debugger or install MinGW"
             }
         }
         "darwin" {
             if (-not (Test-Dependency "clang"        "Clang compiler")) { $allPresent = $false }
-            if (-not (Test-Dependency "make"         "Make"))           { $allPresent = $false }
-            if (-not (Test-Dependency "cmake"        "CMake"))          { $allPresent = $false }
             if (-not (Test-Dependency "clang-format" "clang-format"))   { $allPresent = $false }
+            if (-not (Test-Dependency "xmake"        "XMake"))          { $allPresent = $false }
             if (-not (Test-Dependency "lldb"         "LLDB debugger")) {
                 Write-Warn "LLDB is not installed - run: xcode-select --install"
             }
         }
         "linux" {
             if (-not (Test-Dependency "gcc"          "GCC compiler"))  { $allPresent = $false }
-            if (-not (Test-Dependency "make"         "Make"))          { $allPresent = $false }
-            if (-not (Test-Dependency "cmake"        "CMake"))         { $allPresent = $false }
             if (-not (Test-Dependency "clang-format" "clang-format"))  { $allPresent = $false }
+            if (-not (Test-Dependency "xmake"        "XMake"))         { $allPresent = $false }
             if (-not (Test-Dependency "gdb"          "GDB debugger"))  { $allPresent = $false }
         }
     }
