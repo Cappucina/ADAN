@@ -131,7 +131,7 @@ get_package_names() {
         PACKAGES="build-base clang-extra-tools gdb xmake"
         ;;
     brew)
-        PACKAGES="clang clang-format xmake"
+        PACKAGES="llvm clang-format xmake"
         ;;
     esac
 }
@@ -185,6 +185,10 @@ main() {
     echo
 
     if install_packages $PACKAGES; then
+        if [ -n "$GITHUB_PATH" ]; then
+            print_info "Updating GITHUB_PATH..."
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        fi
         echo
         print_info "✓ All dependencies installed successfully!"
         echo

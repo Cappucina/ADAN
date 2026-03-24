@@ -258,6 +258,11 @@ function Main {
             $machinePath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
             $userPath    = [System.Environment]::GetEnvironmentVariable("Path", "User")
             $env:Path    = "$machinePath;$userPath"
+            
+            if ($env:GITHUB_PATH) {
+                $xmakePath = Join-Path $env:USERPROFILE ".local\bin"
+                "$xmakePath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            }
         }
 
         [void](Test-AllDependencies)
