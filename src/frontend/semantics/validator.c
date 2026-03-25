@@ -518,7 +518,9 @@ static bool normalize_import_path(const char* raw, char* output, size_t output_s
 
 	size_t len = strlen(raw);
 	const char* start = raw;
-	if (len >= 2 && raw[0] == '"' && raw[len - 1] == '"')
+	if (len >= 2 && ((raw[0] == '"' && raw[len - 1] == '"') ||
+	                 (raw[0] == '\'' && raw[len - 1] == '\'') ||
+	                 (raw[0] == '`' && raw[len - 1] == '`')))
 	{
 		start = raw + 1;
 		len -= 2;

@@ -1,4 +1,4 @@
-import "adan/io";
+import `adan/io`;
 
 fun main(): i32 {
     println("Hello, world from the ADAN programming language!");

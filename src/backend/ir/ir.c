@@ -499,7 +499,8 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 	size_t len = strlen(str);
 	char* copy = NULL;
 	if (len >= 2 &&
-	    ((str[0] == '"' && str[len - 1] == '"') || (str[0] == '`' && str[len - 1] == '`')))
+	    ((str[0] == '"' && str[len - 1] == '"') || (str[0] == '\'' && str[len - 1] == '\'') ||
+	     (str[0] == '`' && str[len - 1] == '`')))
 	{
 		size_t inner_len = len - 2;
 		copy = (char*)malloc(inner_len + 1);
@@ -723,7 +724,7 @@ IRValue* ir_temp(IRBlock* block, IRType* type)
 		return NULL;
 	}
 	v->kind = IRV_TEMP;
-	v->u.i64 = 0;  // Initialize union
+	v->u.i64 = 0;
 	v->u.temp_id = next_temp++;
 	v->type = type;
 
@@ -784,7 +785,7 @@ IRValue* ir_param_create(IRFunction* f, const char* name, IRType* type)
 	}
 	static int next_param = 1;
 	v->kind = IRV_PARAM;
-	v->u.i64 = 0;  // Initialize union
+	v->u.i64 = 0;
 	v->u.temp_id = next_param++;
 	v->type = type;
 
@@ -822,7 +823,7 @@ IRValue* ir_global_create(IRModule* m, const char* name, IRType* type, IRValue* 
 		return NULL;
 	}
 	v->kind = IRV_GLOBAL;
-	v->u.i64 = 0;  // Initialize union
+	v->u.i64 = 0;
 	v->u.temp_id = 0;
 	v->type = ir_type_ptr(type);
 
