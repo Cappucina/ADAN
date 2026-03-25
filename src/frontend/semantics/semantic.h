@@ -28,6 +28,10 @@ void semantic_error(SemanticAnalyzer* analyzer, ASTNode* node, const char* messa
 
 bool is_integer_type(const char* name);
 
+bool is_float_type(const char* name);
+
+bool is_integer_type_promotable(const char* name);
+
 void semantic_warning(SemanticAnalyzer* analyzer, ASTNode* node, const char* message);
 
 #endif

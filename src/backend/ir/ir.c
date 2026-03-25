@@ -446,8 +446,46 @@ IRValue* ir_const_i64(int64_t value)
 	v->kind = IRV_CONST;
 	v->u.i64 = value;
 	v->type = ir_type_i64();
+	v->name = NULL;
+	v->next = NULL;
 
 	fprintf(stderr, "IR constant (i64) created: %lld. (Info)\n", (long long)value);
+	return v;
+}
+
+IRValue* ir_const_f32(float value)
+{
+	IRValue* v = malloc(sizeof(IRValue));
+	if (!v)
+	{
+		fprintf(stderr, "Failed to allocate IRValue (const f32). (Error)\n");
+		return NULL;
+	}
+	v->kind = IRV_CONST;
+	v->u.f64 = (double)value;
+	v->type = ir_type_f32();
+	v->name = NULL;
+	v->next = NULL;
+
+	fprintf(stderr, "IR constant (f32) created: %f. (Info)\n", value);
+	return v;
+}
+
+IRValue* ir_const_f64(double value)
+{
+	IRValue* v = malloc(sizeof(IRValue));
+	if (!v)
+	{
+		fprintf(stderr, "Failed to allocate IRValue (const f64). (Error)\n");
+		return NULL;
+	}
+	v->kind = IRV_CONST;
+	v->u.f64 = value;
+	v->type = ir_type_f64();
+	v->name = NULL;
+	v->next = NULL;
+
+	fprintf(stderr, "IR constant (f64) created: %f. (Info)\n", value);
 	return v;
 }
 IRValue* ir_const_string(IRModule* m, const char* str)
@@ -1273,4 +1311,43 @@ void ir_walk_function(IRFunction* f, void (*fn)(IRBlock*, void*), void* user)
 		fn(b, user);
 		b = b->next;
 	}
+}
+IRValue* ir_emit_fpcvt(IRBlock* b, IRValue* val, IRType* target_type)
+{
+	if (!b || !val || !target_type)
+		return NULL;
+	IRValue* dst = ir_temp(b, target_type);
+	IRInstruction* ins = (IRInstruction*)malloc(sizeof(IRInstruction));
+	if (!ins)
+		return NULL;
+	ins->kind = IR_FPCVT;
+	ins->dest = dst;
+	ins->operands[0] = val;
+	ins->operands[1] = NULL;
+	ins->operands[2] = NULL;
+	ins->next = NULL;
+	ins->call_args = NULL;
+	ins->call_nargs = 0;
+	ir_instr_append(b, ins);
+	return dst;
+}
+
+IRValue* ir_emit_itofp(IRBlock* b, IRValue* val, IRType* target_type)
+{
+	if (!b || !val || !target_type)
+		return NULL;
+	IRValue* dst = ir_temp(b, target_type);
+	IRInstruction* ins = (IRInstruction*)malloc(sizeof(IRInstruction));
+	if (!ins)
+		return NULL;
+	ins->kind = IR_ITOFP;
+	ins->dest = dst;
+	ins->operands[0] = val;
+	ins->operands[1] = NULL;
+	ins->operands[2] = NULL;
+	ins->next = NULL;
+	ins->call_args = NULL;
+	ins->call_nargs = 0;
+	ir_instr_append(b, ins);
+	return dst;
 }

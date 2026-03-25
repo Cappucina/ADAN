@@ -81,3 +81,29 @@ int64_t adn_string_to_i32(const char* s)
 	}
 	return (int64_t)strtoll(s, NULL, 10);
 }
+
+char* adn_f64_to_string(double val)
+{
+	char buf[64];
+	int len = snprintf(buf, sizeof(buf), "%g", val);
+	if (len < 0)
+	{
+		return NULL;
+	}
+	char* result = (char*)malloc((size_t)len + 1);
+	if (!result)
+	{
+		return NULL;
+	}
+	memcpy(result, buf, (size_t)len + 1);
+	return result;
+}
+
+double adn_string_to_f64(const char* s)
+{
+	if (!s)
+	{
+		return 0.0;
+	}
+	return strtod(s, NULL);
+}

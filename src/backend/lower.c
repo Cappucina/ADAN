@@ -273,6 +273,11 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				fprintf(stderr, "Invalid number literal node. (Error)\n");
 				return NULL;
 			}
+			if (strchr(node->number_literal.value, '.'))
+			{
+				double v = strtod(node->number_literal.value, NULL);
+				return ir_const_f64(v);
+			}
 			long long v = strtoll(node->number_literal.value, NULL, 10);
 			return ir_const_i64(v);
 		}
@@ -395,34 +400,64 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 			}
 
 			int src_is_ptr = (inner->type && inner->type->kind == IR_T_PTR);
+			int src_is_float = (inner->type && (inner->type->kind == IR_T_F32 || inner->type->kind == IR_T_F64));
 			int dst_is_string = (strcmp(target, "string") == 0);
 			int dst_is_int =
 			    (strcmp(target, "i32") == 0 || strcmp(target, "i64") == 0 ||
-			     strcmp(target, "u32") == 0 || strcmp(target, "u64") == 0);
+			     strcmp(target, "u32") == 0 || strcmp(target, "u64") == 0 ||
+			     strcmp(target, "i8") == 0 || strcmp(target, "u8") == 0);
+			int dst_is_float = (strcmp(target, "f32") == 0 || strcmp(target, "f64") == 0);
 
 			if (dst_is_string && !src_is_ptr)
 			{
-				// int -> string: call adn_i32_to_string
-				IRFunction* conv_fn = NULL;
-				IRFunction* it = program->ir->functions;
-				while (it)
+				if (src_is_float)
 				{
-					if (it->name && strcmp(it->name, "adn_i32_to_string") == 0)
+					IRFunction* conv_fn = NULL;
+					IRFunction* it = program->ir->functions;
+					while (it)
 					{
-						conv_fn = it;
-						break;
+						if (it->name && strcmp(it->name, "adn_f64_to_string") == 0)
+						{
+							conv_fn = it;
+							break;
+						}
+						it = it->next;
 					}
-					it = it->next;
+					if (!conv_fn)
+					{
+						conv_fn = ir_function_create_in_module(
+						    program->ir, "adn_f64_to_string",
+						    ir_type_ptr(ir_type_i64()));
+						ir_param_create(conv_fn, NULL, ir_type_f64());
+					}
+					IRValue* cargs[1] = {inner};
+					if (inner->type->kind == IR_T_F32)
+						inner = ir_emit_fpcvt(current_block, inner, ir_type_f64());
+					return ir_emit_call(current_block, conv_fn, cargs, 1);
 				}
-				if (!conv_fn)
+				else
 				{
-					conv_fn = ir_function_create_in_module(
-					    program->ir, "adn_i32_to_string",
-					    ir_type_ptr(ir_type_i64()));
-					ir_param_create(conv_fn, NULL, ir_type_i64());
+					IRFunction* conv_fn = NULL;
+					IRFunction* it = program->ir->functions;
+					while (it)
+					{
+						if (it->name && strcmp(it->name, "adn_i32_to_string") == 0)
+						{
+							conv_fn = it;
+							break;
+						}
+						it = it->next;
+					}
+					if (!conv_fn)
+					{
+						conv_fn = ir_function_create_in_module(
+						    program->ir, "adn_i32_to_string",
+						    ir_type_ptr(ir_type_i64()));
+						ir_param_create(conv_fn, NULL, ir_type_i64());
+					}
+					IRValue* cargs[1] = {inner};
+					return ir_emit_call(current_block, conv_fn, cargs, 1);
 				}
-				IRValue* cargs[1] = {inner};
-				return ir_emit_call(current_block, conv_fn, cargs, 1);
 			}
 			else if (dst_is_int && src_is_ptr)
 			{
@@ -445,6 +480,47 @@ IRValue* lower_expression(Program* program, ASTNode* node)
 				}
 				IRValue* cargs[1] = {inner};
 				return ir_emit_call(current_block, conv_fn, cargs, 1);
+			}
+			else if (dst_is_float && src_is_ptr)
+			{
+				IRFunction* conv_fn = NULL;
+				IRFunction* it = program->ir->functions;
+				while (it)
+				{
+					if (it->name && strcmp(it->name, "adn_string_to_f64") == 0)
+					{
+						conv_fn = it;
+						break;
+					}
+					it = it->next;
+				}
+				if (!conv_fn)
+				{
+					conv_fn = ir_function_create_in_module(
+					    program->ir, "adn_string_to_f64", ir_type_f64());
+					ir_param_create(conv_fn, NULL, ir_type_ptr(ir_type_i64()));
+				}
+				IRValue* cargs[1] = {inner};
+				IRValue* res = ir_emit_call(current_block, conv_fn, cargs, 1);
+				if (strcmp(target, "f32") == 0)
+					return ir_emit_fpcvt(current_block, res, ir_type_f32());
+				return res;
+			}
+			else if (dst_is_float && !src_is_float)
+			{
+				IRType* dt = NULL;
+				if (strcmp(target, "f32") == 0) dt = ir_type_f32();
+				else dt = ir_type_f64();
+				return ir_emit_itofp(current_block, inner, dt);
+			}
+			else if (dst_is_float && src_is_float)
+			{
+				IRType* dt = NULL;
+				if (strcmp(target, "f32") == 0) dt = ir_type_f32();
+				else dt = ir_type_f64();
+				if (inner->type->kind != dt->kind)
+					return ir_emit_fpcvt(current_block, inner, dt);
+				return inner;
 			}
 			else
 			{

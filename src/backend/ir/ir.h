@@ -17,6 +17,8 @@ typedef enum
 	IR_RET,
 	IR_BR,
 	IR_CBR,
+	IR_FPCVT,
+	IR_ITOFP,
 	IR_NOP
 } IrInstrKind;
 
@@ -146,6 +148,10 @@ void ir_emit_cbr(IRBlock* b, IRValue* cond, IRBlock* true_b, IRBlock* false_b);
 
 IRValue* ir_emit_phi(IRBlock* b, IRType* t, IRValue** values, IRBlock** blocks, size_t n);
 
+IRValue* ir_emit_fpcvt(IRBlock* b, IRValue* val, IRType* target_type);
+
+IRValue* ir_emit_itofp(IRBlock* b, IRValue* val, IRType* target_type);
+
 int ir_validate_module(IRModule* m);
 
 void ir_replace_value(IRModule* m, IRValue* oldv, IRValue* newv);
@@ -167,6 +173,10 @@ IRValue* ir_emit_binop(IRBlock* block, const char* op, IRValue* lhs, IRValue* rh
 void ir_emit_ret(IRBlock* block, IRValue* value);
 
 IRValue* ir_const_i64(int64_t value);
+
+IRValue* ir_const_f32(float value);
+
+IRValue* ir_const_f64(double value);
 
 IRValue* ir_const_string(IRModule* m, const char* str);
 

@@ -1,7 +1,7 @@
 import "adan/io";
 
 fun main(): i32 {
-    println("The ADAN compiler is working as expected!");
+    println("Hello, world from the ADAN programming language!");
 
-    return 0; // Success; 1 = Failure.
+    return 0;
 }

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "validator.h"
+#include "semantic.h"
 #include "../../helper.h"
 #include "../../embedded_libs.h"
 #include "../ast/tree.h"
@@ -386,7 +387,13 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 		case AST_STRING_LITERAL:
 			return "string";
 		case AST_NUMBER_LITERAL:
+		{
+			if (node->number_literal.value && strchr(node->number_literal.value, '.'))
+			{
+				return "f64";
+			}
 			return "i32";
+		}
 		case AST_IDENTIFIER:
 			if (!analyzer || !analyzer->symbol_table_stack ||
 			    !analyzer->symbol_table_stack->current_scope || !node->identifier.name)
@@ -425,10 +432,21 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 				    resolve_expression_type(analyzer, node->binary_op.left);
 				const char* rt =
 				    resolve_expression_type(analyzer, node->binary_op.right);
-				if (lt && strcmp(lt, "string") == 0 && rt &&
-				    strcmp(rt, "string") == 0 && strcmp(op, "+") == 0)
+				if (lt && rt)
 				{
-					return "string";
+					if (strcmp(lt, "f64") == 0 || strcmp(rt, "f64") == 0)
+					{
+						return "f64";
+					}
+					if (strcmp(lt, "f32") == 0 || strcmp(rt, "f32") == 0)
+					{
+						return "f32";
+					}
+					if (strcmp(lt, "i64") == 0 || strcmp(rt, "i64") == 0 ||
+					    strcmp(lt, "u64") == 0 || strcmp(rt, "u64") == 0)
+					{
+						return "i64";
+					}
 				}
 			}
 			return "i32";
@@ -773,12 +791,21 @@ void validate_variable_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 		validate_node(analyzer, node->var_decl.initializer);
 		const char* initializer_type =
 		    resolve_expression_type(analyzer, node->var_decl.initializer);
-		if (initializer_type && node->var_decl.type->type_node.name &&
-		    !semantic_types_compatible(node->var_decl.type->type_node.name,
-		                               initializer_type))
+		if (initializer_type && node->var_decl.type->type_node.name)
 		{
-			semantic_error(analyzer, node,
-			               "Initializer type does not match variable type.");
+			const char* target = node->var_decl.type->type_node.name;
+			if (strcmp(target, initializer_type) != 0 &&
+			    semantic_types_compatible(target, initializer_type))
+			{
+				node->var_decl.initializer = ast_create_cast(
+				    ast_create_type(target, node->line, node->column),
+				    node->var_decl.initializer, node->line, node->column);
+			}
+			else if (!semantic_types_compatible(target, initializer_type))
+			{
+				semantic_error(analyzer, node,
+				               "Initializer type does not match variable type.");
+			}
 		}
 	}
 }
@@ -1086,6 +1113,8 @@ void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node)
 
 	const char* lt = resolve_expression_type(analyzer, node->binary_op.left);
 	const char* rt = resolve_expression_type(analyzer, node->binary_op.right);
+	const char* target = resolve_expression_type(analyzer, node);
+
 	if ((lt && strcmp(lt, "string") == 0) || (rt && strcmp(rt, "string") == 0))
 	{
 		if (lt && rt && strcmp(lt, "string") == 0 && is_integer_type(rt) &&
@@ -1121,6 +1150,25 @@ void validate_binary_op(SemanticAnalyzer* analyzer, ASTNode* node)
 			               "and '!==' are allowed.");
 		}
 	}
+	else if (lt && rt && target && (is_integer_type(target) || is_float_type(target)))
+	{
+		if (strcmp(lt, target) != 0)
+		{
+			ASTNode* cast_type = ast_create_type((char*)target, node->binary_op.left->line,
+			                                     node->binary_op.left->column);
+			node->binary_op.left = ast_create_cast(cast_type, node->binary_op.left,
+			                                       node->binary_op.left->line,
+			                                       node->binary_op.left->column);
+		}
+		if (strcmp(rt, target) != 0)
+		{
+			ASTNode* cast_type = ast_create_type((char*)target, node->binary_op.right->line,
+			                                     node->binary_op.right->column);
+			node->binary_op.right = ast_create_cast(cast_type, node->binary_op.right,
+			                                        node->binary_op.right->line,
+			                                        node->binary_op.right->column);
+		}
+	}
 }
 
 void validate_assignment(SemanticAnalyzer* analyzer, ASTNode* node)
@@ -1153,10 +1201,20 @@ void validate_assignment(SemanticAnalyzer* analyzer, ASTNode* node)
 	{
 		validate_node(analyzer, node->assignment.value);
 		const char* val_type = resolve_expression_type(analyzer, node->assignment.value);
-		if (val_type && !semantic_types_compatible(entry->type, val_type))
+		if (val_type && entry->type)
 		{
-			semantic_error(analyzer, node,
-			               "Assignment value type does not match variable type.");
+			if (strcmp(entry->type, val_type) != 0 &&
+			    semantic_types_compatible(entry->type, val_type))
+			{
+				node->assignment.value = ast_create_cast(
+				    ast_create_type(entry->type, node->line, node->column),
+				    node->assignment.value, node->line, node->column);
+			}
+			else if (!semantic_types_compatible(entry->type, val_type))
+			{
+				semantic_error(analyzer, node,
+				               "Assignment value type does not match variable type.");
+			}
 		}
 	}
 	else

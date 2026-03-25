@@ -56,19 +56,36 @@ bool is_integer_type(const char* name)
 	       strcmp(name, "u32") == 0 || strcmp(name, "i64") == 0 || strcmp(name, "u64") == 0;
 }
 
+bool is_float_type(const char* name)
+{
+	if (!name)
+		return false;
+	return strcmp(name, "f32") == 0 || strcmp(name, "f64") == 0;
+}
+
 bool semantic_types_compatible(const char* expected, const char* actual)
 {
 	if (!expected || !actual)
 	{
 		return false;
 	}
-	// Strict match
 	if (strcmp(expected, actual) == 0)
 	{
 		return true;
 	}
-	// Interchangeable integers
 	if (is_integer_type(expected) && is_integer_type(actual))
+	{
+		return true;
+	}
+	if (is_float_type(expected) && is_integer_type(actual))
+	{
+		return true;
+	}
+	if (is_float_type(expected) && is_float_type(actual))
+	{
+		return true;
+	}
+	if (is_float_type(expected) && is_integer_type(actual))
 	{
 		return true;
 	}

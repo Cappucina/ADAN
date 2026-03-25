@@ -11,4 +11,8 @@ char* adn_i32_to_string(int64_t val);
 
 int64_t adn_string_to_i32(const char* s);
 
+char* adn_f64_to_string(double val);
+
+double adn_string_to_f64(const char* s);
+
 #endif
