@@ -86,7 +86,7 @@ jobs:
         run: xmake f -y && xmake
       - name: Rename binary
         shell: pwsh
-        run: cp build/windows/x86_64/release/adan.exe ADAN-Windows-x86_64-Nightly.exe
+        run: cp build/windows/x64/release/adan.exe ADAN-Windows-x86_64-Nightly.exe
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
