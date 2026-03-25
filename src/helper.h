@@ -3,10 +3,13 @@
 
 #ifdef _WIN32
 #include <sys/stat.h>
+#include <string.h>
 #define PATH_MAX 260
 #ifndef S_ISDIR
 #define S_ISDIR(mode) (((mode) & _S_IFMT) == _S_IFDIR)
 #endif
+#define strtok_r strtok_s
+#define strdup _strdup
 #endif
 
 #include <stddef.h>

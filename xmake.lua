@@ -7,7 +7,7 @@ add_defines("_GNU_SOURCE")
 target("adan_linker")
 set_kind("static")
 add_files("src/backend/linker/linker.c")
-add_includedirs("src/backend/linker", { public = true })
+add_includedirs("src", "src/backend/linker", { public = true })
 
 target("adan")
 set_kind("binary")
