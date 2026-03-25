@@ -4,6 +4,10 @@ set_version("1.0.0")
 set_languages("c11")
 add_defines("_GNU_SOURCE")
 
+if is_plat("windows") then
+	add_defines("strtok_r=strtok_s", "strdup=_strdup")
+end
+
 target("adan_linker")
 set_kind("static")
 add_files("src/backend/linker/linker.c")
