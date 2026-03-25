@@ -21,35 +21,24 @@
 ---
 
 ## Compiling the Compiler
-Before compiling the compiler you need to have each dependency installed first.
+Before compiling the compiler, you need to have [XMake](https://xmake.io/) installed.
 
 > [!NOTE]
-> This is only required if you plan on compiling the compiler manually instead of using the pre-compiled compiler binary.
+> Manual compilation is only required if you prefer not to use the pre-compiled binaries available in [Releases](https://github.com/Cappucina/ADAN/releases).
 
-```powershell
-$ chmod +x ./utils/dependencies.sh
-$ ./utils/dependencies.sh
+```bash
+$ xmake install   # Install remaining dependencies (Clang, LLVM, etc.)
+$ xmake           # Build and run the default sample in one go
 ```
 
-Compiler ADAN's binary file using `make`.
-```powershell
-$ make
-```
-
-## Different Make Commands
-```powershell
-$ make                     # Clean, build, and run the binary file.
-$ make build               # Clean and create a fresh binary.
-$ make emit                # Build and emit LLVM IR for the sample file.
-$ make link                # Build, compile, and link the sample file.
-$ make run                 # Clear the terminal, then run the sample binary.
-$ make format              # Beautifies all C and header files in ./src and ./libs, using .clang-format.
-$ make clean               # Removes all build artifacts and sample outputs.
-$ make install             # Install all required dependencies. (Linux required for now!)
-$ make build-macos-arm64   # Build the binary for macOS ARM64 (Apple Silicon).
-$ make build-macos-x86_64  # Build the binary for macOS x86_64 (Intel Macs).
-$ make build-macos         # Build both macOS binaries (ARM64 and x86_64).
-$ make push                # Run the push.sh script (for maintainers).
+## XMake Commands
+```bash
+$ xmake            # Build and run the default testing sample.
+$ xmake run        # Rebuild (if needed) and run the testing sample.
+$ xmake format     # Format all source code using clang-format.
+$ xmake install    # Install all required system dependencies.
+$ xmake c          # Remove all build artifacts.
+$ xmake f -a x64   # Configure for specific architecture (x64, arm64, etc.)
 ```
 
 ## Compiler Arguments
