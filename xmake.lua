@@ -48,6 +48,24 @@ before_build(function(target)
 		return macro_name
 	end
 
+	local function write_embedded_data(header_file, macro_name, content)
+		local symbol_name = "LIBDATA_" .. macro_name
+		header_file:write("static const unsigned char " .. symbol_name .. "[] = {\n")
+		for i = 1, #content do
+			if (i - 1) % 16 == 0 then
+				header_file:write("    ")
+			end
+			header_file:write(string.format("0x%02X,", string.byte(content, i)))
+			if i % 16 == 0 or i == #content then
+				header_file:write("\n")
+			else
+				header_file:write(" ")
+			end
+		end
+		header_file:write("    0x00\n};\n")
+		header_file:write("#define LIB_" .. macro_name .. " ((const char*)" .. symbol_name .. ")\n\n")
+	end
+
 	local build_dir = "build"
 	local header_path = path.join(os.projectdir(), build_dir, ".gens", target:name(), "embedded_libs_data.h")
 
@@ -76,32 +94,7 @@ before_build(function(target)
 				if not content then
 					raise("failed to read file: %s", file)
 				end
-				content = content:gsub("\\", "\\\\")
-				content = content:gsub('"', '\\"')
-				content = content:gsub("[%z\1-\31]", function(c)
-					local byte = string.byte(c)
-					if byte == 10 then
-						return "\\n"
-					elseif byte == 13 then
-						return "\\r"
-					elseif byte == 9 then
-						return "\\t"
-					elseif byte == 8 then
-						return "\\b"
-					elseif byte == 11 then
-						return "\\v"
-					elseif byte == 12 then
-						return "\\f"
-					elseif byte == 7 then
-						return "\\a"
-					elseif byte == 0 then
-						return "\\0"
-					else
-						return string.format("\\x%02X", byte)
-					end
-				end)
-				content = content:gsub("\n", '\\n"\n"')
-				header_file:write("#define LIB_" .. macro_name .. ' "' .. content .. '"\n\n')
+				write_embedded_data(header_file, macro_name, content)
 			end
 		end
 	end
