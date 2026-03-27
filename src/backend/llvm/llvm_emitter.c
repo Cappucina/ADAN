@@ -327,7 +327,6 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 							skip = 1;
 						break;
 					case IR_BR:
-						// block operand doesn't need IS_DEFINED
 						break;
 					case IR_CBR:
 						if (!IS_DEFINED(ins->operands[0]))
@@ -525,7 +524,6 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						char* t = llvm_type_to_string(cond->type);
 						if (cond->type && cond->type->kind == IR_T_I64)
 						{
-							// Convert i64 to i1
 							fprintf(out,
 							        "  %%cbr_cond_%lu = icmp ne i64 ",
 							        st.tmp_counter++);
