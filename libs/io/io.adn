@@ -1,15 +1,19 @@
+// FUNCTIONS LIKE `adn_string_format` ARE *NOT* PUBLIC FUNCTIONS
+// AND CANNOT BE USED OUTSIDE OF ADAN LIBRARIES.
+// <3
+
 /*
 	Display text to STDOUT.
 */
-fun println(message: string): void
+function print(format: string, ...args: any): void
 {
-	adn_println(message);
+	adn_println(adn_string_format(format, args));
 }
 
 /*
 	Yields program and accepts user input. Input message is returned.
 */
-fun input(prompt: string): string
+function input(prompt: string): string
 {
 	return adn_input(prompt);
 }
@@ -17,7 +21,7 @@ fun input(prompt: string): string
 /*
 	Stop program and print to STDOUT.
 */
-fun errorln(message: string): void
+function error(format: string, ...args: any): void
 {
-	adn_errorln(message);
+	adn_errorln(adn_string_format(format, args));
 }

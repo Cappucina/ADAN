@@ -1,7 +1,7 @@
 import "adan/io";
 
-fun main(): i32 {
-    println("Hello, world from the ADAN programming language!");
+function main(): i32 {
+    print("The ADAN compiler is working as expected!");
 
     return 0;
 }
