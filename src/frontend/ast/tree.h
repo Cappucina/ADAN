@@ -6,28 +6,27 @@
 
 typedef enum ASTNodeType
 {
-	AST_PROGRAM,  // Root; contains a list of statements.
+	AST_PROGRAM,
 	AST_FUNCTION_DECLARATION,
 	AST_VARIABLE_DECLARATION,
 	AST_IMPORT_STATEMENT,
 	AST_IF_STATEMENT,
-	AST_PARAMETER,  // Goes inside of a parameter list.
+	AST_PARAMETER,
 	AST_BLOCK,
-	AST_CALL,  // Function call. `callee(arg, ...)`.
+	AST_CALL,
 	AST_IDENTIFIER,
 	AST_STRING_LITERAL,
-	AST_INTERPOLATED_STRING,  // String enclosing interpolated expressions, e.g. `Hello,
-	                          // ${name}!`
+	AST_INTERPOLATED_STRING,
 	AST_NUMBER_LITERAL,
-	AST_TYPE,  // i32, u32, string, etc.
+	AST_TYPE,
 	AST_RETURN_STATEMENT,
-	AST_EXPRESSION_STATEMENT,  // Expression used as a statement.
-	AST_WHILE_STMT,            // While loop
-	AST_FOR_STMT,              // For loop
-	AST_BINARY_OP,             // Binary arithmetic/logic expression.
-	AST_ASSIGNMENT,            // Reassignment. `set name = expr;`
-	AST_CAST,                  // Type cast expression. `(type)expr`
-	AST_BOOLEAN_LITERAL,        // Boolean literal. `true` or `false`
+	AST_EXPRESSION_STATEMENT,
+	AST_WHILE_STMT,
+	AST_FOR_STMT,
+	AST_BINARY_OP,
+	AST_ASSIGNMENT,
+	AST_CAST,
+	AST_BOOLEAN_LITERAL,
 	AST_OBJECT_LITERAL,
 	AST_ARRAY_LITERAL,
 	AST_MEMBER_ACCESS,
@@ -38,11 +37,9 @@ typedef struct ASTNode ASTNode;
 
 typedef struct
 {
-	ASTNode** decls;  // Array of top level declaration AST nodes.
+	ASTNode** decls;
 	size_t count;
 } ASTProgram;
-
-// Statement node structures
 
 typedef struct
 {
@@ -60,7 +57,7 @@ typedef struct
 {
 	ASTNode* condition;
 	ASTNode* then_branch;
-	ASTNode* else_branch;  // May be NULL if no else branch is provided.
+	ASTNode* else_branch;
 } ASTIfStmt;
 
 typedef struct
@@ -71,10 +68,10 @@ typedef struct
 
 typedef struct
 {
-	ASTNode* var_decl;   // Variable declaration for loop variable
-	ASTNode* condition;  // Loop continuation condition
-	ASTNode* increment;  // Increment expression executed at the end of each loop iteration
-	ASTNode* body;       // Body of the for loop
+	ASTNode* var_decl;
+	ASTNode* condition;
+	ASTNode* increment;
+	ASTNode* body;
 } ASTForStmt;
 
 typedef struct
@@ -111,12 +108,12 @@ typedef struct
 {
 	char* name;
 	ASTNode* type;
-	ASTNode* initializer;  // Can be NULL if no initializer is provided.
+	ASTNode* initializer;
 } ASTVarDecl;
 
 typedef struct
 {
-	ASTNode* expr;  // May be NULL if no expression is returned
+	ASTNode* expr;
 } ASTReturn;
 
 typedef struct
@@ -170,7 +167,7 @@ typedef struct
 
 typedef struct
 {
-	ASTNode* expr;  // The expression being used as a statement
+	ASTNode* expr;
 } ASTExprStmt;
 
 typedef struct
@@ -191,8 +188,6 @@ typedef struct
 	ASTNode* target_type;
 	ASTNode* expr;
 } ASTCast;
-
-// Unified AST node structure
 
 struct ASTNode
 {
@@ -231,8 +226,6 @@ struct ASTNode
 ASTNode* ast_init(ASTNodeType type, size_t line, size_t column);
 
 void ast_free(ASTNode* node);
-
-// AST helper functions
 
 ASTNode* ast_create_return(ASTNode* expr, size_t line, size_t column);
 
@@ -293,8 +286,6 @@ ASTNode* ast_create_member_access(ASTNode* object, ASTNode* property, size_t lin
 
 ASTNode* ast_create_array_access(ASTNode* array, ASTNode* index, size_t line,
                                  size_t column);
-
-// Debugging functions
 
 void ast_print(ASTNode* node, int indent);
 

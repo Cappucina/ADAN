@@ -17,7 +17,7 @@
 
 #define MAX_BUNDLE_PATH_SIZE 2048
 
-extern const char *libs;
+static const char* libs = "";
 
 bool has_valid_extension(const char* filename)
 {
@@ -148,7 +148,6 @@ int main(int argc, char* argv[])
 	if (ast)
 	{
 		printf("AST created successfully! (Info)\n");
-		// ast_print(ast, 0);
 
 		SemanticAnalyzer* analyzer = semantic_init(ast, global_stack);
 		if (analyzer)

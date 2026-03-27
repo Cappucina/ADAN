@@ -155,8 +155,6 @@ void ast_free(ASTNode* node)
 	free(node);
 }
 
-// AST helper functions
-
 ASTNode* ast_create_return(ASTNode* expr, size_t line, size_t column)
 {
 	ASTNode* node = ast_init(AST_RETURN_STATEMENT, line, column);

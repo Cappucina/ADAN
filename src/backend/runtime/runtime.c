@@ -4,12 +4,10 @@
 #include <string.h>
 #include "runtime.h"
 
-// base^exp for integer exponentiation
 int64_t adn_powi(int64_t base, int64_t exp)
 {
 	if (exp < 0)
 	{
-		// negative exponents not supported for integer power
 		return 0;
 	}
 	if (exp == 0)

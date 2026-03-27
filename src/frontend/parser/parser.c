@@ -63,8 +63,6 @@ void parser_free(Parser* parser)
 	free(parser);
 }
 
-// Forward declaration stuff
-
 static bool match(Parser* parser, TokenType type);
 
 static bool consume(Parser* parser, TokenType type, const char* error_message);
@@ -128,9 +126,6 @@ static ASTNode* parse_postfix(Parser* parser);
 
 static bool parse_variadic_parameter(Parser* parser, char** variadic_name,
 	                                 ASTNode** variadic_type);
-
-
-// Helper implementations
 
 static bool match(Parser* parser, TokenType type)
 {
@@ -482,7 +477,7 @@ static ASTNode* parse_primary(Parser* parser)
 		{
 			size_t cast_line = peek_current(parser)->line;
 			size_t cast_col = peek_current(parser)->column;
-			advance_token(parser);  // consume '('
+			advance_token(parser);
 			ASTNode* target_type = parse_type(parser);
 			consume(parser, TOKEN_RPAREN, "Expected ')' after cast type.");
 			ASTNode* expr = parse_primary(parser);
@@ -1148,7 +1143,7 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 
 	if (is_plus_assign || is_plain_assign)
 	{
-		advance_token(parser);  // consume '=' or '+='
+		advance_token(parser);
 		ASTNode* rhs = parse_expression(parser);
 		consume(parser, TOKEN_SEMICOLON, "Expected ';' after assignment.");
 
@@ -1164,7 +1159,6 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 		return assign;
 	}
 
-	// Declaration: `set name: type = expr;`
 	consume(parser, TOKEN_COLON, "Expected ':' after variable name.");
 	if (!peek_current(parser)->lexeme)
 	{
@@ -1304,9 +1298,6 @@ static ASTNode* parse_statement(Parser* parser)
 			return NULL;
 	}
 }
-
-// Primary parsing function
-
 ASTNode* parser_parse_program(Parser* parser)
 {
 	ASTNode** decls = NULL;

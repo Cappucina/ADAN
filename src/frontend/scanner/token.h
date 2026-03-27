@@ -6,11 +6,9 @@
 
 typedef enum TokenType
 {
-	// Special
 	TOKEN_EOF,
 	TOKEN_IDENT,
 
-	// Keywords
 	TOKEN_FUN,
 	TOKEN_IMPORT,
 	TOKEN_SET,
@@ -18,12 +16,11 @@ typedef enum TokenType
 	TOKEN_IF,
 	TOKEN_ELSE,
 	TOKEN_WHILE,
-	TOKEN_OR,   // or
-	TOKEN_AND,  // and
-	TOKEN_NOT,  // not
+	TOKEN_OR,
+	TOKEN_AND,
+	TOKEN_NOT,
 	TOKEN_FOR,
 
-	// Types
 	TOKEN_STRING_TYPE,
 	TOKEN_I8_TYPE,
 	TOKEN_I32_TYPE,
@@ -37,13 +34,11 @@ typedef enum TokenType
 	TOKEN_BOOL_TYPE,
 	TOKEN_ANY_TYPE,
 
-	// Literals
 	TOKEN_STRING,
 	TOKEN_NUMBER,
 	TOKEN_TRUE,
 	TOKEN_FALSE,
 
-	// Symbols
 	TOKEN_LPAREN,
 	TOKEN_RPAREN,
 	TOKEN_LBRACE,
@@ -62,7 +57,6 @@ typedef enum TokenType
 	TOKEN_ELLIPSIS,
 	TOKEN_DOT,
 
-	// Operators
 	TOKEN_PLUS,
 	TOKEN_PLUS_EQUALS,
 	TOKEN_PLUS_PLUS,
@@ -88,7 +82,7 @@ typedef struct Token
 	TokenType type;
 	size_t column;
 	size_t line;
-	char* lexeme;  // Literal value of the token.
+	char* lexeme;
 	size_t length;
 } Token;
 

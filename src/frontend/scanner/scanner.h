@@ -7,9 +7,9 @@
 typedef struct Scanner
 {
 	char* source;
-	size_t start;  // Where the current token began.
+	size_t start;
 	size_t position;
-	size_t length;  // Length of the source code.
+	size_t length;
 	size_t column;
 	size_t line;
 	int interp_depth;

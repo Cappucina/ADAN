@@ -1,8 +1,6 @@
 set_project("ADAN")
 set_version("1.0.0")
 
-import("core.base.try")
-
 set_languages("c11")
 add_defines("_GNU_SOURCE")
 
@@ -22,6 +20,8 @@ add_files("libs/**.c")
 add_deps("adan_linker")
 add_includedirs("src", "libs")
 add_includedirs("build/.gens/adan", { public = true })
+set_rundir(".")
+set_runargs("-f", "samples/testing.adn", "-o", "samples/testing")
 
 before_build(function(target)
 	local function generate_macro_name(rel_path)
@@ -54,7 +54,7 @@ before_build(function(target)
 	os.mkdir(path.directory(header_path))
 	local header_file, err = io.open(header_path, "w")
 	assert(header_file, "failed to open header file '" .. header_path .. "': " .. tostring(err))
-	header_file:write("// Auto-generated embedded libs\n\n")
+	header_file:write("\n")
 
 	local embed_dirs = {
 		{ dir = path.join(os.projectdir(), "libs"), prefix = "libs" },
@@ -76,40 +76,30 @@ before_build(function(target)
 				if not content then
 					raise("failed to read file: %s", file)
 				end
-				-- Escape content for inclusion as a C string literal in a header:
-				-- 1) escape backslashes and double quotes
-				-- 2) escape control characters (including null bytes) using C-style escapes
-				-- 3) convert remaining newlines into '\n' and optionally split the C string
-				--    across multiple lines in the generated source for readability.
-				-- Step 1: escape backslashes and double quotes.
 				content = content:gsub("\\", "\\\\")
 				content = content:gsub('"', '\\"')
-				-- Step 2: escape control characters (ASCII < 32 and null).
 				content = content:gsub("[%z\1-\31]", function(c)
 					local byte = string.byte(c)
-					if byte == 10 then -- '\n'
+					if byte == 10 then
 						return "\\n"
-					elseif byte == 13 then -- '\r'
+					elseif byte == 13 then
 						return "\\r"
-					elseif byte == 9 then -- '\t'
+					elseif byte == 9 then
 						return "\\t"
-					elseif byte == 8 then -- '\b'
+					elseif byte == 8 then
 						return "\\b"
-					elseif byte == 11 then -- '\v'
+					elseif byte == 11 then
 						return "\\v"
-					elseif byte == 12 then -- '\f'
+					elseif byte == 12 then
 						return "\\f"
-					elseif byte == 7 then -- '\a'
+					elseif byte == 7 then
 						return "\\a"
-					elseif byte == 0 then -- '\0'
+					elseif byte == 0 then
 						return "\\0"
 					else
 						return string.format("\\x%02X", byte)
 					end
 				end)
-				-- Step 3: split the C string across multiple source lines for readability.
-				-- At this point, actual newlines in 'content' should be rare; if any remain,
-				-- replace them with an escaped '\n' and start a new C string literal.
 				content = content:gsub("\n", '\\n"\n"')
 				header_file:write("#define LIB_" .. macro_name .. ' "' .. content .. '"\n\n')
 			end
@@ -120,51 +110,6 @@ before_build(function(target)
 	header_file:close()
 end)
 
-local function run_sample_test(targetfile)
-	os.runv(targetfile, { "-f", "samples/testing.adn", "-o", "samples/testing" })
-	local sample_exe = is_host("windows") and "samples/testing.exe" or "samples/testing"
-	os.exec(path.join(".", sample_exe))
-	os.rm("samples/testing.ll")
-	os.rm(sample_exe)
-end
-
-on_run(function(target)
-	local targetfile = target:targetfile()
-	try
-	{
-		function ()
-			run_sample_test(targetfile)
-		end
-	}
-	catch
-	{
-		function (errors)
-			-- stop further processing if the sample build or run fails
-			raise(errors)
-		end
-	}
-end)
-
-after_build(function(target)
-	import("core.base.option")
-	if option.get("task") == nil then
-		local targetfile = target:targetfile()
-		try
-		{
-			function ()
-				run_sample_test(targetfile)
-			end
-		}
-		catch
-		{
-			function (errors)
-				-- stop further processing if the sample build or run fails
-				raise(errors)
-			end
-		}
-	end
-end)
-
 task("format")
 set_menu({ usage = "xmake format", description = "Format source code" })
 on_run(function()
@@ -173,7 +118,7 @@ on_run(function()
 	table.join2(files, os.files("libs/**.c"))
 	table.join2(files, os.files("libs/**.h"))
 	for _, file in ipairs(files) do
-		os.execv("clang-format", { "-i", file })
+		os.exec("clang-format -i " .. file)
 	end
 	print("Format complete.")
 end)
@@ -182,8 +127,8 @@ task("install")
 set_menu({ usage = "xmake install", description = "Install dependencies" })
 on_run(function()
 	if is_host("windows") then
-		os.execv("pwsh", { "-ExecutionPolicy", "Bypass", "-File", "utils/dependencies.ps1" })
+		os.exec("pwsh -ExecutionPolicy Bypass -File utils/dependencies.ps1")
 	else
-		os.execv("bash", { "utils/dependencies.sh" })
+		os.exec("bash utils/dependencies.sh")
 	end
 end)

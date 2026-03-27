@@ -34,7 +34,7 @@ typedef enum
 typedef struct IRType
 {
 	IRTypeKind kind;
-	struct IRType* pointee;  // for IR_T_PTR
+	struct IRType* pointee;
 } IRType;
 
 typedef struct IRValue
@@ -99,8 +99,6 @@ typedef struct IRGlobal
 	IRValue* initial;
 	struct IRGlobal* next;
 } IRGlobal;
-
-// Builder functions
 
 IRModule* ir_module_create();
 

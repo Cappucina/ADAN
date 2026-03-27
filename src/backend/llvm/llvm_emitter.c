@@ -572,7 +572,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						                   lhs->type->kind == IR_T_F64));
 						switch (ins->opcode)
 						{
-							case 1:  // +
+							case 1:
 								fprintf(out, "  %s = %s %s ",
 								        dst ? dst : "<dst>",
 								        is_float ? "fadd" : "add",
@@ -582,7 +582,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 2:  // -
+							case 2:
 								fprintf(out, "  %s = %s %s ",
 								        dst ? dst : "<dst>",
 								        is_float ? "fsub" : "sub",
@@ -592,7 +592,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 3:  // *
+							case 3:
 								fprintf(out, "  %s = %s %s ",
 								        dst ? dst : "<dst>",
 								        is_float ? "fmul" : "mul",
@@ -602,7 +602,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 4:  // /
+							case 4:
 								fprintf(out, "  %s = %s %s ",
 								        dst ? dst : "<dst>",
 								        is_float ? "fdiv" : "sdiv",
@@ -612,7 +612,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 5:  // %
+							case 5:
 								fprintf(out, "  %s = %s %s ",
 								        dst ? dst : "<dst>",
 								        is_float ? "frem" : "srem",
@@ -622,7 +622,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 12:  // ^ (exponentiation)
+							case 12:
 							{
 								if (is_float)
 								{
@@ -661,12 +661,12 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								}
 								break;
 							}
-							case 6:   // ==
-							case 7:   // !=
-							case 8:   // <
-							case 9:   // >
-							case 10:  // <=
-							case 11:  // >=
+							case 6:
+							case 7:
+							case 8:
+							case 9:
+							case 10:
+							case 11:
 							{
 								const char* icmp_op = "eq";
 								const char* fcmp_op = "oeq";
@@ -717,7 +717,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								        tstr ? tstr : "i64");
 								break;
 							}
-							case 13:  // or
+							case 13:
 								fprintf(out, "  %s = or %s ",
 								        dst ? dst : "<dst>",
 								        tstr ? tstr : "i64");
@@ -726,7 +726,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 14:  // and
+							case 14:
 								fprintf(out, "  %s = and %s ",
 								        dst ? dst : "<dst>",
 								        tstr ? tstr : "i64");
@@ -735,7 +735,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 								es_emit_value_rep(&st, out, rhs);
 								fprintf(out, "\n");
 								break;
-							case 15:  // not (unary trick)
+							case 15:
 								fprintf(out,
 								        "  %%cmp_%lu = icmp eq %s ",
 								        st.tmp_counter++,

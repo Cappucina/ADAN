@@ -27,19 +27,30 @@ Before compiling the compiler, you need to have [XMake](https://xmake.io/) insta
 > Manual compilation is only required if you prefer not to use the pre-compiled binaries available in [Releases](https://github.com/Cappucina/ADAN/releases).
 
 ```bash
-$ xmake install   # Install remaining dependencies (Clang, LLVM, etc.)
-$ xmake           # Build and run the default sample in one go
+$ xmake install       # Install remaining dependencies (Clang, LLVM, etc.)
+$ xmake               # Build the ADAN compiler
+$ xmake run           # Compile the default sample with the built compiler
+$ ./samples/testing
 ```
 
 ## XMake Commands
 ```bash
-$ xmake            # Build and run the default testing sample.
-$ xmake run        # Rebuild (if needed) and run the testing sample.
-$ xmake format     # Format all source code using clang-format.
-$ xmake install    # Install all required system dependencies.
-$ xmake c          # Remove all build artifacts.
-$ xmake f -a x64   # Configure for specific architecture (x64, arm64, etc.)
+$ xmake               # Build the ADAN compiler.
+$ xmake run           # Run the compiler with the default sample arguments.
+$ ./samples/testing   # Run the generated testing sample executable.
+$ xmake format        # Format all source code using clang-format.
+$ xmake install       # Install all required system dependencies.
+$ xmake c             # Remove all build artifacts.
+$ xmake f -a x64      # Configure for specific architecture (x64, arm64, etc.)
 ```
+
+`xmake run` invokes the `adan` target with these default arguments:
+
+```bash
+$ ./build/linux/x86_64/release/adan -f samples/testing.adn -o samples/testing
+```
+
+This generates `samples/testing` on Linux and macOS or `samples/testing.exe` on Windows.
 
 ## Compiler Arguments
 
@@ -51,8 +62,8 @@ ADAN's compiler provides flags to modify default compilation behaviors:
 - `-h` / `--help`: Show the help message and exit.
 
 ```powershell
-$ ./adan -f main.adn -r        # Output 'main.ll' LLVM IR.
-$ ./adan --file main.adn       # Outputs a 'main' executable.
+$ ./adan -f main.adn -r    # Output 'main.ll' LLVM IR.
+$ ./adan --file main.adn   # Outputs a 'main' executable.
 ```
 
 <br>

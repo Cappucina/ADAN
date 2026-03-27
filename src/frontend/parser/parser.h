@@ -10,16 +10,13 @@
 
 typedef struct Parser
 {
-	// Tokens (LL(2) require	s 2 lookahead tokens).
 	Token* current;
 	Token* ahead1;
 	Token* ahead2;
 	Scanner* scanner;
-	SymbolTableStack* symbol_table_stack;  // The Symbol Table Stack contains only Symbol Table
-	                                       // Managers, each manager refers to its own scope.
-	                                       // Refer to stm.h for more details.
+	SymbolTableStack* symbol_table_stack;
 	int error_count;
-	bool panic;  // Reserved for critical errors that would break all future parsing.
+	bool panic;
 	int token_position;
 	int scope_depth;
 	bool recovery_mode;

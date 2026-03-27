@@ -10,8 +10,6 @@
 #include "../parser/parser.h"
 #include "../scanner/scanner.h"
 
-// Forward declarations
-
 void validate_program(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node);
@@ -146,8 +144,6 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 			analyzer->has_errors = true;
 	}
 }
-
-// Validation helper stuff
 
 static char** imported_paths = NULL;
 static size_t imported_count = 0;
@@ -427,7 +423,6 @@ static void register_function_signature(ASTNode* decl)
 				                 strlen(param->param.type->type_node.name));
 				if (!signature->param_types[i])
 				{
-					// cleanup on failure
 					for (size_t j = 0; j < i; j++)
 					{
 						if (signature->param_types[j])

@@ -28,7 +28,7 @@ typedef struct SymbolTableManager
 
 typedef struct SymbolTableStack
 {
-	struct SymbolTableManager* current_scope;  // Each manager refers to its own scope.
+	struct SymbolTableManager* current_scope;
 	int depth;
 } SymbolTableStack;
 

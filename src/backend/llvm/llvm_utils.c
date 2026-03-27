@@ -35,7 +35,7 @@ char* llvm_utils_mangle_name(const char* name)
 		return NULL;
 	}
 	size_t len = strlen(name);
-	char* mangled = (char*)malloc(len * 2 + 1);  // Worst case: every char is '_'
+	char* mangled = (char*)malloc(len * 2 + 1);
 	if (!mangled)
 	{
 		fprintf(stderr, "Failed to allocate memory for mangled name. (Error)\n");

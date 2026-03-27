@@ -6,8 +6,6 @@
 #include "../scanner/scanner.h"
 #include "../../stm.h"
 
-// Symbol Table stuff
-
 void parser_declare_variable(Parser* parser, const char* name, const char* type, unsigned int size)
 {
 	if (!parser)
@@ -23,9 +21,9 @@ void parser_declare_variable(Parser* parser, const char* name, const char* type,
 	         parser->current ? parser->current->line : 0);
 
 	stm_insert(parser->symbol_table_stack->current_scope, (char*)name, (char*)type, size,
-	           line_buffer,  // decl line
-	           NULL,         // usage line
-	           NULL          // address
+	           line_buffer,
+	           NULL,
+	           NULL
 	);
 	printf("Declared variable '%s' of type '%s' with size %u in scope level %d. (Info)\n", name,
 	       type, size, parser->scope_depth);
@@ -46,10 +44,10 @@ void parser_declare_function(Parser* parser, const char* name, const char* retur
 	         parser->current ? parser->current->line : 0);
 
 	stm_insert(parser->symbol_table_stack->current_scope, (char*)name, (char*)return_type,
-	           0,            // functions have size 0
-	           line_buffer,  // decl line
-	           NULL,         // usage line
-	           NULL          // address
+	           0,
+	           line_buffer,
+	           NULL,
+	           NULL
 	);
 	printf("Declared function '%s' with return type '%s' in scope level %d. (Info)\n", name,
 	       return_type, parser->scope_depth);
@@ -124,8 +122,6 @@ bool parser_symbol_exists(Parser* parser, const char* name)
 	return entry != NULL;
 }
 
-// Token lookahead stuff
-
 void advance_token(Parser* parser)
 {
 	if (!parser)
@@ -198,8 +194,6 @@ bool match_current(Parser* parser, TokenType type)
 	       parser->current ? parser->current->lexeme : "NULL", type);
 	return parser->current && parser->current->type == type;
 }
-
-// Error handling and recovery stuff
 
 void error_expected(Parser* parser, const char* expected)
 {
