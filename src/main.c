@@ -56,10 +56,7 @@ void print_help(const char* program_name)
 int main(int argc, char* argv[])
 {
 	char* file_path = NULL;
-	char* libs = NULL;
 	char* out_path = NULL;
-	char* bundle_libs = NULL;
-	char* bundle_embedded = NULL;
 	bool stop_at_ir = false;
 
 	if (argc < 2)
@@ -80,6 +77,7 @@ int main(int argc, char* argv[])
 			if (i + 1 < argc)
 			{
 				file_path = argv[i + 1];
+				i++;
 			}
 		}
 		else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0)
@@ -87,6 +85,7 @@ int main(int argc, char* argv[])
 			if (i + 1 < argc)
 			{
 				out_path = argv[i + 1];
+				i++;
 			}
 		}
 		else if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--rawir") == 0)
