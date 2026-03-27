@@ -15,6 +15,10 @@
 #include "backend/linker/linker.h"
 #include "embedded_libs.h"
 
+#define MAX_BUNDLE_PATH_SIZE 2048
+
+extern const char *libs;
+
 bool has_valid_extension(const char* filename)
 {
 	size_t len = strlen(filename);
@@ -79,6 +83,12 @@ int main(int argc, char* argv[])
 				file_path = argv[i + 1];
 				i++;
 			}
+			else
+			{
+				fprintf(stderr, "Error: -f/--file requires a filename argument\n");
+				print_usage(argv[0]);
+				return 1;
+			}
 		}
 		else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0)
 		{
@@ -86,6 +96,12 @@ int main(int argc, char* argv[])
 			{
 				out_path = argv[i + 1];
 				i++;
+			}
+			else
+			{
+				fprintf(stderr, "Error: -o/--output requires a path argument\n");
+				print_usage(argv[0]);
+				return 1;
 			}
 		}
 		else if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--rawir") == 0)
@@ -232,29 +248,45 @@ int main(int argc, char* argv[])
 					const char* outp = resolved_out;
 					int lres;
 					const char* bundle_paths = semantic_get_bundle_paths();
-					char combined_bundle_paths[2048];
+					char combined_bundle_paths[MAX_BUNDLE_PATH_SIZE];
+					bool paths_ok = true;
 					if (bundle_paths && bundle_paths[0] != '\0')
 					{
-						snprintf(combined_bundle_paths, sizeof(combined_bundle_paths),
-						         "src/backend/runtime,%s", bundle_paths);
+						int n = snprintf(combined_bundle_paths, sizeof(combined_bundle_paths),
+						                 "src/backend/runtime,%s", bundle_paths);
+						if (n < 0 || (size_t)n >= sizeof(combined_bundle_paths))
+						{
+							fprintf(stderr, "Error: bundle paths string is too long.\n");
+							exit_code = 5;
+							paths_ok = false;
+						}
 					}
 					else
 					{
-						snprintf(combined_bundle_paths, sizeof(combined_bundle_paths),
-						         "src/backend/runtime");
+						int n = snprintf(combined_bundle_paths, sizeof(combined_bundle_paths),
+						                 "src/backend/runtime");
+						if (n < 0 || (size_t)n >= sizeof(combined_bundle_paths))
+						{
+							fprintf(stderr, "Error: bundle paths string is too long.\n");
+							exit_code = 5;
+							paths_ok = false;
+						}
 					}
-					lres = linker_link_and_bundle(
-					    ll_path, outp, libs ? libs : "", combined_bundle_paths);
+					if (paths_ok)
+					{
+						lres = linker_link_and_bundle(
+						    ll_path, outp, libs ? libs : "", combined_bundle_paths);
 
-					if (lres == 0)
-					{
-						printf("Linked executable: %s\n", outp);
-						remove(ll_path);
-					}
-					else
-					{
-						fprintf(stderr, "Linking failed (code=%d)\n", lres);
-						exit_code = 5;
+						if (lres == 0)
+						{
+							printf("Linked executable: %s\n", outp);
+							remove(ll_path);
+						}
+						else
+						{
+							fprintf(stderr, "Linking failed (code=%d)\n", lres);
+							exit_code = 5;
+						}
 					}
 				}
 
