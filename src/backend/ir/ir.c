@@ -661,6 +661,18 @@ IRValue* ir_const_string(IRModule* m, const char* str)
 					case 't':
 						unesc[ri++] = '\t';
 						break;
+						case 'b':
+							unesc[ri++] = '\b';
+							break;
+						case 'f':
+							unesc[ri++] = '\f';
+							break;
+						case 'v':
+							unesc[ri++] = '\v';
+							break;
+						case 'a':
+							unesc[ri++] = '\a';
+							break;
 					case '\\':
 						unesc[ri++] = '\\';
 						break;
