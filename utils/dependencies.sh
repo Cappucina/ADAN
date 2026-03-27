@@ -30,8 +30,6 @@ detect_distro() {
         DISTRO=$ID
     elif command_exists lsb_release; then
         DISTRO=$(lsb_release -si | tr '[:upper:]' '[:lower:]')
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-        DISTRO="darwin"
     else
         print_error "Cannot detect operating system"
         exit 1
@@ -124,7 +122,17 @@ get_logical_packages() {
     # - Clang tooling (compiler and extras/formatting where available)
     # - Debugger (gdb)
     # - Build system (xmake)
-    :
+    #
+    # These are expressed as logical capability names. Platform-specific
+    # mappings in get_package_names translate them into concrete package
+    # names for each package manager.
+    LOGICAL_PACKAGES=(
+        "c_toolchain"      # C/C++ compiler, linker, binutils/make, etc.
+        "clang"            # Clang/LLVM compiler
+        "clang_format"     # Clang-format or equivalent formatting tool
+        "debugger"         # Debugger (e.g., gdb/lldb)
+        "build_system"     # Build system (xmake)
+    )
 }
 
 get_package_names() {
@@ -212,8 +220,19 @@ main() {
 
     if install_packages "${PACKAGES[@]}"; then
         if [ -n "$GITHUB_PATH" ]; then
-            print_info "Updating GITHUB_PATH..."
-            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+            # Detect actual xmake installation path before updating GITHUB_PATH
+            XMAKE_PATH="$(command -v xmake || true)"
+            if [ -n "$XMAKE_PATH" ]; then
+                XMAKE_DIR="$(dirname "$XMAKE_PATH")"
+                if [ -d "$XMAKE_DIR" ]; then
+                    print_info "Updating GITHUB_PATH with xmake directory: $XMAKE_DIR"
+                    echo "$XMAKE_DIR" >> "$GITHUB_PATH"
+                else
+                    print_warn "Detected xmake directory '$XMAKE_DIR' does not exist; not updating GITHUB_PATH"
+                fi
+            else
+                print_warn "xmake not found in PATH after installation; not updating GITHUB_PATH"
+            fi
         fi
         echo
         print_info "✓ All dependencies installed successfully!"
