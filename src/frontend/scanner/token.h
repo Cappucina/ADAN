@@ -35,6 +35,7 @@ typedef enum TokenType
 	TOKEN_F64_TYPE,
 	TOKEN_VOID_TYPE,
 	TOKEN_BOOL_TYPE,
+	TOKEN_ANY_TYPE,
 
 	// Literals
 	TOKEN_STRING,
@@ -58,6 +59,8 @@ typedef enum TokenType
 	TOKEN_INTERP_END,
 	TOKEN_LBRACKET,
 	TOKEN_RBRACKET,
+	TOKEN_ELLIPSIS,
+	TOKEN_DOT,
 
 	// Operators
 	TOKEN_PLUS,

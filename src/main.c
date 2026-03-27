@@ -232,16 +232,20 @@ int main(int argc, char* argv[])
 
 					const char* outp = resolved_out;
 					int lres;
-					const char* all_embedded =
-					    embedded_lib_get_all_import_paths();
-					lres = linker_link_and_bundle_embedded(
-					    ll_path, outp, libs ? libs : "",
-					    all_embedded ? all_embedded : "adan/runtime");
-
-					if (all_embedded)
+					const char* bundle_paths = semantic_get_bundle_paths();
+					char combined_bundle_paths[2048];
+					if (bundle_paths && bundle_paths[0] != '\0')
 					{
-						free((void*)all_embedded);
+						snprintf(combined_bundle_paths, sizeof(combined_bundle_paths),
+						         "src/backend/runtime,%s", bundle_paths);
 					}
+					else
+					{
+						snprintf(combined_bundle_paths, sizeof(combined_bundle_paths),
+						         "src/backend/runtime");
+					}
+					lres = linker_link_and_bundle(
+					    ll_path, outp, libs ? libs : "", combined_bundle_paths);
 
 					if (lres == 0)
 					{

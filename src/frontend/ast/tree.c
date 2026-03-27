@@ -39,11 +39,13 @@ void ast_free(ASTNode* node)
 			break;
 		case AST_FUNCTION_DECLARATION:
 			free(node->func_decl.name);
+			free(node->func_decl.variadic_name);
 			for (size_t i = 0; i < node->func_decl.param_count; i++)
 			{
 				ast_free(node->func_decl.params[i]);
 			}
 			free(node->func_decl.params);
+			ast_free(node->func_decl.variadic_type);
 			ast_free(node->func_decl.return_type);
 			ast_free(node->func_decl.body);
 			break;
@@ -123,6 +125,29 @@ void ast_free(ASTNode* node)
 			ast_free(node->cast.target_type);
 			ast_free(node->cast.expr);
 			break;
+		case AST_OBJECT_LITERAL:
+			for (size_t i = 0; i < node->object_literal.count; i++)
+			{
+				free(node->object_literal.properties[i].key);
+				ast_free(node->object_literal.properties[i].value);
+			}
+			free(node->object_literal.properties);
+			break;
+		case AST_ARRAY_LITERAL:
+			for (size_t i = 0; i < node->array_literal.count; i++)
+			{
+				ast_free(node->array_literal.elements[i]);
+			}
+			free(node->array_literal.elements);
+			break;
+		case AST_MEMBER_ACCESS:
+			ast_free(node->member_access.object);
+			ast_free(node->member_access.property);
+			break;
+		case AST_ARRAY_ACCESS:
+			ast_free(node->array_access.array);
+			ast_free(node->array_access.index);
+			break;
 		default:
 			break;
 	}
@@ -158,8 +183,9 @@ ASTNode* ast_create_program(ASTNode** decls, size_t count, size_t line, size_t c
 }
 
 ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, size_t param_count,
-                                         ASTNode* return_type, ASTNode* body, size_t line,
-                                         size_t column)
+										 ASTNode* return_type, ASTNode* body, bool is_variadic,
+										 const char* variadic_name, ASTNode* variadic_type,
+										 size_t line, size_t column)
 {
 	ASTNode* node = ast_init(AST_FUNCTION_DECLARATION, line, column);
 	if (!node)
@@ -176,6 +202,14 @@ ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, siz
 	}
 	node->func_decl.params = params;
 	node->func_decl.param_count = param_count;
+	node->func_decl.is_variadic = is_variadic;
+	node->func_decl.variadic_name = variadic_name ? clone_string(variadic_name, strlen(variadic_name)) : NULL;
+	node->func_decl.variadic_type = variadic_type;
+	if (variadic_name && !node->func_decl.variadic_name)
+	{
+		ast_free(node);
+		return NULL;
+	}
 	node->func_decl.return_type = return_type;
 	node->func_decl.body = body;
 	return node;
@@ -467,6 +501,42 @@ ASTNode* ast_create_if(ASTNode* condition, ASTNode* then_branch, ASTNode* else_b
 	return node;
 }
 
+ASTNode* ast_create_object_literal(ASTObjectProperty* properties, size_t count, size_t line,
+                                   size_t column)
+{
+	ASTNode* node = ast_init(AST_OBJECT_LITERAL, line, column);
+	node->object_literal.properties = properties;
+	node->object_literal.count = count;
+	return node;
+}
+
+ASTNode* ast_create_array_literal(ASTNode** elements, size_t count, size_t line,
+                                  size_t column)
+{
+	ASTNode* node = ast_init(AST_ARRAY_LITERAL, line, column);
+	node->array_literal.elements = elements;
+	node->array_literal.count = count;
+	return node;
+}
+
+ASTNode* ast_create_member_access(ASTNode* object, ASTNode* property, size_t line,
+                                  size_t column)
+{
+	ASTNode* node = ast_init(AST_MEMBER_ACCESS, line, column);
+	node->member_access.object = object;
+	node->member_access.property = property;
+	return node;
+}
+
+ASTNode* ast_create_array_access(ASTNode* array, ASTNode* index, size_t line,
+                                 size_t column)
+{
+	ASTNode* node = ast_init(AST_ARRAY_ACCESS, line, column);
+	node->array_access.array = array;
+	node->array_access.index = index;
+	return node;
+}
+
 void ast_print(ASTNode* node, int indent)
 {
 	if (!node)
@@ -489,10 +559,23 @@ void ast_print(ASTNode* node, int indent)
 			}
 			break;
 		case AST_FUNCTION_DECLARATION:
-			printf("Function Declaration: %s\n", node->func_decl.name);
+			printf("Function Declaration: %s%s\n", node->func_decl.name,
+			       node->func_decl.is_variadic ? " (...)" : "");
 			for (size_t i = 0; i < node->func_decl.param_count; i++)
 			{
 				ast_print(node->func_decl.params[i], indent + 1);
+			}
+			if (node->func_decl.is_variadic && node->func_decl.variadic_name)
+			{
+				for (int i = 0; i < indent + 1; i++)
+				{
+					printf("  ");
+				}
+				printf("Variadic Parameter: %s\n", node->func_decl.variadic_name);
+				if (node->func_decl.variadic_type)
+				{
+					ast_print(node->func_decl.variadic_type, indent + 2);
+				}
 			}
 			for (int i = 0; i < indent + 1; i++)
 			{
@@ -692,6 +775,55 @@ void ast_print(ASTNode* node, int indent)
 			}
 			printf("Expression:\n");
 			ast_print(node->cast.expr, indent + 2);
+			break;
+		case AST_OBJECT_LITERAL:
+			printf("Object Literal:\n");
+			for (size_t i = 0; i < node->object_literal.count; i++)
+			{
+				for (int j = 0; j < indent + 1; j++)
+				{
+					printf("  ");
+				}
+				printf("Property %s:\n", node->object_literal.properties[i].key);
+				ast_print(node->object_literal.properties[i].value, indent + 2);
+			}
+			break;
+		case AST_ARRAY_LITERAL:
+			printf("Array Literal:\n");
+			for (size_t i = 0; i < node->array_literal.count; i++)
+			{
+				ast_print(node->array_literal.elements[i], indent + 1);
+			}
+			break;
+		case AST_MEMBER_ACCESS:
+			printf("Member Access:\n");
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Object:\n");
+			ast_print(node->member_access.object, indent + 2);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Property:\n");
+			ast_print(node->member_access.property, indent + 2);
+			break;
+		case AST_ARRAY_ACCESS:
+			printf("Array Access:\n");
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Array:\n");
+			ast_print(node->array_access.array, indent + 2);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Index:\n");
+			ast_print(node->array_access.index, indent + 2);
 			break;
 	}
 }

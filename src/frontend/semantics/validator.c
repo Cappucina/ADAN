@@ -50,6 +50,16 @@ void validate_assignment(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_cast(SemanticAnalyzer* analyzer, ASTNode* node);
 
+void validate_object_literal(SemanticAnalyzer* analyzer, ASTNode* node);
+
+void validate_array_literal(SemanticAnalyzer* analyzer, ASTNode* node);
+
+void validate_member_access(SemanticAnalyzer* analyzer, ASTNode* node);
+
+void validate_array_access(SemanticAnalyzer* analyzer, ASTNode* node);
+
+static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* node);
+
 void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 {
 	if (!node)
@@ -118,6 +128,18 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 		case AST_CAST:
 			validate_cast(analyzer, node);
 			break;
+		case AST_OBJECT_LITERAL:
+			validate_object_literal(analyzer, node);
+			break;
+		case AST_ARRAY_LITERAL:
+			validate_array_literal(analyzer, node);
+			break;
+		case AST_MEMBER_ACCESS:
+			validate_member_access(analyzer, node);
+			break;
+		case AST_ARRAY_ACCESS:
+			validate_array_access(analyzer, node);
+			break;
 		default:
 			fprintf(stderr, "Unknown AST node type! (Error)\n");
 			analyzer->error_count++;
@@ -131,6 +153,11 @@ static char** imported_paths = NULL;
 static size_t imported_count = 0;
 static size_t imported_capacity = 0;
 
+static char** bundle_paths = NULL;
+static size_t bundle_path_count = 0;
+static size_t bundle_path_capacity = 0;
+static char* bundle_paths_csv = NULL;
+
 static char** embedded_modules_used = NULL;
 static size_t embedded_modules_count = 0;
 static size_t embedded_modules_capacity = 0;
@@ -141,6 +168,8 @@ typedef struct
 	char* name;
 	char** param_types;
 	size_t param_count;
+	bool is_variadic;
+	char* variadic_type;
 	char* return_type;
 } FunctionSignature;
 
@@ -164,6 +193,17 @@ void validator_cleanup()
 	imported_count = 0;
 	imported_capacity = 0;
 
+	for (size_t i = 0; i < bundle_path_count; i++)
+	{
+		free(bundle_paths[i]);
+	}
+	free(bundle_paths);
+	bundle_paths = NULL;
+	bundle_path_count = 0;
+	bundle_path_capacity = 0;
+	free(bundle_paths_csv);
+	bundle_paths_csv = NULL;
+
 	for (size_t i = 0; i < function_signature_count; i++)
 	{
 		FunctionSignature* sig = &function_signatures[i];
@@ -176,6 +216,11 @@ void validator_cleanup()
 		{
 			free(sig->return_type);
 			sig->return_type = NULL;
+		}
+		if (sig->variadic_type)
+		{
+			free(sig->variadic_type);
+			sig->variadic_type = NULL;
 		}
 		if (sig->param_types)
 		{
@@ -242,6 +287,41 @@ const char* validator_get_embedded_modules()
 	return embedded_modules_csv;
 }
 
+const char* validator_get_bundle_paths()
+{
+	if (bundle_path_count == 0)
+	{
+		return NULL;
+	}
+
+	free(bundle_paths_csv);
+	bundle_paths_csv = NULL;
+
+	size_t total = 0;
+	for (size_t i = 0; i < bundle_path_count; i++)
+	{
+		total += strlen(bundle_paths[i]) + 1;
+	}
+
+	bundle_paths_csv = malloc(total + 1);
+	if (!bundle_paths_csv)
+	{
+		return NULL;
+	}
+
+	bundle_paths_csv[0] = '\0';
+	for (size_t i = 0; i < bundle_path_count; i++)
+	{
+		if (i > 0)
+		{
+			strcat(bundle_paths_csv, ",");
+		}
+		strcat(bundle_paths_csv, bundle_paths[i]);
+	}
+
+	return bundle_paths_csv;
+}
+
 static FunctionSignature* find_function_signature(const char* name)
 {
 	if (!name)
@@ -298,6 +378,8 @@ static void register_function_signature(ASTNode* decl)
 	signature->return_type = clone_string(decl->func_decl.return_type->type_node.name,
 	                                      strlen(decl->func_decl.return_type->type_node.name));
 	signature->param_count = decl->func_decl.param_count;
+	signature->is_variadic = decl->func_decl.is_variadic;
+	signature->variadic_type = NULL;
 	signature->param_types = NULL;
 
 	if (!signature->name || !signature->return_type)
@@ -371,6 +453,266 @@ static void register_function_signature(ASTNode* decl)
 			}
 		}
 	}
+	if (signature->is_variadic && decl->func_decl.variadic_type &&
+	    decl->func_decl.variadic_type->type_node.name)
+	{
+		signature->variadic_type = clone_string(
+		    decl->func_decl.variadic_type->type_node.name,
+		    strlen(decl->func_decl.variadic_type->type_node.name));
+	}
+}
+
+static bool starts_with(const char* text, const char* prefix)
+{
+	return text && prefix && strncmp(text, prefix, strlen(prefix)) == 0;
+}
+
+static bool is_array_type_name(const char* name)
+{
+	return starts_with(name, "array<") && name[strlen(name) - 1] == '>';
+}
+
+static bool is_object_type_name(const char* name)
+{
+	return starts_with(name, "object{") && name[strlen(name) - 1] == '}';
+}
+
+static const char* cache_type_string(const char* text)
+{
+	static char slots[16][256];
+	static size_t slot = 0;
+	if (!text)
+	{
+		return NULL;
+	}
+	slot = (slot + 1) % 16;
+	snprintf(slots[slot], sizeof(slots[slot]), "%s", text);
+	return slots[slot];
+}
+
+static const char* extract_array_element_type(const char* array_type)
+{
+	if (!is_array_type_name(array_type))
+	{
+		return NULL;
+	}
+
+	char buffer[256];
+	size_t depth = 0;
+	size_t out = 0;
+	for (size_t i = 6; array_type[i] != '\0'; i++)
+	{
+		char current = array_type[i];
+		if (current == '<')
+		{
+			depth++;
+		}
+		else if (current == '>')
+		{
+			if (depth == 0)
+			{
+				break;
+			}
+			depth--;
+		}
+		if (out + 1 < sizeof(buffer))
+		{
+			buffer[out++] = current;
+		}
+	}
+	buffer[out] = '\0';
+	return cache_type_string(buffer);
+}
+
+static const char* find_object_property_type(const char* object_type, const char* property_name)
+{
+	if (!is_object_type_name(object_type) || !property_name)
+	{
+		return NULL;
+	}
+
+	const char* cursor = object_type + 7;
+	while (*cursor && *cursor != '}')
+	{
+		char key[128];
+		size_t key_length = 0;
+		while (*cursor && *cursor != ':' && *cursor != '}')
+		{
+			if (key_length + 1 < sizeof(key))
+			{
+				key[key_length++] = *cursor;
+			}
+			cursor++;
+		}
+		key[key_length] = '\0';
+
+		if (*cursor != ':')
+		{
+			break;
+		}
+		cursor++;
+
+		char value[256];
+		size_t value_length = 0;
+		size_t brace_depth = 0;
+		size_t angle_depth = 0;
+		while (*cursor)
+		{
+			char current = *cursor;
+			if (current == '{')
+			{
+				brace_depth++;
+			}
+			else if (current == '}')
+			{
+				if (brace_depth == 0 && angle_depth == 0)
+				{
+					break;
+				}
+				brace_depth--;
+			}
+			else if (current == '<')
+			{
+				angle_depth++;
+			}
+			else if (current == '>')
+			{
+				if (angle_depth > 0)
+				{
+					angle_depth--;
+				}
+			}
+			else if (current == ',' && brace_depth == 0 && angle_depth == 0)
+			{
+				break;
+			}
+
+			if (value_length + 1 < sizeof(value))
+			{
+				value[value_length++] = current;
+			}
+			cursor++;
+		}
+		value[value_length] = '\0';
+
+		if (strcmp(key, property_name) == 0)
+		{
+			return cache_type_string(value);
+		}
+
+		if (*cursor == ',')
+		{
+			cursor++;
+		}
+	}
+
+	return NULL;
+}
+
+static bool is_known_type_name(const char* name);
+
+static void mark_bundle_path(const char* path)
+{
+	if (!path || path[0] == '\0')
+	{
+		return;
+	}
+
+	for (size_t i = 0; i < bundle_path_count; i++)
+	{
+		if (strcmp(bundle_paths[i], path) == 0)
+		{
+			return;
+		}
+	}
+
+	if (bundle_path_count + 1 > bundle_path_capacity)
+	{
+		size_t next_capacity = bundle_path_capacity == 0 ? 8 : bundle_path_capacity * 2;
+		char** resized = realloc(bundle_paths, sizeof(char*) * next_capacity);
+		if (!resized)
+		{
+			return;
+		}
+		bundle_paths = resized;
+		bundle_path_capacity = next_capacity;
+	}
+
+	bundle_paths[bundle_path_count++] = clone_string(path, strlen(path));
+}
+
+static bool build_lib_dir(const char* import_path, char* output, size_t output_size)
+{
+	const char* prefix = "adan/";
+	if (!starts_with(import_path, prefix))
+	{
+		return false;
+	}
+
+	const char* rel = import_path + strlen(prefix);
+	int written = snprintf(output, output_size, "libs/%s", rel);
+	return written > 0 && (size_t)written < output_size;
+}
+
+static void append_imported_program(ASTNode* target_program, ASTNode* imported_program)
+{
+	if (!target_program || !imported_program || target_program->type != AST_PROGRAM ||
+	    imported_program->type != AST_PROGRAM || imported_program->program.count == 0)
+	{
+		return;
+	}
+
+	size_t next_count = target_program->program.count + imported_program->program.count;
+	ASTNode** resized = realloc(target_program->program.decls, sizeof(ASTNode*) * next_count);
+	if (!resized)
+	{
+		return;
+	}
+
+	target_program->program.decls = resized;
+	memcpy(target_program->program.decls + target_program->program.count,
+	       imported_program->program.decls,
+	       sizeof(ASTNode*) * imported_program->program.count);
+	target_program->program.count = next_count;
+	free(imported_program->program.decls);
+	imported_program->program.decls = NULL;
+	imported_program->program.count = 0;
+	ast_free(imported_program);
+}
+
+static const char* infer_array_literal_type(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	if (!node || node->type != AST_ARRAY_LITERAL)
+	{
+		return NULL;
+	}
+
+	const char* element_type = NULL;
+	for (size_t i = 0; i < node->array_literal.count; i++)
+	{
+		const char* current = resolve_expression_type(analyzer, node->array_literal.elements[i]);
+		if (!current)
+		{
+			return "array<any>";
+		}
+		if (!element_type)
+		{
+			element_type = current;
+		}
+		else if (!semantic_types_compatible(element_type, current))
+		{
+			return "array<any>";
+		}
+	}
+
+	if (!element_type)
+	{
+		return "array<any>";
+	}
+
+	char buffer[256];
+	snprintf(buffer, sizeof(buffer), "array<%s>", element_type);
+	return cache_type_string(buffer);
 }
 
 static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* node)
@@ -409,6 +751,62 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 		case AST_CALL:
 			if (node->call.callee)
 			{
+				if (strcmp(node->call.callee, "__string_format") == 0)
+				{
+					return "string";
+				}
+				if (starts_with(node->call.callee, "__array_"))
+				{
+					const char* array_type = node->call.arg_count > 0
+					                             ? resolve_expression_type(analyzer, node->call.args[0])
+					                             : NULL;
+					const char* element_type = extract_array_element_type(array_type);
+					if (strcmp(node->call.callee, "__array_length") == 0)
+					{
+						return "i32";
+					}
+					if (strcmp(node->call.callee, "__array_slice") == 0)
+					{
+						return array_type ? array_type : "array<any>";
+					}
+					if (strcmp(node->call.callee, "__array_pop") == 0 ||
+					    strcmp(node->call.callee, "__array_remove") == 0)
+					{
+						return element_type ? element_type : "any";
+					}
+					return "void";
+				}
+				if (strcmp(node->call.callee, "__array_length") == 0)
+				{
+					return "i32";
+				}
+				if (starts_with(node->call.callee, "adn_"))
+				{
+					if (strcmp(node->call.callee, "adn_input") == 0 ||
+					    strcmp(node->call.callee, "adn_string_format") == 0 ||
+					    strstr(node->call.callee, "_to_string") ||
+					    strstr(node->call.callee, "_get_string"))
+					{
+						return "string";
+					}
+					if (strstr(node->call.callee, "_to_f64") ||
+					    strstr(node->call.callee, "_get_f64"))
+					{
+						return "f64";
+					}
+					if (strstr(node->call.callee, "_to_i32") ||
+					    strstr(node->call.callee, "_get_i64") ||
+					    strstr(node->call.callee, "_length"))
+					{
+						return "i32";
+					}
+					if (strstr(node->call.callee, "create") ||
+					    strstr(node->call.callee, "_get_ptr"))
+					{
+						return "any";
+					}
+					return "void";
+				}
 				FunctionSignature* signature =
 				    find_function_signature(node->call.callee);
 				return signature ? signature->return_type : NULL;
@@ -432,6 +830,11 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 				    resolve_expression_type(analyzer, node->binary_op.left);
 				const char* rt =
 				    resolve_expression_type(analyzer, node->binary_op.right);
+				if ((lt && strcmp(lt, "string") == 0) ||
+				    (rt && strcmp(rt, "string") == 0))
+				{
+					return "string";
+				}
 				if (lt && rt)
 				{
 					if (strcmp(lt, "f64") == 0 || strcmp(rt, "f64") == 0)
@@ -459,6 +862,30 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 			}
 			return NULL;
 		}
+		case AST_OBJECT_LITERAL:
+			return "object";
+		case AST_ARRAY_LITERAL:
+			return infer_array_literal_type(analyzer, node);
+		case AST_MEMBER_ACCESS:
+		{
+			const char* object_type =
+			    resolve_expression_type(analyzer, node->member_access.object);
+			if (object_type && node->member_access.property &&
+			    node->member_access.property->type == AST_IDENTIFIER)
+			{
+				const char* property_type = find_object_property_type(
+				    object_type, node->member_access.property->identifier.name);
+				return property_type ? property_type : "any";
+			}
+			return "any";
+		}
+		case AST_ARRAY_ACCESS:
+		{
+			const char* array_type =
+			    resolve_expression_type(analyzer, node->array_access.array);
+			const char* element_type = extract_array_element_type(array_type);
+			return element_type ? element_type : "any";
+		}
 		default:
 			return NULL;
 	}
@@ -470,8 +897,81 @@ static bool is_known_type_name(const char* name)
 	{
 		return false;
 	}
+	if (is_array_type_name(name))
+	{
+		const char* element_type = extract_array_element_type(name);
+		return element_type && is_known_type_name(element_type);
+	}
+	if (is_object_type_name(name))
+	{
+		const char* cursor = name + 7;
+		while (*cursor && *cursor != '}')
+		{
+			while (*cursor && *cursor != ':')
+			{
+				cursor++;
+			}
+			if (*cursor != ':')
+			{
+				return false;
+			}
+			cursor++;
+
+			char value[256];
+			size_t value_length = 0;
+			size_t brace_depth = 0;
+			size_t angle_depth = 0;
+			while (*cursor)
+			{
+				char current = *cursor;
+				if (current == '{')
+				{
+					brace_depth++;
+				}
+				else if (current == '}')
+				{
+					if (brace_depth == 0 && angle_depth == 0)
+					{
+						break;
+					}
+					brace_depth--;
+				}
+				else if (current == '<')
+				{
+					angle_depth++;
+				}
+				else if (current == '>')
+				{
+					if (angle_depth > 0)
+					{
+						angle_depth--;
+					}
+				}
+				else if (current == ',' && brace_depth == 0 && angle_depth == 0)
+				{
+					break;
+				}
+
+				if (value_length + 1 < sizeof(value))
+				{
+					value[value_length++] = current;
+				}
+				cursor++;
+			}
+			value[value_length] = '\0';
+			if (!is_known_type_name(value))
+			{
+				return false;
+			}
+			if (*cursor == ',')
+			{
+				cursor++;
+			}
+		}
+		return true;
+	}
 	static const char* types[] = {"string", "bool", "i8",  "u8",  "i32", "i64",
-	                              "u32",    "u64",  "f32", "f64", "void"};
+	                              "u32",    "u64",  "f32", "f64", "void", "object", "array", "any"};
 	for (size_t i = 0; i < sizeof(types) / sizeof(types[0]); i++)
 	{
 		if (strcmp(types[i], name) == 0)
@@ -499,6 +999,12 @@ static void declare_symbol(SemanticAnalyzer* analyzer, ASTNode* node, const char
 
 	if (stm_lookup_local(analyzer->symbol_table_stack->current_scope, name) != NULL)
 	{
+		SymbolEntry* existing =
+		    stm_lookup_local(analyzer->symbol_table_stack->current_scope, name);
+		if (existing && existing->type && strcmp(existing->type, type) == 0)
+		{
+			return;
+		}
 		semantic_error(analyzer, node, "Duplicate declaration in current scope.");
 		return;
 	}
@@ -695,6 +1201,15 @@ void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 			validate_parameter(analyzer, node->func_decl.params[i]);
 		}
 	}
+	if (node->func_decl.is_variadic && node->func_decl.variadic_name &&
+	    node->func_decl.variadic_type && node->func_decl.variadic_type->type_node.name)
+	{
+		char array_type[256];
+		validate_type_node(analyzer, node->func_decl.variadic_type);
+		snprintf(array_type, sizeof(array_type), "array<%s>",
+		         node->func_decl.variadic_type->type_node.name);
+		declare_symbol(analyzer, node, node->func_decl.variadic_name, array_type);
+	}
 
 	if (node->func_decl.body)
 	{
@@ -796,7 +1311,47 @@ void validate_variable_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 		if (initializer_type && node->var_decl.type->type_node.name)
 		{
 			const char* target = node->var_decl.type->type_node.name;
-			if (strcmp(target, initializer_type) != 0 &&
+			if (node->var_decl.initializer->type == AST_OBJECT_LITERAL &&
+			    is_object_type_name(target))
+			{
+				for (size_t i = 0; i < node->var_decl.initializer->object_literal.count; i++)
+				{
+					ASTObjectProperty property =
+					    node->var_decl.initializer->object_literal.properties[i];
+					const char* property_type =
+					    find_object_property_type(target, property.key);
+					const char* value_type =
+					    resolve_expression_type(analyzer, property.value);
+					if (!property_type)
+					{
+						semantic_error(analyzer, property.value,
+						               "Object literal contains an unknown property.");
+					}
+					else if (value_type && !semantic_types_compatible(property_type, value_type))
+					{
+						semantic_error(analyzer, property.value,
+						               "Object property type does not match declared type.");
+					}
+				}
+			}
+			else if (node->var_decl.initializer->type == AST_ARRAY_LITERAL &&
+			         is_array_type_name(target))
+			{
+				const char* element_type = extract_array_element_type(target);
+				for (size_t i = 0; i < node->var_decl.initializer->array_literal.count; i++)
+				{
+					const char* value_type = resolve_expression_type(
+					    analyzer, node->var_decl.initializer->array_literal.elements[i]);
+					if (element_type && value_type &&
+					    !semantic_types_compatible(element_type, value_type))
+					{
+						semantic_error(analyzer,
+						               node->var_decl.initializer->array_literal.elements[i],
+						               "Array element type does not match declared array type.");
+					}
+				}
+			}
+			else if (strcmp(target, initializer_type) != 0 &&
 			    semantic_types_compatible(target, initializer_type))
 			{
 				node->var_decl.initializer = ast_create_cast(
@@ -904,9 +1459,62 @@ void validate_import_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 		return;
 	}
 
+	char bundle_path[512];
+	if (build_lib_dir(normalized, bundle_path, sizeof(bundle_path)))
+	{
+		mark_bundle_path(bundle_path);
+	}
 	declare_imported_symbols(analyzer, lib_ast);
-	ast_free(lib_ast);
 	mark_imported_path(normalized);
+	append_imported_program(analyzer->ast, lib_ast);
+}
+
+void validate_object_literal(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	for (size_t i = 0; i < node->object_literal.count; i++)
+	{
+		validate_node(analyzer, node->object_literal.properties[i].value);
+	}
+}
+
+void validate_array_literal(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	for (size_t i = 0; i < node->array_literal.count; i++)
+	{
+		validate_node(analyzer, node->array_literal.elements[i]);
+	}
+}
+
+void validate_member_access(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	validate_node(analyzer, node->member_access.object);
+	if (node->member_access.property && node->member_access.property->type == AST_IDENTIFIER)
+	{
+		const char* object_type =
+		    resolve_expression_type(analyzer, node->member_access.object);
+		if (object_type && is_object_type_name(object_type) &&
+		    !find_object_property_type(object_type,
+		                             node->member_access.property->identifier.name))
+		{
+			semantic_error(analyzer, node, "Unknown object property.");
+		}
+	}
+}
+
+void validate_array_access(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	validate_node(analyzer, node->array_access.array);
+	validate_node(analyzer, node->array_access.index);
+	const char* array_type = resolve_expression_type(analyzer, node->array_access.array);
+	const char* index_type = resolve_expression_type(analyzer, node->array_access.index);
+	if (array_type && !is_array_type_name(array_type) && strcmp(array_type, "array") != 0)
+	{
+		semantic_error(analyzer, node, "Indexed expression is not an array.");
+	}
+	if (index_type && !is_integer_type(index_type))
+	{
+		semantic_error(analyzer, node, "Array index must be an integer.");
+	}
 }
 
 void validate_parameter(SemanticAnalyzer* analyzer, ASTNode* node)
@@ -962,6 +1570,26 @@ void validate_call_expression(SemanticAnalyzer* analyzer, ASTNode* node)
 		return;
 	}
 
+	bool is_runtime_call = starts_with(node->call.callee, "adn_");
+	bool is_internal_call = starts_with(node->call.callee, "__array_") ||
+	                        strcmp(node->call.callee, "__string_format") == 0;
+	if (is_runtime_call || is_internal_call)
+	{
+		for (size_t i = 0; i < node->call.arg_count; i++)
+		{
+			validate_node(analyzer, node->call.args[i]);
+		}
+		if (strcmp(node->call.callee, "__string_format") == 0 && node->call.arg_count > 0)
+		{
+			const char* format_type = resolve_expression_type(analyzer, node->call.args[0]);
+			if (format_type && strcmp(format_type, "string") != 0)
+			{
+				semantic_error(analyzer, node, "String format receiver must be a string.");
+			}
+		}
+		return;
+	}
+
 	if (!analyzer->symbol_table_stack ||
 	    stm_lookup(analyzer->symbol_table_stack->current_scope, node->call.callee) == NULL)
 	{
@@ -973,7 +1601,8 @@ void validate_call_expression(SemanticAnalyzer* analyzer, ASTNode* node)
 	{
 		semantic_error(analyzer, node, "Call target is not a known function.");
 	}
-	else if (node->call.arg_count != signature->param_count)
+	else if ((!signature->is_variadic && node->call.arg_count != signature->param_count) ||
+	         (signature->is_variadic && node->call.arg_count < signature->param_count))
 	{
 		semantic_error(analyzer, node, "Call argument count does not match.");
 	}
@@ -983,11 +1612,19 @@ void validate_call_expression(SemanticAnalyzer* analyzer, ASTNode* node)
 		for (size_t i = 0; i < node->call.arg_count; i++)
 		{
 			validate_node(analyzer, node->call.args[i]);
-			if (signature && i < signature->param_count)
+			if (signature)
 			{
 				const char* arg_type =
 				    resolve_expression_type(analyzer, node->call.args[i]);
-				const char* param_type = signature->param_types[i];
+				const char* param_type = NULL;
+				if (i < signature->param_count)
+				{
+					param_type = signature->param_types[i];
+				}
+				else if (signature->is_variadic)
+				{
+					param_type = signature->variadic_type;
+				}
 				if (arg_type && param_type &&
 				    !semantic_types_compatible(param_type, arg_type))
 				{

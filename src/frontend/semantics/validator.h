@@ -10,4 +10,6 @@ void validator_cleanup();
 
 const char* validator_get_embedded_modules();
 
+const char* validator_get_bundle_paths();
+
 #endif

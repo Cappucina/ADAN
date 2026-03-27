@@ -22,6 +22,8 @@ void semantic_free(SemanticAnalyzer* analyzer);
 
 bool semantic_analyze(SemanticAnalyzer* analyzer);
 
+const char* semantic_get_bundle_paths(void);
+
 bool semantic_types_compatible(const char* expected, const char* actual);
 
 void semantic_error(SemanticAnalyzer* analyzer, ASTNode* node, const char* message);

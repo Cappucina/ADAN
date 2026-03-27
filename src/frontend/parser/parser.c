@@ -109,11 +109,26 @@ static ASTNode* parse_identifier_statement(Parser* parser);
 
 static ASTNode* parse_type(Parser* parser);
 
-static ASTNode** parse_parameter_list(Parser* parser, size_t* count);
+static ASTNode** parse_parameter_list(Parser* parser, size_t* count, bool* is_variadic,
+	                                 char** variadic_name, ASTNode** variadic_type);
 
 static ASTNode* parse_parameter(Parser* parser);
 
 static ASTNode* parse_block(Parser* parser);
+
+static ASTNode* parse_object_literal(Parser* parser);
+
+static ASTNode* parse_array_literal(Parser* parser);
+
+static char* parse_type_name(Parser* parser);
+
+static ASTNode** parse_call_arguments(Parser* parser, size_t* count);
+
+static ASTNode* parse_postfix(Parser* parser);
+
+static bool parse_variadic_parameter(Parser* parser, char** variadic_name,
+	                                 ASTNode** variadic_type);
+
 
 // Helper implementations
 
@@ -162,23 +177,193 @@ static void synchronize(Parser* parser)
 	}
 }
 
-static ASTNode* parse_type(Parser* parser)
+static bool is_type_token(TokenType type)
 {
-	if (match(parser, TOKEN_STRING_TYPE) || match(parser, TOKEN_I32_TYPE) ||
-	    match(parser, TOKEN_I64_TYPE) || match(parser, TOKEN_U32_TYPE) ||
-	    match(parser, TOKEN_U64_TYPE) || match(parser, TOKEN_VOID_TYPE) ||
-	    match(parser, TOKEN_F32_TYPE) || match(parser, TOKEN_F64_TYPE) ||
-	    match(parser, TOKEN_BOOL_TYPE) || match(parser, TOKEN_I8_TYPE) ||
-	    match(parser, TOKEN_U8_TYPE))
+	return type == TOKEN_STRING_TYPE || type == TOKEN_I32_TYPE ||
+	       type == TOKEN_I64_TYPE || type == TOKEN_U32_TYPE ||
+	       type == TOKEN_U64_TYPE || type == TOKEN_VOID_TYPE ||
+	       type == TOKEN_F32_TYPE || type == TOKEN_F64_TYPE ||
+	       type == TOKEN_BOOL_TYPE || type == TOKEN_I8_TYPE ||
+	       type == TOKEN_U8_TYPE || type == TOKEN_ANY_TYPE;
+}
+
+static bool append_text(char** buffer, size_t* length, size_t* capacity, const char* text)
+{
+	if (!text)
 	{
-		size_t tok_line = peek_current(parser)->line;
-		size_t tok_column = peek_current(parser)->column;
-		char* type_name = clone_string(peek_current(parser)->lexeme,
-		                               strlen(peek_current(parser)->lexeme));
+		return false;
+	}
+
+	size_t text_length = strlen(text);
+	if (*length + text_length + 1 > *capacity)
+	{
+		size_t next_capacity = *capacity == 0 ? 32 : *capacity;
+		while (*length + text_length + 1 > next_capacity)
+		{
+			next_capacity *= 2;
+		}
+		char* resized = realloc(*buffer, next_capacity);
+		if (!resized)
+		{
+			return false;
+		}
+		*buffer = resized;
+		*capacity = next_capacity;
+	}
+
+	memcpy(*buffer + *length, text, text_length);
+	*length += text_length;
+	(*buffer)[*length] = '\0';
+	return true;
+}
+
+static bool parse_variadic_parameter(Parser* parser, char** variadic_name,
+	                                 ASTNode** variadic_type)
+{
+	if (!variadic_name || !variadic_type)
+	{
+		return false;
+	}
+	*variadic_name = NULL;
+	*variadic_type = NULL;
+	consume(parser, TOKEN_ELLIPSIS, "Expected '...' for variadic parameter.");
+	if (!match(parser, TOKEN_IDENT))
+	{
+		error_expected(parser, "variadic parameter name after '...'");
+		return false;
+	}
+	*variadic_name = clone_string(peek_current(parser)->lexeme,
+	                            strlen(peek_current(parser)->lexeme));
+	consume(parser, TOKEN_IDENT, "Expected variadic parameter name.");
+	consume(parser, TOKEN_COLON, "Expected ':' after variadic parameter name.");
+	*variadic_type = parse_type(parser);
+	if (!*variadic_name || !*variadic_type)
+	{
+		if (*variadic_name)
+		{
+			free(*variadic_name);
+			*variadic_name = NULL;
+		}
+		if (*variadic_type)
+		{
+			ast_free(*variadic_type);
+			*variadic_type = NULL;
+		}
+		return false;
+	}
+	return true;
+}
+
+static char* wrap_array_type(char* inner)
+{
+	if (!inner)
+	{
+		return NULL;
+	}
+
+	size_t inner_length = strlen(inner);
+	char* wrapped = malloc(inner_length + 8);
+	if (!wrapped)
+	{
+		free(inner);
+		return NULL;
+	}
+
+	snprintf(wrapped, inner_length + 8, "array<%s>", inner);
+	free(inner);
+	return wrapped;
+}
+
+static char* parse_object_type_name(Parser* parser)
+{
+	char* buffer = NULL;
+	size_t length = 0;
+	size_t capacity = 0;
+
+	consume(parser, TOKEN_LBRACE, "Expected '{' to start object type.");
+	if (!append_text(&buffer, &length, &capacity, "object{"))
+	{
+		return NULL;
+	}
+
+	if (!match(parser, TOKEN_RBRACE))
+	{
+		while (true)
+		{
+			if (!match(parser, TOKEN_IDENT))
+			{
+				free(buffer);
+				error_expected(parser, "property name in object type");
+				return NULL;
+			}
+
+			if (!append_text(&buffer, &length, &capacity, peek_current(parser)->lexeme))
+			{
+				free(buffer);
+				return NULL;
+			}
+			advance_token(parser);
+
+			consume(parser, TOKEN_COLON, "Expected ':' after object type property name.");
+			if (!append_text(&buffer, &length, &capacity, ":"))
+			{
+				free(buffer);
+				return NULL;
+			}
+
+			char* property_type = parse_type_name(parser);
+			if (!property_type)
+			{
+				free(buffer);
+				return NULL;
+			}
+			if (!append_text(&buffer, &length, &capacity, property_type))
+			{
+				free(property_type);
+				free(buffer);
+				return NULL;
+			}
+			free(property_type);
+
+			if (!match(parser, TOKEN_COMMA))
+			{
+				break;
+			}
+			advance_token(parser);
+			if (match(parser, TOKEN_RBRACE))
+			{
+				break;
+			}
+			if (!append_text(&buffer, &length, &capacity, ","))
+			{
+				free(buffer);
+				return NULL;
+			}
+		}
+	}
+
+	consume(parser, TOKEN_RBRACE, "Expected '}' to end object type.");
+	if (!append_text(&buffer, &length, &capacity, "}"))
+	{
+		free(buffer);
+		return NULL;
+	}
+	return buffer;
+}
+
+static char* parse_type_name(Parser* parser)
+{
+	char* result = NULL;
+
+	if (peek_current(parser) && is_type_token(peek_current(parser)->type))
+	{
+		result = clone_string(peek_current(parser)->lexeme,
+		                     strlen(peek_current(parser)->lexeme));
 		advance_token(parser);
-		ASTNode* node = ast_create_type(type_name, tok_line, tok_column);
-		free(type_name);
-		return node;
+	}
+	else if (match(parser, TOKEN_LBRACE))
+	{
+		result = parse_object_type_name(parser);
 	}
 	else
 	{
@@ -187,16 +372,40 @@ static ASTNode* parse_type(Parser* parser)
 		synchronize(parser);
 		return NULL;
 	}
+
+	while (match(parser, TOKEN_LBRACKET) && peek_lookahead1(parser) &&
+	       peek_lookahead1(parser)->type == TOKEN_RBRACKET)
+	{
+		advance_token(parser);
+		advance_token(parser);
+		result = wrap_array_type(result);
+		if (!result)
+		{
+			return NULL;
+		}
+	}
+
+	return result;
+}
+
+static ASTNode* parse_type(Parser* parser)
+{
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	char* type_name = parse_type_name(parser);
+	if (!type_name)
+	{
+		return NULL;
+	}
+	ASTNode* node = ast_create_type(type_name, tok_line, tok_column);
+	free(type_name);
+	return node;
 }
 
 static ASTNode* parse_primary(Parser* parser)
 {
 	if (match(parser, TOKEN_IDENT))
 	{
-		if (peek_lookahead1(parser) && peek_lookahead1(parser)->type == TOKEN_LPAREN)
-		{
-			return parse_call(parser);
-		}
 		size_t tok_line = peek_current(parser)->line;
 		size_t tok_column = peek_current(parser)->column;
 		char* name = clone_string(peek_current(parser)->lexeme,
@@ -269,7 +478,7 @@ static ASTNode* parse_primary(Parser* parser)
 		     la1->type == TOKEN_I64_TYPE || la1->type == TOKEN_U32_TYPE ||
 		     la1->type == TOKEN_U64_TYPE || la1->type == TOKEN_VOID_TYPE ||
 		     la1->type == TOKEN_F32_TYPE || la1->type == TOKEN_F64_TYPE ||
-		     la1->type == TOKEN_BOOL_TYPE))
+		     la1->type == TOKEN_BOOL_TYPE || la1->type == TOKEN_ANY_TYPE))
 		{
 			size_t cast_line = peek_current(parser)->line;
 			size_t cast_col = peek_current(parser)->column;
@@ -284,6 +493,14 @@ static ASTNode* parse_primary(Parser* parser)
 		consume(parser, TOKEN_RPAREN, "Expected ')' after grouped expression.");
 		return expr;
 	}
+	else if (match(parser, TOKEN_LBRACE))
+	{
+		return parse_object_literal(parser);
+	}
+	else if (match(parser, TOKEN_LBRACKET))
+	{
+		return parse_array_literal(parser);
+	}
 	else
 	{
 		error_expected(parser, "primary expression");
@@ -293,40 +510,184 @@ static ASTNode* parse_primary(Parser* parser)
 	}
 }
 
-static ASTNode* parse_call(Parser* parser)
+static ASTNode** parse_call_arguments(Parser* parser, size_t* count)
 {
-	char* callee =
-	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
-	consume(parser, TOKEN_IDENT, "Expected function name for call expression.");
-	consume(parser, TOKEN_LPAREN, "Expected '(' after function name in call expression.");
-
+	*count = 0;
 	ASTNode** args = NULL;
-	size_t arg_count = 0;
-	size_t arg_capacity = 0;
+	size_t capacity = 0;
 
+	consume(parser, TOKEN_LPAREN, "Expected '(' after callee.");
 	if (!match(parser, TOKEN_RPAREN))
 	{
-		arg_capacity = 4;
-		args = malloc(sizeof(ASTNode*) * arg_capacity);
-		args[arg_count++] = parse_expression(parser);
-
-		while (match(parser, TOKEN_COMMA))
+		while (true)
 		{
-			advance_token(parser);
-			if (arg_count >= arg_capacity)
+			if (*count >= capacity)
 			{
-				arg_capacity *= 2;
-				args = realloc(args, sizeof(ASTNode*) * arg_capacity);
+				capacity = capacity == 0 ? 4 : capacity * 2;
+				args = realloc(args, sizeof(ASTNode*) * capacity);
 			}
-			args[arg_count++] = parse_expression(parser);
+			args[(*count)++] = parse_expression(parser);
+			if (!match(parser, TOKEN_COMMA))
+			{
+				break;
+			}
+			advance_token(parser);
+			if (match(parser, TOKEN_RPAREN))
+			{
+				break;
+			}
 		}
 	}
-
 	consume(parser, TOKEN_RPAREN, "Expected ')' after arguments in call expression.");
-	ASTNode* call = ast_create_call(callee, args, arg_count, peek_lookahead1(parser)->line,
-	                                peek_lookahead1(parser)->column);
+	return args;
+}
+
+static ASTNode* parse_call(Parser* parser)
+{
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	char* callee = clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
+	consume(parser, TOKEN_IDENT, "Expected function name for call expression.");
+	size_t arg_count = 0;
+	ASTNode** args = parse_call_arguments(parser, &arg_count);
+	ASTNode* call = ast_create_call(callee, args, arg_count, tok_line, tok_column);
 	free(callee);
 	return call;
+}
+
+static ASTNode* build_call_from_callee(Parser* parser, ASTNode* callee)
+{
+	size_t arg_count = 0;
+	ASTNode** args = parse_call_arguments(parser, &arg_count);
+	ASTNode* call = NULL;
+
+	if (!callee)
+	{
+		return NULL;
+	}
+
+	if (callee->type == AST_IDENTIFIER)
+	{
+		call = ast_create_call(callee->identifier.name, args, arg_count, callee->line,
+		                       callee->column);
+		ast_free(callee);
+		return call;
+	}
+
+	if (callee->type == AST_MEMBER_ACCESS && callee->member_access.property &&
+	    callee->member_access.property->type == AST_IDENTIFIER)
+	{
+		const char* method_name = callee->member_access.property->identifier.name;
+		const char* lowered_name = method_name;
+		if (strcmp(method_name, "push") == 0)
+		{
+			lowered_name = "__array_push";
+		}
+		else if (strcmp(method_name, "format") == 0)
+		{
+			lowered_name = "__string_format";
+		}
+		else if (strcmp(method_name, "pop") == 0)
+		{
+			lowered_name = "__array_pop";
+		}
+		else if (strcmp(method_name, "clear") == 0)
+		{
+			lowered_name = "__array_clear";
+		}
+		else if (strcmp(method_name, "insert") == 0)
+		{
+			lowered_name = "__array_insert";
+		}
+		else if (strcmp(method_name, "slice") == 0)
+		{
+			lowered_name = "__array_slice";
+		}
+		else if (strcmp(method_name, "remove") == 0)
+		{
+			lowered_name = "__array_remove";
+		}
+		else if (strcmp(method_name, "length") == 0 || strcmp(method_name, "len") == 0)
+		{
+			lowered_name = "__array_length";
+		}
+
+		ASTNode** rewritten_args = malloc(sizeof(ASTNode*) * (arg_count + 1));
+		if (!rewritten_args)
+		{
+			for (size_t i = 0; i < arg_count; i++)
+			{
+				ast_free(args[i]);
+			}
+			free(args);
+			ast_free(callee);
+			return NULL;
+		}
+
+		rewritten_args[0] = callee->member_access.object;
+		callee->member_access.object = NULL;
+		for (size_t i = 0; i < arg_count; i++)
+		{
+			rewritten_args[i + 1] = args[i];
+		}
+		free(args);
+		call = ast_create_call(lowered_name, rewritten_args, arg_count + 1, callee->line,
+		                       callee->column);
+		ast_free(callee);
+		return call;
+	}
+
+	error_expected(parser, "callable expression");
+	for (size_t i = 0; i < arg_count; i++)
+	{
+		ast_free(args[i]);
+	}
+	free(args);
+	ast_free(callee);
+	return NULL;
+}
+
+static ASTNode* parse_postfix(Parser* parser)
+{
+	ASTNode* expr = parse_primary(parser);
+	while (expr)
+	{
+		if (match(parser, TOKEN_LPAREN))
+		{
+			expr = build_call_from_callee(parser, expr);
+		}
+		else if (match(parser, TOKEN_DOT))
+		{
+			size_t op_line = peek_current(parser)->line;
+			size_t op_col = peek_current(parser)->column;
+			advance_token(parser);
+			if (!match(parser, TOKEN_IDENT))
+			{
+				ast_free(expr);
+				error_expected(parser, "property name after '.'");
+				return NULL;
+			}
+			ASTNode* property = ast_create_identifier(peek_current(parser)->lexeme,
+			                                         peek_current(parser)->line,
+			                                         peek_current(parser)->column);
+			advance_token(parser);
+			expr = ast_create_member_access(expr, property, op_line, op_col);
+		}
+		else if (match(parser, TOKEN_LBRACKET))
+		{
+			size_t op_line = peek_current(parser)->line;
+			size_t op_col = peek_current(parser)->column;
+			advance_token(parser);
+			ASTNode* index = parse_expression(parser);
+			consume(parser, TOKEN_RBRACKET, "Expected ']' after index.");
+			expr = ast_create_array_access(expr, index, op_line, op_col);
+		}
+		else
+		{
+			break;
+		}
+	}
+	return expr;
 }
 
 static ASTNode* parse_identifier_statement(Parser* parser)
@@ -334,28 +695,31 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 	Token* ident = peek_current(parser);
 	size_t tok_line = ident->line;
 	size_t tok_column = ident->column;
-	char* name = clone_string(ident->lexeme, ident->length);
-
-	Token* next = peek_lookahead1(parser);
-	if (next && next->type == TOKEN_LPAREN)
-	{
-		ASTNode* call = parse_call(parser);
-		consume(parser, TOKEN_SEMICOLON, "Expected ';' after call statement.");
-		parser_use_symbol(parser, name);
-		free(name);
-		return ast_create_expression_statement(call, tok_line, tok_column);
-	}
-
-	advance_token(parser);  // Consume identifier
-
+	ASTNode* target = parse_expression(parser);
 	ASTNode* value = NULL;
+	char* name = NULL;
+
 	if (match(parser, TOKEN_EQUALS))
 	{
+		if (!target || target->type != AST_IDENTIFIER)
+		{
+			ast_free(target);
+			error_expected(parser, "assignable identifier");
+			return NULL;
+		}
+		name = clone_string(target->identifier.name, strlen(target->identifier.name));
 		advance_token(parser);
 		value = parse_expression(parser);
 	}
 	else if (match(parser, TOKEN_PLUS_EQUALS))
 	{
+		if (!target || target->type != AST_IDENTIFIER)
+		{
+			ast_free(target);
+			error_expected(parser, "assignable identifier");
+			return NULL;
+		}
+		name = clone_string(target->identifier.name, strlen(target->identifier.name));
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
 		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column),
@@ -363,6 +727,13 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 	}
 	else if (match(parser, TOKEN_MINUS_EQUALS))
 	{
+		if (!target || target->type != AST_IDENTIFIER)
+		{
+			ast_free(target);
+			error_expected(parser, "assignable identifier");
+			return NULL;
+		}
+		name = clone_string(target->identifier.name, strlen(target->identifier.name));
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
 		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column),
@@ -370,6 +741,13 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 	}
 	else if (match(parser, TOKEN_STAR_EQUALS))
 	{
+		if (!target || target->type != AST_IDENTIFIER)
+		{
+			ast_free(target);
+			error_expected(parser, "assignable identifier");
+			return NULL;
+		}
+		name = clone_string(target->identifier.name, strlen(target->identifier.name));
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
 		value = ast_create_binary_op("*", ast_create_identifier(name, tok_line, tok_column),
@@ -377,6 +755,13 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 	}
 	else if (match(parser, TOKEN_SLASH_EQUALS))
 	{
+		if (!target || target->type != AST_IDENTIFIER)
+		{
+			ast_free(target);
+			error_expected(parser, "assignable identifier");
+			return NULL;
+		}
+		name = clone_string(target->identifier.name, strlen(target->identifier.name));
 		advance_token(parser);
 		ASTNode* right = parse_expression(parser);
 		value = ast_create_binary_op("/", ast_create_identifier(name, tok_line, tok_column),
@@ -384,6 +769,13 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 	}
 	else if (match(parser, TOKEN_PLUS_PLUS))
 	{
+		if (!target || target->type != AST_IDENTIFIER)
+		{
+			ast_free(target);
+			error_expected(parser, "assignable identifier");
+			return NULL;
+		}
+		name = clone_string(target->identifier.name, strlen(target->identifier.name));
 		advance_token(parser);
 		value = ast_create_binary_op("+", ast_create_identifier(name, tok_line, tok_column),
 		                             ast_create_number_literal("1", tok_line, tok_column),
@@ -391,6 +783,13 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 	}
 	else if (match(parser, TOKEN_MINUS_MINUS))
 	{
+		if (!target || target->type != AST_IDENTIFIER)
+		{
+			ast_free(target);
+			error_expected(parser, "assignable identifier");
+			return NULL;
+		}
+		name = clone_string(target->identifier.name, strlen(target->identifier.name));
 		advance_token(parser);
 		value = ast_create_binary_op("-", ast_create_identifier(name, tok_line, tok_column),
 		                             ast_create_number_literal("1", tok_line, tok_column),
@@ -398,12 +797,12 @@ static ASTNode* parse_identifier_statement(Parser* parser)
 	}
 	else
 	{
-		error_expected(parser, "assignment or call");
-		free(name);
-		return NULL;
+		consume(parser, TOKEN_SEMICOLON, "Expected ';' after expression statement.");
+		return ast_create_expression_statement(target, tok_line, tok_column);
 	}
 
 	consume(parser, TOKEN_SEMICOLON, "Expected ';' after identifier statement.");
+	ast_free(target);
 	parser_use_symbol(parser, name);
 	ASTNode* assign = ast_create_assignment(name, value, tok_line, tok_column);
 	free(name);
@@ -611,7 +1010,7 @@ static ASTNode* parse_multiplicative(Parser* parser)
 
 static ASTNode* parse_power(Parser* parser)
 {
-	ASTNode* base = parse_primary(parser);
+	ASTNode* base = parse_postfix(parser);
 
 	if (match(parser, TOKEN_CARET))
 	{
@@ -642,14 +1041,29 @@ static ASTNode* parse_parameter(Parser* parser)
 	return param;
 }
 
-static ASTNode** parse_parameter_list(Parser* parser, size_t* count)
+static ASTNode** parse_parameter_list(Parser* parser, size_t* count, bool* is_variadic,
+	                                 char** variadic_name, ASTNode** variadic_type)
 {
 	*count = 0;
+	*is_variadic = false;
+	if (variadic_name)
+	{
+		*variadic_name = NULL;
+	}
+	if (variadic_type)
+	{
+		*variadic_type = NULL;
+	}
 	ASTNode** params = NULL;
 	size_t capacity = 0;
 
 	if (!match(parser, TOKEN_RPAREN))
 	{
+		if (match(parser, TOKEN_ELLIPSIS))
+		{
+			*is_variadic = parse_variadic_parameter(parser, variadic_name, variadic_type);
+			return params;
+		}
 		capacity = 4;
 		params = malloc(sizeof(ASTNode*) * capacity);
 		params[(*count)++] = parse_parameter(parser);
@@ -657,6 +1071,11 @@ static ASTNode** parse_parameter_list(Parser* parser, size_t* count)
 		while (match(parser, TOKEN_COMMA))
 		{
 			advance_token(parser);
+			if (match(parser, TOKEN_ELLIPSIS))
+			{
+				*is_variadic = parse_variadic_parameter(parser, variadic_name, variadic_type);
+				break;
+			}
 			if (*count >= capacity)
 			{
 				capacity *= 2;
@@ -747,7 +1166,6 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 
 	// Declaration: `set name: type = expr;`
 	consume(parser, TOKEN_COLON, "Expected ':' after variable name.");
-
 	if (!peek_current(parser)->lexeme)
 	{
 		error_expected(parser, "type name after ':'");
@@ -755,12 +1173,10 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 		free(name);
 		return NULL;
 	}
-
-	char* type_name =
-	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
-
-	printf("Parsing variable declaration for '%s' of type '%s'\n", name, type_name);
 	ASTNode* type = parse_type(parser);
+	char* type_name = type && type->type_node.name
+	                      ? clone_string(type->type_node.name, strlen(type->type_node.name))
+	                      : NULL;
 
 	consume(parser, TOKEN_EQUALS, "Expected '=' after variable type.");
 	ASTNode* initializer = parse_expression(parser);
@@ -780,17 +1196,21 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 
 static ASTNode* parse_function_declaration(Parser* parser)
 {
-	consume(parser, TOKEN_FUN, "Expected 'fun' keyword for function declaration.");
+	consume(parser, TOKEN_FUN, "Expected 'function' keyword for function declaration.");
 
 	size_t tok_line = peek_current(parser)->line;
 	size_t tok_column = peek_current(parser)->column;
 	char* name =
 	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
-	consume(parser, TOKEN_IDENT, "Expected function name after 'fun' keyword.");
+	consume(parser, TOKEN_IDENT, "Expected function name after 'function' keyword.");
 
 	consume(parser, TOKEN_LPAREN, "Expected '(' after function name.");
 	size_t param_count = 0;
-	ASTNode** params = parse_parameter_list(parser, &param_count);
+	bool is_variadic = false;
+	char* variadic_name = NULL;
+	ASTNode* variadic_type = NULL;
+	ASTNode** params = parse_parameter_list(parser, &param_count, &is_variadic,
+	                                       &variadic_name, &variadic_type);
 	consume(parser, TOKEN_RPAREN, "Expected ')' after parameter list.");
 
 	consume(parser, TOKEN_COLON, "Expected ':' after parameter list for return type.");
@@ -807,7 +1227,9 @@ static ASTNode* parse_function_declaration(Parser* parser)
 
 	ASTNode* body = parse_block(parser);
 	ASTNode* func_decl = ast_create_function_declaration(name, params, param_count, return_type,
-	                                                     body, tok_line, tok_column);
+	                                                     body, is_variadic, variadic_name,
+	                                                     variadic_type, tok_line, tok_column);
+	free(variadic_name);
 	free(name);
 	return func_decl;
 }
@@ -913,4 +1335,76 @@ ASTNode* parser_parse_program(Parser* parser)
 
 	return ast_create_program(decls, count, peek_current(parser)->line,
 	                          peek_current(parser)->column);
+}
+
+static ASTNode* parse_object_literal(Parser* parser)
+{
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	consume(parser, TOKEN_LBRACE, "Expected '{' to start object literal.");
+
+	ASTObjectProperty* properties = NULL;
+	size_t count = 0;
+	size_t capacity = 0;
+
+	if (!match(parser, TOKEN_RBRACE))
+	{
+		do
+		{
+			if (match(parser, TOKEN_RBRACE))
+			{
+				break;
+			}
+			if (count >= capacity)
+			{
+				capacity = capacity == 0 ? 4 : capacity * 2;
+				properties = realloc(properties, sizeof(ASTObjectProperty) * capacity);
+			}
+
+			char* key = clone_string(peek_current(parser)->lexeme,
+			                         strlen(peek_current(parser)->lexeme));
+			consume(parser, TOKEN_IDENT, "Expected property name.");
+			consume(parser, TOKEN_COLON, "Expected ':' after property name.");
+			ASTNode* value = parse_expression(parser);
+
+			properties[count].key = key;
+			properties[count].value = value;
+			count++;
+
+		} while (match(parser, TOKEN_COMMA) && (advance_token(parser), true));
+	}
+
+	consume(parser, TOKEN_RBRACE, "Expected '}' to end object literal.");
+	return ast_create_object_literal(properties, count, tok_line, tok_column);
+}
+
+static ASTNode* parse_array_literal(Parser* parser)
+{
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	consume(parser, TOKEN_LBRACKET, "Expected '[' to start array literal.");
+
+	ASTNode** elements = NULL;
+	size_t count = 0;
+	size_t capacity = 0;
+
+	if (!match(parser, TOKEN_RBRACKET))
+	{
+		do
+		{
+			if (match(parser, TOKEN_RBRACKET))
+			{
+				break;
+			}
+			if (count >= capacity)
+			{
+				capacity = capacity == 0 ? 4 : capacity * 2;
+				elements = realloc(elements, sizeof(ASTNode*) * capacity);
+			}
+			elements[count++] = parse_expression(parser);
+		} while (match(parser, TOKEN_COMMA) && (advance_token(parser), true));
+	}
+
+	consume(parser, TOKEN_RBRACKET, "Expected ']' to end array literal.");
+	return ast_create_array_literal(elements, count, tok_line, tok_column);
 }

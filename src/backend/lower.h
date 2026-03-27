@@ -14,6 +14,7 @@ typedef struct Program
 typedef struct SymEntry
 {
 	char* name;
+	char* type_name;
 	IRValue* value;
 	int is_address;
 	struct SymEntry* next;

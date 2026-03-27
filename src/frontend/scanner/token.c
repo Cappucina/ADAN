@@ -36,7 +36,7 @@ char* token_type_to_string(TokenType type)
 		case TOKEN_IDENT:
 			return "IDENT";
 		case TOKEN_FUN:
-			return "FUN";
+			return "FUNCTION";
 		case TOKEN_IMPORT:
 			return "IMPORT";
 		case TOKEN_SET:
@@ -97,6 +97,8 @@ char* token_type_to_string(TokenType type)
 			return "MOD";
 		case TOKEN_BOOL_TYPE:
 			return "BOOL_TYPE";
+		case TOKEN_ANY_TYPE:
+			return "ANY_TYPE";
 		case TOKEN_TRUE:
 			return "TRUE";
 		case TOKEN_FALSE:

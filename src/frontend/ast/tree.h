@@ -27,7 +27,11 @@ typedef enum ASTNodeType
 	AST_BINARY_OP,             // Binary arithmetic/logic expression.
 	AST_ASSIGNMENT,            // Reassignment. `set name = expr;`
 	AST_CAST,                  // Type cast expression. `(type)expr`
-	AST_BOOLEAN_LITERAL        // Boolean literal. `true` or `false`
+	AST_BOOLEAN_LITERAL,        // Boolean literal. `true` or `false`
+	AST_OBJECT_LITERAL,
+	AST_ARRAY_LITERAL,
+	AST_MEMBER_ACCESS,
+	AST_ARRAY_ACCESS
 } ASTNodeType;
 
 typedef struct ASTNode ASTNode;
@@ -45,6 +49,9 @@ typedef struct
 	char* name;
 	ASTNode** params;
 	size_t param_count;
+	bool is_variadic;
+	char* variadic_name;
+	ASTNode* variadic_type;
 	ASTNode* return_type;
 	ASTNode* body;
 } ASTFuncDecl;
@@ -69,6 +76,36 @@ typedef struct
 	ASTNode* increment;  // Increment expression executed at the end of each loop iteration
 	ASTNode* body;       // Body of the for loop
 } ASTForStmt;
+
+typedef struct
+{
+	char* key;
+	ASTNode* value;
+} ASTObjectProperty;
+
+typedef struct
+{
+	ASTObjectProperty* properties;
+	size_t count;
+} ASTObjectLiteral;
+
+typedef struct
+{
+	ASTNode** elements;
+	size_t count;
+} ASTArrayLiteral;
+
+typedef struct
+{
+	ASTNode* object;
+	ASTNode* property;
+} ASTMemberAccess;
+
+typedef struct
+{
+	ASTNode* array;
+	ASTNode* index;
+} ASTArrayAccess;
 
 typedef struct
 {
@@ -184,6 +221,10 @@ struct ASTNode
 		ASTBooleanLiteral boolean_literal;
 		ASTWhileStmt while_stmt;
 		ASTForStmt for_stmt;
+		ASTObjectLiteral object_literal;
+		ASTArrayLiteral array_literal;
+		ASTMemberAccess member_access;
+		ASTArrayAccess array_access;
 	};
 };
 
@@ -198,8 +239,9 @@ ASTNode* ast_create_return(ASTNode* expr, size_t line, size_t column);
 ASTNode* ast_create_program(ASTNode** decls, size_t count, size_t line, size_t column);
 
 ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, size_t param_count,
-                                         ASTNode* return_type, ASTNode* body, size_t line,
-                                         size_t column);
+										 ASTNode* return_type, ASTNode* body, bool is_variadic,
+										 const char* variadic_name, ASTNode* variadic_type,
+										 size_t line, size_t column);
 
 ASTNode* ast_create_variable_declaration(const char* name, ASTNode* type, ASTNode* initializer,
                                          size_t line, size_t column);
@@ -239,6 +281,18 @@ ASTNode* ast_create_boolean_literal(bool value, size_t line, size_t column);
 
 ASTNode* ast_create_for(ASTNode* var_decl, ASTNode* condition, ASTNode* increment, ASTNode* body,
                         size_t line, size_t column);
+
+ASTNode* ast_create_object_literal(ASTObjectProperty* properties, size_t count, size_t line,
+                                   size_t column);
+
+ASTNode* ast_create_array_literal(ASTNode** elements, size_t count, size_t line,
+                                  size_t column);
+
+ASTNode* ast_create_member_access(ASTNode* object, ASTNode* property, size_t line,
+                                  size_t column);
+
+ASTNode* ast_create_array_access(ASTNode* array, ASTNode* index, size_t line,
+                                 size_t column);
 
 // Debugging functions
 

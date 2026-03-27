@@ -9,7 +9,7 @@
 #include "scanner.h"
 
 const Keyword keywords[] = {
-    {"fun", TOKEN_FUN},
+	{"function", TOKEN_FUN},
     {"import", TOKEN_IMPORT},
     {"set", TOKEN_SET},
     {"return", TOKEN_RETURN},
@@ -32,6 +32,7 @@ const Keyword keywords[] = {
     {"f64", TOKEN_F64_TYPE},
     {"void", TOKEN_VOID_TYPE},
     {"bool", TOKEN_BOOL_TYPE},
+	{"any", TOKEN_ANY_TYPE},
 
     {"true", TOKEN_TRUE},
     {"false", TOKEN_FALSE},
@@ -585,6 +586,19 @@ Token* scan_next_token(Scanner* scanner)
 			advance(scanner);
 			return make_token(TOKEN_RBRACKET, token_col, token_line,
 			                  clone_string("]", 1), 1);
+		case '.':
+			if (peek_next(scanner) == '.' && scanner->position + 2 < scanner->length &&
+			    scanner->source[scanner->position + 2] == '.')
+			{
+				advance(scanner);
+				advance(scanner);
+				advance(scanner);
+				return make_token(TOKEN_ELLIPSIS, token_col, token_line,
+				                  clone_string("...", 3), 3);
+			}
+			advance(scanner);
+			return make_token(TOKEN_DOT, token_col, token_line, clone_string(".", 1),
+			                  1);
 		default:
 			advance(scanner);
 			printf("Unexpected character '%c' at line %zu, column %zu\n", current,
