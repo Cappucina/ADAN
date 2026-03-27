@@ -63,7 +63,7 @@ detect_distro() {
 set_sudo_command() {
     if [ "$EUID" -eq 0 ]; then
         SUDO=""
-        return 1
+        return 0
     elif command_exists sudo; then
         SUDO="sudo"
         return 0
@@ -113,25 +113,51 @@ install_packages() {
     esac
 }
 
+# Defines the logical set of tools we require across platforms.
+# This function is intentionally kept in one place to aid keeping
+# dependencies.sh and dependencies.ps1 in sync. Platform-specific
+# mappings in get_package_names translate these logical needs into
+# concrete package names for each package manager.
+get_logical_packages() {
+    # Core requirements (conceptual):
+    # - C/C++ compiler toolchain (compiler, linker, binutils)
+    # - Clang tooling (compiler and extras/formatting where available)
+    # - Debugger (gdb)
+    # - Build system (xmake)
+    :
+}
+
 get_package_names() {
+    # Keep this mapping in sync with the corresponding logic in
+    # dependencies.ps1. Any intentional differences between shell and
+    # PowerShell versions should be documented inline below.
+    get_logical_packages
+
     case $PKG_MGR in
     apt)
-        PACKAGES="build-essential clang clang-format gdb less binutils xmake"
+        # apt: build-essential provides gcc/g++, make, and binutils.
+        # less is included here for log viewing on Debian/Ubuntu only.
+        PACKAGES=(build-essential clang clang-format gdb less binutils xmake)
         ;;
     dnf | yum)
-        PACKAGES="gcc clang clang-tools-extra gdb xmake"
+        # dnf/yum: gcc toolchain plus clang and extra tools.
+        PACKAGES=(gcc clang clang-tools-extra gdb xmake)
         ;;
     pacman)
-        PACKAGES="base-devel clang gdb xmake"
+        # pacman: base-devel provides build toolchain (including gcc/make).
+        PACKAGES=(base-devel clang gdb xmake)
         ;;
     zypper)
-        PACKAGES="gcc clang clang-tools gdb xmake"
+        # zypper: gcc toolchain plus clang tools.
+        PACKAGES=(gcc clang clang-tools gdb xmake)
         ;;
     apk)
-        PACKAGES="build-base clang-extra-tools gdb xmake"
+        # apk: build-base provides build toolchain, clang-extra-tools adds tooling.
+        PACKAGES=(build-base clang-extra-tools gdb xmake)
         ;;
     brew)
-        PACKAGES="llvm clang-format xmake"
+        # brew: llvm includes clang; clang-format is separate.
+        PACKAGES=(llvm clang-format xmake)
         ;;
     esac
 }
@@ -184,7 +210,7 @@ main() {
     print_info "Installing missing dependencies..."
     echo
 
-    if install_packages $PACKAGES; then
+    if install_packages "${PACKAGES[@]}"; then
         if [ -n "$GITHUB_PATH" ]; then
             print_info "Updating GITHUB_PATH..."
             echo "$HOME/.local/bin" >> "$GITHUB_PATH"
