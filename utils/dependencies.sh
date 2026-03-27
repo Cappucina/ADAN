@@ -72,11 +72,10 @@ set_sudo_command() {
 }
 
 install_packages() {
-
     case $PKG_MGR in
     apt)
         print_info "Updating package list..."
-        $SUDO apt-get update -qq || print_warn "Failed to update package list"
+        $SUDO apt-get update -qq || print_warn "Failed to update package list; continuing with installation using the existing package cache. If installation fails, please check your network connection or run 'sudo apt-get update' manually and re-run this script."
         print_info "Installing packages: $*"
         $SUDO apt-get install -y "$@"
         ;;
@@ -195,15 +194,18 @@ main() {
     echo
 
     NEED_INSTALL=false
+    XMAKE_WAS_MISSING=false
     if [ "$DISTRO" = "darwin" ]; then
         check_dependency "clang" "Clang compiler" || NEED_INSTALL=true
         check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
-        check_dependency "xmake" "XMake" || NEED_INSTALL=true
+        check_dependency "xmake" "XMake" || { NEED_INSTALL=true; XMAKE_WAS_MISSING=true; }
+        # LLDB is typically installed via Xcode / Command Line Tools on macOS,
+        # not via the package manager, so we only warn here instead of setting NEED_INSTALL=true.
         check_dependency "lldb" "LLDB debugger" || print_warn "LLDB is not installed — run: xcode-select --install"
     else
         check_dependency "gcc" "GCC compiler" || NEED_INSTALL=true
         check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
-        check_dependency "xmake" "XMake" || NEED_INSTALL=true
+        check_dependency "xmake" "XMake" || { NEED_INSTALL=true; XMAKE_WAS_MISSING=true; }
         check_dependency "gdb" "GDB debugger" || NEED_INSTALL=true
     fi
 
@@ -219,7 +221,7 @@ main() {
     echo
 
     if install_packages "${PACKAGES[@]}"; then
-        if [ -n "$GITHUB_PATH" ]; then
+        if [ "$XMAKE_WAS_MISSING" = true ] && [ -n "$GITHUB_PATH" ]; then
             # Detect actual xmake installation path before updating GITHUB_PATH
             XMAKE_PATH="$(command -v xmake || true)"
             if [ -n "$XMAKE_PATH" ]; then
