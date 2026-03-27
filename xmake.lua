@@ -1,6 +1,8 @@
 set_project("ADAN")
 set_version("1.0.0")
 
+import("core.base.try")
+
 set_languages("c11")
 add_defines("_GNU_SOURCE")
 
@@ -65,7 +67,12 @@ before_build(function(target)
 				end
 
 				local content = io.readfile(file)
-				content = content:gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("\n", '\\n" \\\n"')
+				-- Escape content for inclusion as a C string literal in a header:
+				-- 1) escape backslashes, 2) escape double quotes, 3) convert newlines
+				--    to '\n' and split the C string across multiple lines.
+				content = content:gsub("\\", "\\\\")
+				content = content:gsub('"', '\\"')
+				content = content:gsub("\n", '\\n" \\\n"')
 				header_file:write("#define LIB_" .. macro_name .. ' "' .. content .. '"\n\n')
 			end
 		end
@@ -75,22 +82,48 @@ before_build(function(target)
 	header_file:close()
 end)
 
+local function run_sample_test(targetfile)
+	os.runv(targetfile, { "-f", "samples/testing.adn", "-o", "samples/testing" })
+	local sample_exe = is_host("windows") and "samples/testing.exe" or "samples/testing"
+	os.exec(path.join(".", sample_exe))
+	os.rm("samples/testing.ll")
+	os.rm(sample_exe)
+end
+
 on_run(function(target)
 	local targetfile = target:targetfile()
-	os.runv(targetfile, { "-f", "samples/testing.adn", "-o", "samples/testing" })
-	os.exec("./samples/testing")
-	os.rm("samples/testing.ll")
-	os.rm("samples/testing")
+	try
+	{
+		function ()
+			run_sample_test(targetfile)
+		end
+	}
+	catch
+	{
+		function (errors)
+			-- stop further processing if the sample build or run fails
+			raise(errors)
+		end
+	}
 end)
 
 after_build(function(target)
 	import("core.base.option")
 	if option.get("task") == nil then
 		local targetfile = target:targetfile()
-		os.runv(targetfile, { "-f", "samples/testing.adn", "-o", "samples/testing" })
-		os.exec("./samples/testing")
-		os.rm("samples/testing.ll")
-		os.rm("samples/testing")
+		try
+		{
+			function ()
+				run_sample_test(targetfile)
+			end
+		}
+		catch
+		{
+			function (errors)
+				-- stop further processing if the sample build or run fails
+				raise(errors)
+			end
+		}
 	end
 end)
 
