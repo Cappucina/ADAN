@@ -156,8 +156,8 @@ SymbolEntry* stm_lookup(SymbolTableManager* manager, const char* name)
 	return entry;
 }
 
-void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned int size,
-                char* decl_line, char* usage_line, char* address)
+void stm_insert(SymbolTableManager* manager, char* name, char* type, int is_mutable,
+				unsigned int size, char* decl_line, char* usage_line, char* address)
 {
 	if (search_buckets(manager->buckets, name) != NULL)
 	{
@@ -183,6 +183,7 @@ void stm_insert(SymbolTableManager* manager, char* name, char* type, unsigned in
 	{
 		goto cleanup_node;
 	}
+	node->is_mutable = is_mutable;
 	node->size = size;
 	node->decl_line = decl_line ? clone_string(decl_line, strlen(decl_line)) : NULL;
 	if (!node->decl_line)

@@ -8,6 +8,13 @@
 #include "../scanner/token.h"
 #include "../ast/tree.h"
 
+typedef struct ParserTypeAlias
+{
+	char* name;
+	char* resolved_type;
+	struct ParserTypeAlias* next;
+} ParserTypeAlias;
+
 typedef struct Parser
 {
 	Token* current;
@@ -21,6 +28,7 @@ typedef struct Parser
 	int scope_depth;
 	bool recovery_mode;
 	bool allow_undefined_symbols;
+	ParserTypeAlias* type_aliases;
 } Parser;
 
 Parser* parser_init(Scanner* scanner);

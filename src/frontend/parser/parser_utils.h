@@ -3,9 +3,14 @@
 
 #include "parser.h"
 
-void parser_declare_variable(Parser* parser, const char* name, const char* type, unsigned int size);
+void parser_declare_variable(Parser* parser, const char* name, const char* type,
+	                        bool is_mutable, unsigned int size);
 
 void parser_declare_function(Parser* parser, const char* name, const char* return_type);
+
+bool parser_declare_type_alias(Parser* parser, const char* name, const char* resolved_type);
+
+const char* parser_resolve_type_alias(Parser* parser, const char* name);
 
 void parser_use_symbol(Parser* parser, const char* name);
 

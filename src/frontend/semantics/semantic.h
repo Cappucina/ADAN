@@ -14,6 +14,7 @@ typedef struct SemanticAnalyzer
 	int warning_count;
 	bool has_errors;
 	const char* current_function_return_type;
+	int loop_depth;
 } SemanticAnalyzer;
 
 SemanticAnalyzer* semantic_init(ASTNode* ast, SymbolTableStack* symbol_table_stack);

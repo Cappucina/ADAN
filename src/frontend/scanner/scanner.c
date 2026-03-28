@@ -12,6 +12,7 @@ const Keyword keywords[] = {
 	{"function", TOKEN_FUN},
     {"import", TOKEN_IMPORT},
     {"set", TOKEN_SET},
+	{"const", TOKEN_CONST},
     {"return", TOKEN_RETURN},
     {"if", TOKEN_IF},
     {"else", TOKEN_ELSE},
@@ -20,6 +21,9 @@ const Keyword keywords[] = {
     {"and", TOKEN_AND},
     {"not", TOKEN_NOT},
     {"for", TOKEN_FOR},
+	{"break", TOKEN_BREAK},
+	{"continue", TOKEN_CONTINUE},
+	{"type", TOKEN_TYPE},
 
     {"string", TOKEN_STRING_TYPE},
     {"u8", TOKEN_U8_TYPE},

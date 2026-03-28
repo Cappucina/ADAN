@@ -28,6 +28,7 @@ Parser* parser_init(Scanner* scanner)
 	parser->current = NULL;
 	parser->ahead1 = NULL;
 	parser->ahead2 = NULL;
+	parser->type_aliases = NULL;
 
 	advance_token(parser);
 	advance_token(parser);
@@ -59,6 +60,15 @@ void parser_free(Parser* parser)
 		free(parser->ahead2);
 	}
 
+	while (parser->type_aliases)
+	{
+		ParserTypeAlias* next = parser->type_aliases->next;
+		free(parser->type_aliases->name);
+		free(parser->type_aliases->resolved_type);
+		free(parser->type_aliases);
+		parser->type_aliases = next;
+	}
+
 	sts_free(parser->symbol_table_stack);
 	free(parser);
 }
@@ -81,7 +91,13 @@ static ASTNode* parse_for_statement(Parser* parser);
 
 static ASTNode* parse_variable_declaration(Parser* parser);
 
+static ASTNode* parse_type_declaration(Parser* parser);
+
 static ASTNode* parse_import_statement(Parser* parser);
+
+static ASTNode* parse_break_statement(Parser* parser);
+
+static ASTNode* parse_continue_statement(Parser* parser);
 
 static ASTNode* parse_expression(Parser* parser);
 
@@ -155,7 +171,11 @@ static void synchronize(Parser* parser)
 			case TOKEN_FUN:
 			case TOKEN_IMPORT:
 			case TOKEN_SET:
+			case TOKEN_CONST:
+			case TOKEN_TYPE:
 			case TOKEN_RETURN:
+			case TOKEN_BREAK:
+			case TOKEN_CONTINUE:
 			case TOKEN_RBRACE:
 			case TOKEN_EOF:
 				return;
@@ -356,6 +376,19 @@ static char* parse_type_name(Parser* parser)
 		                     strlen(peek_current(parser)->lexeme));
 		advance_token(parser);
 	}
+	else if (match(parser, TOKEN_IDENT))
+	{
+		const char* aliased = parser_resolve_type_alias(parser, peek_current(parser)->lexeme);
+		if (!aliased)
+		{
+			error_expected(parser, "type");
+			enter_recovery_mode(parser);
+			synchronize(parser);
+			return NULL;
+		}
+		result = clone_string(aliased, strlen(aliased));
+		advance_token(parser);
+	}
 	else if (match(parser, TOKEN_LBRACE))
 	{
 		result = parse_object_type_name(parser);
@@ -473,7 +506,9 @@ static ASTNode* parse_primary(Parser* parser)
 		     la1->type == TOKEN_I64_TYPE || la1->type == TOKEN_U32_TYPE ||
 		     la1->type == TOKEN_U64_TYPE || la1->type == TOKEN_VOID_TYPE ||
 		     la1->type == TOKEN_F32_TYPE || la1->type == TOKEN_F64_TYPE ||
-		     la1->type == TOKEN_BOOL_TYPE || la1->type == TOKEN_ANY_TYPE))
+		     la1->type == TOKEN_BOOL_TYPE || la1->type == TOKEN_ANY_TYPE ||
+		     (la1->type == TOKEN_IDENT &&
+		      parser_resolve_type_alias(parser, la1->lexeme) != NULL)))
 		{
 			size_t cast_line = peek_current(parser)->line;
 			size_t cast_col = peek_current(parser)->column;
@@ -1129,7 +1164,15 @@ static ASTNode* parse_import_statement(Parser* parser)
 
 static ASTNode* parse_variable_declaration(Parser* parser)
 {
-	consume(parser, TOKEN_SET, "Expected 'set' keyword for variable declaration.");
+	bool is_mutable = match(parser, TOKEN_SET);
+	if (is_mutable)
+	{
+		consume(parser, TOKEN_SET, "Expected 'set' keyword for variable declaration.");
+	}
+	else
+	{
+		consume(parser, TOKEN_CONST, "Expected declaration keyword.");
+	}
 
 	size_t tok_line = peek_current(parser)->line;
 	size_t tok_column = peek_current(parser)->column;
@@ -1178,14 +1221,44 @@ static ASTNode* parse_variable_declaration(Parser* parser)
 
 	if (name && type_name && !parser->recovery_mode)
 	{
-		parser_declare_variable(parser, name, type_name, 0);
+		parser_declare_variable(parser, name, type_name, is_mutable, 0);
 	}
 	free(type_name);
 
 	ASTNode* var_decl =
-	    ast_create_variable_declaration(name, type, initializer, tok_line, tok_column);
+	    ast_create_variable_declaration(name, type, initializer, is_mutable, tok_line,
+	                                   tok_column);
 	free(name);
 	return var_decl;
+}
+
+static ASTNode* parse_type_declaration(Parser* parser)
+{
+	consume(parser, TOKEN_TYPE, "Expected 'type' keyword for type declaration.");
+
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	char* name = clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
+	consume(parser, TOKEN_IDENT, "Expected type name after 'type' keyword.");
+	consume(parser, TOKEN_EQUALS, "Expected '=' after type name.");
+	ASTNode* value_type = parse_type(parser);
+	consume(parser, TOKEN_SEMICOLON, "Expected ';' after type declaration.");
+
+	if (!value_type)
+	{
+		free(name);
+		return NULL;
+	}
+
+	if (!parser_declare_type_alias(parser, name, value_type->type_node.name))
+	{
+		fprintf(stderr, "Duplicate type alias '%s'. (Error)\n", name);
+		parser->error_count++;
+	}
+
+	ASTNode* type_decl = ast_create_type_declaration(name, value_type, tok_line, tok_column);
+	free(name);
+	return type_decl;
 }
 
 static ASTNode* parse_function_declaration(Parser* parser)
@@ -1267,6 +1340,24 @@ static ASTNode* parse_return_statement(Parser* parser)
 	return ast_create_return(expr, tok_line, tok_column);
 }
 
+static ASTNode* parse_break_statement(Parser* parser)
+{
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	consume(parser, TOKEN_BREAK, "Expected 'break' keyword.");
+	consume(parser, TOKEN_SEMICOLON, "Expected ';' after break statement.");
+	return ast_create_break(tok_line, tok_column);
+}
+
+static ASTNode* parse_continue_statement(Parser* parser)
+{
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	consume(parser, TOKEN_CONTINUE, "Expected 'continue' keyword.");
+	consume(parser, TOKEN_SEMICOLON, "Expected ';' after continue statement.");
+	return ast_create_continue(tok_line, tok_column);
+}
+
 static ASTNode* parse_statement(Parser* parser)
 {
 	if (parser->recovery_mode)
@@ -1277,6 +1368,8 @@ static ASTNode* parse_statement(Parser* parser)
 	{
 		case TOKEN_FUN:
 			return parse_function_declaration(parser);
+		case TOKEN_TYPE:
+			return parse_type_declaration(parser);
 		case TOKEN_IMPORT:
 			return parse_import_statement(parser);
 		case TOKEN_IF:
@@ -1286,9 +1379,14 @@ static ASTNode* parse_statement(Parser* parser)
 		case TOKEN_FOR:
 			return parse_for_statement(parser);
 		case TOKEN_SET:
+		case TOKEN_CONST:
 			return parse_variable_declaration(parser);
 		case TOKEN_RETURN:
 			return parse_return_statement(parser);
+		case TOKEN_BREAK:
+			return parse_break_statement(parser);
+		case TOKEN_CONTINUE:
+			return parse_continue_statement(parser);
 		case TOKEN_IDENT:
 			return parse_identifier_statement(parser);
 		default:

@@ -72,6 +72,10 @@ void ast_free(ASTNode* node)
 			ast_free(node->var_decl.type);
 			ast_free(node->var_decl.initializer);
 			break;
+		case AST_TYPE_DECLARATION:
+			free(node->type_decl.name);
+			ast_free(node->type_decl.value_type);
+			break;
 		case AST_IMPORT_STATEMENT:
 			free(node->import.path);
 			break;
@@ -124,6 +128,9 @@ void ast_free(ASTNode* node)
 		case AST_CAST:
 			ast_free(node->cast.target_type);
 			ast_free(node->cast.expr);
+			break;
+		case AST_BREAK_STATEMENT:
+		case AST_CONTINUE_STATEMENT:
 			break;
 		case AST_OBJECT_LITERAL:
 			for (size_t i = 0; i < node->object_literal.count; i++)
@@ -214,7 +221,7 @@ ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, siz
 }
 
 ASTNode* ast_create_variable_declaration(const char* name, ASTNode* type, ASTNode* initializer,
-                                         size_t line, size_t column)
+	                                     bool is_mutable, size_t line, size_t column)
 {
 	ASTNode* node = ast_init(AST_VARIABLE_DECLARATION, line, column);
 	if (!node)
@@ -231,6 +238,27 @@ ASTNode* ast_create_variable_declaration(const char* name, ASTNode* type, ASTNod
 	}
 	node->var_decl.type = type;
 	node->var_decl.initializer = initializer;
+	node->var_decl.is_mutable = is_mutable;
+	return node;
+}
+
+ASTNode* ast_create_type_declaration(const char* name, ASTNode* value_type, size_t line,
+	                                 size_t column)
+{
+	ASTNode* node = ast_init(AST_TYPE_DECLARATION, line, column);
+	if (!node)
+	{
+		fprintf(stderr, "Failed to create AST type declaration node! (Error)\n");
+		return NULL;
+	}
+
+	node->type_decl.name = clone_string(name, strlen(name));
+	if (!node->type_decl.name)
+	{
+		ast_free(node);
+		return NULL;
+	}
+	node->type_decl.value_type = value_type;
 	return node;
 }
 
@@ -468,6 +496,16 @@ ASTNode* ast_create_boolean_literal(bool value, size_t line, size_t column)
 	return node;
 }
 
+ASTNode* ast_create_break(size_t line, size_t column)
+{
+	return ast_init(AST_BREAK_STATEMENT, line, column);
+}
+
+ASTNode* ast_create_continue(size_t line, size_t column)
+{
+	return ast_init(AST_CONTINUE_STATEMENT, line, column);
+}
+
 ASTNode* ast_create_for(ASTNode* var_decl, ASTNode* condition, ASTNode* increment, ASTNode* body,
                         size_t line, size_t column)
 {
@@ -663,7 +701,8 @@ void ast_print(ASTNode* node, int indent)
 			ast_print(node->for_stmt.body, indent + 2);
 			break;
 		case AST_VARIABLE_DECLARATION:
-			printf("Variable Declaration: %s\n", node->var_decl.name);
+			printf("Variable Declaration: %s (%s)\n", node->var_decl.name,
+			       node->var_decl.is_mutable ? "mutable" : "const");
 			for (int i = 0; i < indent + 1; i++)
 			{
 				printf("  ");
@@ -676,6 +715,15 @@ void ast_print(ASTNode* node, int indent)
 			}
 			printf("Initializer:\n");
 			ast_print(node->var_decl.initializer, indent + 2);
+			break;
+		case AST_TYPE_DECLARATION:
+			printf("Type Declaration: %s\n", node->type_decl.name);
+			for (int i = 0; i < indent + 1; i++)
+			{
+				printf("  ");
+			}
+			printf("Value Type:\n");
+			ast_print(node->type_decl.value_type, indent + 2);
 			break;
 		case AST_IMPORT_STATEMENT:
 			printf("Import: %s\n", node->import.path);
@@ -773,6 +821,12 @@ void ast_print(ASTNode* node, int indent)
 			}
 			printf("Expression:\n");
 			ast_print(node->cast.expr, indent + 2);
+			break;
+		case AST_BREAK_STATEMENT:
+			printf("Break Statement\n");
+			break;
+		case AST_CONTINUE_STATEMENT:
+			printf("Continue Statement\n");
 			break;
 		case AST_OBJECT_LITERAL:
 			printf("Object Literal:\n");

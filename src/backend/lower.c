@@ -11,6 +11,12 @@ static IRType* lower_type(Program* program, ASTNode* node);
 
 static IRBlock* current_block = NULL;
 
+static IRBlock* loop_break_targets[128];
+
+static IRBlock* loop_continue_targets[128];
+
+static size_t loop_target_depth = 0;
+
 static SymEntry* sym_table = NULL;
 
 static void emit_global_inits(IRBlock* block, ASTNode* root, Program* program,
@@ -50,6 +56,13 @@ static IRValue* lower_array_access(Program* program, ASTNode* node);
 static IRValue* lower_variadic_pack_array(Program* program, ASTNode** arg_nodes,
 	                                      IRValue** arg_values, size_t start,
 	                                      size_t end);
+
+static bool block_is_terminated(IRBlock* block)
+{
+	return block && block->last && (block->last->kind == IR_RET ||
+	                                block->last->kind == IR_BR ||
+	                                block->last->kind == IR_CBR);
+}
 
 static bool starts_with(const char* text, const char* prefix)
 {
@@ -231,8 +244,13 @@ static void sym_put(const char* name, const char* type_name, IRValue* v, int is_
 	{
 		if (type_name)
 		{
+			char* duplicated_type = strdup(type_name);
+			if (!duplicated_type)
+			{
+				return;
+			}
 			free(existing->type_name);
-			existing->type_name = strdup(type_name);
+			existing->type_name = duplicated_type;
 		}
 		existing->value = v;
 		existing->is_address = is_addr ? 1 : 0;
@@ -1603,10 +1621,16 @@ void lower_statement(Program* program, ASTNode* node)
 			        node->block.count);
 			for (size_t i = 0; i < node->block.count; i++)
 			{
+				if (block_is_terminated(current_block))
+				{
+					break;
+				}
 				lower_statement(program, node->block.statements[i]);
 			}
 			break;
 		}
+		case AST_TYPE_DECLARATION:
+			break;
 		case AST_IF_STATEMENT:
 		{
 			if (!current_block)
@@ -1674,7 +1698,14 @@ void lower_statement(Program* program, ASTNode* node)
 			ir_emit_cbr(current_block, cond, body_b, merge_b);
 
 			current_block = body_b;
+			loop_break_targets[loop_target_depth] = merge_b;
+			loop_continue_targets[loop_target_depth] = cond_b;
+			loop_target_depth++;
 			lower_statement(program, node->while_stmt.body);
+			if (loop_target_depth > 0)
+			{
+				loop_target_depth--;
+			}
 			if (current_block &&
 			    (!current_block->last || (current_block->last->kind != IR_RET &&
 			                              current_block->last->kind != IR_BR &&
@@ -1713,9 +1744,16 @@ void lower_statement(Program* program, ASTNode* node)
 			ir_emit_cbr(current_block, cond, body_b, merge_b);
 
 			current_block = body_b;
+			loop_break_targets[loop_target_depth] = merge_b;
+			loop_continue_targets[loop_target_depth] = inc_b;
+			loop_target_depth++;
 			if (node->for_stmt.body)
 			{
 				lower_statement(program, node->for_stmt.body);
+			}
+			if (loop_target_depth > 0)
+			{
+				loop_target_depth--;
 			}
 			if (current_block &&
 			    (!current_block->last || (current_block->last->kind != IR_RET &&
@@ -1742,6 +1780,26 @@ void lower_statement(Program* program, ASTNode* node)
 			ir_emit_br(current_block, cond_b);
 
 			current_block = merge_b;
+			break;
+		}
+		case AST_BREAK_STATEMENT:
+		{
+			if (!current_block || loop_target_depth == 0)
+			{
+				fprintf(stderr, "Break statement outside of loop. (Error)\n");
+				return;
+			}
+			ir_emit_br(current_block, loop_break_targets[loop_target_depth - 1]);
+			break;
+		}
+		case AST_CONTINUE_STATEMENT:
+		{
+			if (!current_block || loop_target_depth == 0)
+			{
+				fprintf(stderr, "Continue statement outside of loop. (Error)\n");
+				return;
+			}
+			ir_emit_br(current_block, loop_continue_targets[loop_target_depth - 1]);
 			break;
 		}
 		case AST_VARIABLE_DECLARATION:
@@ -1957,6 +2015,7 @@ void lower_program(Program* program)
 	}
 
 	sym_clear();
+	loop_target_depth = 0;
 	ASTNode* root = program->ast_root;
 	for (size_t i = 0; i < root->program.count; ++i)
 	{

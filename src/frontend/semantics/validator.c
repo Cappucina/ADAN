@@ -14,6 +14,8 @@ void validate_program(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node);
 
+void validate_type_declaration(SemanticAnalyzer* analyzer, ASTNode* node);
+
 void validate_if_statement(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_while_statement(SemanticAnalyzer* analyzer, ASTNode* node);
@@ -48,6 +50,10 @@ void validate_assignment(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_cast(SemanticAnalyzer* analyzer, ASTNode* node);
 
+void validate_break_statement(SemanticAnalyzer* analyzer, ASTNode* node);
+
+void validate_continue_statement(SemanticAnalyzer* analyzer, ASTNode* node);
+
 void validate_object_literal(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_array_literal(SemanticAnalyzer* analyzer, ASTNode* node);
@@ -72,6 +78,9 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 			break;
 		case AST_FUNCTION_DECLARATION:
 			validate_function_declaration(analyzer, node);
+			break;
+		case AST_TYPE_DECLARATION:
+			validate_type_declaration(analyzer, node);
 			break;
 		case AST_IF_STATEMENT:
 			validate_if_statement(analyzer, node);
@@ -125,6 +134,12 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 			break;
 		case AST_CAST:
 			validate_cast(analyzer, node);
+			break;
+		case AST_BREAK_STATEMENT:
+			validate_break_statement(analyzer, node);
+			break;
+		case AST_CONTINUE_STATEMENT:
+			validate_continue_statement(analyzer, node);
 			break;
 		case AST_OBJECT_LITERAL:
 			validate_object_literal(analyzer, node);
@@ -978,7 +993,7 @@ static bool is_known_type_name(const char* name)
 }
 
 static void declare_symbol(SemanticAnalyzer* analyzer, ASTNode* node, const char* name,
-                           const char* type)
+	                       const char* type, bool is_mutable)
 {
 	if (!analyzer || !analyzer->symbol_table_stack ||
 	    !analyzer->symbol_table_stack->current_scope)
@@ -1006,7 +1021,8 @@ static void declare_symbol(SemanticAnalyzer* analyzer, ASTNode* node, const char
 
 	char line_buffer[32];
 	snprintf(line_buffer, sizeof(line_buffer), "%zu", node->line);
-	stm_insert(analyzer->symbol_table_stack->current_scope, (char*)name, (char*)type, 0,
+	stm_insert(analyzer->symbol_table_stack->current_scope, (char*)name, (char*)type,
+	           is_mutable, 0,
 	           line_buffer, "0", "0");
 }
 
@@ -1140,7 +1156,7 @@ static void declare_imported_symbols(SemanticAnalyzer* analyzer, ASTNode* ast)
 				    decl->func_decl.return_type->type_node.name)
 				{
 					declare_symbol(analyzer, decl, decl->func_decl.name,
-					               decl->func_decl.return_type->type_node.name);
+						               decl->func_decl.return_type->type_node.name, false);
 					register_function_signature(decl);
 				}
 				break;
@@ -1149,7 +1165,8 @@ static void declare_imported_symbols(SemanticAnalyzer* analyzer, ASTNode* ast)
 				    decl->var_decl.type->type_node.name)
 				{
 					declare_symbol(analyzer, decl, decl->var_decl.name,
-					               decl->var_decl.type->type_node.name);
+						               decl->var_decl.type->type_node.name,
+						               decl->var_decl.is_mutable);
 				}
 				break;
 			default:
@@ -1186,7 +1203,7 @@ void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 
 	validate_type_node(analyzer, node->func_decl.return_type);
 	declare_symbol(analyzer, node, node->func_decl.name,
-	               node->func_decl.return_type->type_node.name);
+	               node->func_decl.return_type->type_node.name, false);
 	register_function_signature(node);
 
 	if (node->func_decl.params)
@@ -1203,7 +1220,7 @@ void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 		validate_type_node(analyzer, node->func_decl.variadic_type);
 		snprintf(array_type, sizeof(array_type), "array<%s>",
 		         node->func_decl.variadic_type->type_node.name);
-		declare_symbol(analyzer, node, node->func_decl.variadic_name, array_type);
+		declare_symbol(analyzer, node, node->func_decl.variadic_name, array_type, false);
 	}
 
 	if (node->func_decl.body)
@@ -1214,6 +1231,22 @@ void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 		validate_block(analyzer, node->func_decl.body);
 		analyzer->current_function_return_type = previous;
 	}
+}
+
+void validate_type_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	if (!analyzer || !node || node->type != AST_TYPE_DECLARATION)
+	{
+		return;
+	}
+
+	if (!node->type_decl.name || !node->type_decl.value_type)
+	{
+		semantic_error(analyzer, node, "Type declaration missing name or value type.");
+		return;
+	}
+
+	validate_type_node(analyzer, node->type_decl.value_type);
 }
 
 void validate_if_statement(SemanticAnalyzer* analyzer, ASTNode* node)
@@ -1252,7 +1285,9 @@ void validate_while_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 	}
 
 	validate_node(analyzer, node->while_stmt.condition);
+	analyzer->loop_depth++;
 	validate_node(analyzer, node->while_stmt.body);
+	analyzer->loop_depth--;
 }
 
 void validate_for_statement(SemanticAnalyzer* analyzer, ASTNode* node)
@@ -1277,7 +1312,9 @@ void validate_for_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 	validate_node(analyzer, node->for_stmt.condition);
 	validate_node(analyzer, node->for_stmt.increment);
 
+	analyzer->loop_depth++;
 	validate_node(analyzer, node->for_stmt.body);
+	analyzer->loop_depth--;
 
 	sts_pop_scope(analyzer->symbol_table_stack);
 }
@@ -1296,7 +1333,8 @@ void validate_variable_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 	}
 
 	validate_type_node(analyzer, node->var_decl.type);
-	declare_symbol(analyzer, node, node->var_decl.name, node->var_decl.type->type_node.name);
+	declare_symbol(analyzer, node, node->var_decl.name,
+	               node->var_decl.type->type_node.name, node->var_decl.is_mutable);
 
 	if (node->var_decl.initializer)
 	{
@@ -1359,6 +1397,32 @@ void validate_variable_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 				               "Initializer type does not match variable type.");
 			}
 		}
+	}
+}
+
+void validate_break_statement(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	if (!analyzer || !node || node->type != AST_BREAK_STATEMENT)
+	{
+		return;
+	}
+
+	if (analyzer->loop_depth <= 0)
+	{
+		semantic_error(analyzer, node, "Break statement must appear inside a loop.");
+	}
+}
+
+void validate_continue_statement(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	if (!analyzer || !node || node->type != AST_CONTINUE_STATEMENT)
+	{
+		return;
+	}
+
+	if (analyzer->loop_depth <= 0)
+	{
+		semantic_error(analyzer, node, "Continue statement must appear inside a loop.");
 	}
 }
 
@@ -1526,7 +1590,8 @@ void validate_parameter(SemanticAnalyzer* analyzer, ASTNode* node)
 	}
 
 	validate_type_node(analyzer, node->param.type);
-	declare_symbol(analyzer, node, node->param.name, node->param.type->type_node.name);
+	declare_symbol(analyzer, node, node->param.name, node->param.type->type_node.name,
+	               false);
 }
 
 void validate_block(SemanticAnalyzer* analyzer, ASTNode* node)
@@ -1828,6 +1893,11 @@ void validate_assignment(SemanticAnalyzer* analyzer, ASTNode* node)
 	if (!entry)
 	{
 		semantic_error(analyzer, node, "Assignment to undeclared variable.");
+		return;
+	}
+	if (!entry->is_mutable)
+	{
+		semantic_error(analyzer, node, "Cannot assign to an immutable variable.");
 		return;
 	}
 

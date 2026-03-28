@@ -9,6 +9,7 @@ typedef enum ASTNodeType
 	AST_PROGRAM,
 	AST_FUNCTION_DECLARATION,
 	AST_VARIABLE_DECLARATION,
+	AST_TYPE_DECLARATION,
 	AST_IMPORT_STATEMENT,
 	AST_IF_STATEMENT,
 	AST_PARAMETER,
@@ -27,6 +28,8 @@ typedef enum ASTNodeType
 	AST_ASSIGNMENT,
 	AST_CAST,
 	AST_BOOLEAN_LITERAL,
+	AST_BREAK_STATEMENT,
+	AST_CONTINUE_STATEMENT,
 	AST_OBJECT_LITERAL,
 	AST_ARRAY_LITERAL,
 	AST_MEMBER_ACCESS,
@@ -94,6 +97,12 @@ typedef struct
 
 typedef struct
 {
+	char* name;
+	ASTNode* value_type;
+} ASTTypeDecl;
+
+typedef struct
+{
 	ASTNode* object;
 	ASTNode* property;
 } ASTMemberAccess;
@@ -109,6 +118,7 @@ typedef struct
 	char* name;
 	ASTNode* type;
 	ASTNode* initializer;
+	bool is_mutable;
 } ASTVarDecl;
 
 typedef struct
@@ -199,6 +209,7 @@ struct ASTNode
 		ASTProgram program;
 		ASTFuncDecl func_decl;
 		ASTVarDecl var_decl;
+		ASTTypeDecl type_decl;
 		ASTImport import;
 		ASTIfStmt if_stmt;
 		ASTParam param;
@@ -237,7 +248,10 @@ ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, siz
 										 size_t line, size_t column);
 
 ASTNode* ast_create_variable_declaration(const char* name, ASTNode* type, ASTNode* initializer,
-                                         size_t line, size_t column);
+	                                     bool is_mutable, size_t line, size_t column);
+
+ASTNode* ast_create_type_declaration(const char* name, ASTNode* value_type, size_t line,
+	                                 size_t column);
 
 ASTNode* ast_create_import(const char* path, size_t line, size_t column);
 
@@ -271,6 +285,10 @@ ASTNode* ast_create_assignment(const char* name, ASTNode* value, size_t line, si
 ASTNode* ast_create_cast(ASTNode* target_type, ASTNode* expr, size_t line, size_t column);
 
 ASTNode* ast_create_boolean_literal(bool value, size_t line, size_t column);
+
+ASTNode* ast_create_break(size_t line, size_t column);
+
+ASTNode* ast_create_continue(size_t line, size_t column);
 
 ASTNode* ast_create_for(ASTNode* var_decl, ASTNode* condition, ASTNode* increment, ASTNode* body,
                         size_t line, size_t column);

@@ -20,6 +20,7 @@ SemanticAnalyzer* semantic_init(ASTNode* ast, SymbolTableStack* symbol_table_sta
 	analyzer->warning_count = 0;
 	analyzer->has_errors = false;
 	analyzer->current_function_return_type = NULL;
+	analyzer->loop_depth = 0;
 	return analyzer;
 }
 

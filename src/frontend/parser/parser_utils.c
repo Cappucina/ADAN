@@ -4,9 +4,11 @@
 #include "parser.h"
 #include "parser_utils.h"
 #include "../scanner/scanner.h"
+#include "../../helper.h"
 #include "../../stm.h"
 
-void parser_declare_variable(Parser* parser, const char* name, const char* type, unsigned int size)
+void parser_declare_variable(Parser* parser, const char* name, const char* type,
+	                        bool is_mutable, unsigned int size)
 {
 	if (!parser)
 	{
@@ -20,7 +22,8 @@ void parser_declare_variable(Parser* parser, const char* name, const char* type,
 	snprintf(line_buffer, sizeof(line_buffer), "%zu",
 	         parser->current ? parser->current->line : 0);
 
-	stm_insert(parser->symbol_table_stack->current_scope, (char*)name, (char*)type, size,
+	stm_insert(parser->symbol_table_stack->current_scope, (char*)name, (char*)type,
+	           is_mutable, size,
 	           line_buffer,
 	           NULL,
 	           NULL
@@ -45,12 +48,67 @@ void parser_declare_function(Parser* parser, const char* name, const char* retur
 
 	stm_insert(parser->symbol_table_stack->current_scope, (char*)name, (char*)return_type,
 	           0,
+	           0,
 	           line_buffer,
 	           NULL,
 	           NULL
 	);
 	printf("Declared function '%s' with return type '%s' in scope level %d. (Info)\n", name,
 	       return_type, parser->scope_depth);
+}
+
+bool parser_declare_type_alias(Parser* parser, const char* name, const char* resolved_type)
+{
+	if (!parser || !name || !resolved_type)
+	{
+		return false;
+	}
+
+	for (ParserTypeAlias* alias = parser->type_aliases; alias; alias = alias->next)
+	{
+		if (alias->name && strcmp(alias->name, name) == 0)
+		{
+			return false;
+		}
+	}
+
+	ParserTypeAlias* alias = calloc(1, sizeof(ParserTypeAlias));
+	if (!alias)
+	{
+		return false;
+	}
+
+	alias->name = clone_string(name, strlen(name));
+	alias->resolved_type = clone_string(resolved_type, strlen(resolved_type));
+	if (!alias->name || !alias->resolved_type)
+	{
+		free(alias->name);
+		free(alias->resolved_type);
+		free(alias);
+		return false;
+	}
+
+	alias->next = parser->type_aliases;
+	parser->type_aliases = alias;
+	return true;
+}
+
+const char* parser_resolve_type_alias(Parser* parser, const char* name)
+{
+	if (!parser || !name)
+	{
+		return NULL;
+	}
+
+	for (ParserTypeAlias* alias = parser->type_aliases; alias; alias = alias->next)
+	{
+		if (alias->name && strcmp(alias->name, name) == 0)
+		{
+			return alias->resolved_type;
+		}
+	}
+
+	return NULL;
 }
 
 void parser_use_symbol(Parser* parser, const char* name)

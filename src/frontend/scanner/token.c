@@ -41,6 +41,8 @@ char* token_type_to_string(TokenType type)
 			return "IMPORT";
 		case TOKEN_SET:
 			return "SET";
+		case TOKEN_CONST:
+			return "CONST";
 		case TOKEN_RETURN:
 			return "RETURN";
 		case TOKEN_STRING_TYPE:
@@ -127,6 +129,12 @@ char* token_type_to_string(TokenType type)
 			return "GREATER_EQUAL";
 		case TOKEN_FOR:
 			return "FOR";
+		case TOKEN_BREAK:
+			return "BREAK";
+		case TOKEN_CONTINUE:
+			return "CONTINUE";
+		case TOKEN_TYPE:
+			return "TYPE";
 		case TOKEN_LBRACKET:
 			return "LBRACKET";
 		case TOKEN_RBRACKET:

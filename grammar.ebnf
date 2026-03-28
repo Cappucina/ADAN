@@ -2,6 +2,10 @@ ASSIGNMENT = 'set', LETTERS, '=', EXPRESSION, ';' ;
 
 VAR_DECL   = 'set', LETTERS, ':', TYPE, '=', EXPRESSION, ';' ;
 
+CONST_DECL = 'const', LETTERS, ':', TYPE, '=', EXPRESSION, ';' ;
+
+TYPE_DECL  = 'type', LETTERS, '=', TYPE, ';' ;
+
 EXPRESSION = OR_EXPR ;
 
 OR_EXPR = AND_EXPR, { 'or', AND_EXPR } ;
@@ -20,7 +24,7 @@ COMMAND    = LETTERS, ( '=' | '+=' | '-=' | '*=' | '/=' ), EXPRESSION, ';' ;
 
 INCREMENT  = LETTERS, ( '++' | '--' ), ';' ;
 
-STATEMENTS = { IF_STMT | WHILE_STMT | FOR_STMT | COMMAND | INCREMENT | VAR_DECL | EXPRESSION_STATEMENT | RETURN_STMT } ;
+STATEMENTS = { IF_STMT | WHILE_STMT | FOR_STMT | COMMAND | INCREMENT | VAR_DECL | CONST_DECL | TYPE_DECL | BREAK_STMT | CONTINUE_STMT | EXPRESSION_STATEMENT | RETURN_STMT } ;
 
 IF_STMT = 'if', EXPRESSION, '{', STATEMENTS, '}', [ 'else', ( IF_STMT | '{', STATEMENTS, '}' ) ] ;
 
@@ -28,11 +32,15 @@ WHILE_STMT = 'while', EXPRESSION, '{', STATEMENTS, '}' ;
 
 FOR_STMT = 'for', VAR_DECL, EXPRESSION, ';', EXPRESSION, '{', STATEMENTS, '}' ;
 
+BREAK_STMT = 'break', ';' ;
+
+CONTINUE_STMT = 'continue', ';' ;
+
 FACTOR = VALUE | LETTERS | '(', EXPRESSION, ')' | FUNCTION_CALL | INTERPOLATED_STRING ;
 
 VALUE = NUMBER | STRING | 'true' | 'false' ;
 
-TYPE = 'i32' | 'i64' | 'u32' | 'u64' | 'f32' | 'f64' | 'string' | 'bool' | 'void' ;
+TYPE = 'i8' | 'i32' | 'i64' | 'u8' | 'u32' | 'u64' | 'f32' | 'f64' | 'string' | 'bool' | 'void' | LETTERS | '{', { LETTERS, ':', TYPE, [ ',' ] }, '}', { '[]' } ;
 
 INTERPOLATED_STRING = '"', { CHAR | '${', EXPRESSION, '}' }, '"' ;
 
