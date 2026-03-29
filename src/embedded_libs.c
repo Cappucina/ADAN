@@ -6,6 +6,7 @@
 
 static const EmbeddedLib REGISTRY[] = {
     {"adan/io", LIB_IO_ADN, LIB_IO_STDOUT_C, "io.h", LIB_IO_H},
+	{"adan/process", LIB_PROCESS_ADN, LIB_PROCESS_C, "process.h", LIB_PROCESS_H},
     {"adan/runtime", LIB_RUNTIME_ADN, LIB_RUNTIME_C, "runtime.h", LIB_RUNTIME_H},
 };
 

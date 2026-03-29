@@ -251,22 +251,31 @@ int main(int argc, char* argv[])
 					bool paths_ok = true;
 					if (bundle_paths && bundle_paths[0] != '\0')
 					{
-						int n = snprintf(combined_bundle_paths, sizeof(combined_bundle_paths),
-						                 "src/backend/runtime,%s", bundle_paths);
-						if (n < 0 || (size_t)n >= sizeof(combined_bundle_paths))
+						int n = snprintf(combined_bundle_paths,
+						                 sizeof(combined_bundle_paths),
+						                 "src/backend/runtime,%s",
+						                 bundle_paths);
+						if (n < 0 ||
+						    (size_t)n >= sizeof(combined_bundle_paths))
 						{
-							fprintf(stderr, "Error: bundle paths string is too long.\n");
+							fprintf(stderr,
+							        "Error: bundle paths string is too "
+							        "long.\n");
 							exit_code = 5;
 							paths_ok = false;
 						}
 					}
 					else
 					{
-						int n = snprintf(combined_bundle_paths, sizeof(combined_bundle_paths),
+						int n = snprintf(combined_bundle_paths,
+						                 sizeof(combined_bundle_paths),
 						                 "src/backend/runtime");
-						if (n < 0 || (size_t)n >= sizeof(combined_bundle_paths))
+						if (n < 0 ||
+						    (size_t)n >= sizeof(combined_bundle_paths))
 						{
-							fprintf(stderr, "Error: bundle paths string is too long.\n");
+							fprintf(stderr,
+							        "Error: bundle paths string is too "
+							        "long.\n");
 							exit_code = 5;
 							paths_ok = false;
 						}
@@ -274,7 +283,8 @@ int main(int argc, char* argv[])
 					if (paths_ok)
 					{
 						lres = linker_link_and_bundle(
-						    ll_path, outp, libs ? libs : "", combined_bundle_paths);
+						    ll_path, outp, libs ? libs : "",
+						    combined_bundle_paths);
 
 						if (lres == 0)
 						{
@@ -283,7 +293,8 @@ int main(int argc, char* argv[])
 						}
 						else
 						{
-							fprintf(stderr, "Linking failed (code=%d)\n", lres);
+							fprintf(stderr,
+							        "Linking failed (code=%d)\n", lres);
 							exit_code = 5;
 						}
 					}

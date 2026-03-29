@@ -1,0 +1,27 @@
+function run(command: string): i32 {
+    return adn_process_run(command);
+}
+
+function run_args(command: string, args: string[]): i32 {
+    return adn_process_run_args(command, args);
+}
+
+function run_capture(command: string): {code:i32,stdout:string,stderr:string,ok:bool} {
+    return adn_process_run_capture(command);
+}
+
+function run_capture_args(command: string, args: string[]): {code:i32,stdout:string,stderr:string,ok:bool} {
+    return adn_process_run_capture_args(command, args);
+}
+
+function spawn(command: string, args: string[]): i32 {
+    return adn_process_spawn(command, args);
+}
+
+function kill(pid: i32): bool {
+    return adn_process_kill(pid) > 0;
+}
+
+function is_running(pid: i32): bool {
+    return adn_process_is_running(pid) > 0;
+}

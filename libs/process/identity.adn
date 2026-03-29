@@ -1,0 +1,23 @@
+function id(): i32 {
+    return adn_process_id();
+}
+
+function parent_id(): i32 {
+    return adn_process_parent_id();
+}
+
+function name(): string {
+    return adn_process_name();
+}
+
+function args(): string[] {
+    return adn_process_args();
+}
+
+function arg_count(): i32 {
+    return adn_process_arg_count();
+}
+
+function arg(index: i32): string {
+    return adn_process_arg(index);
+}

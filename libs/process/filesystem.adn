@@ -1,0 +1,15 @@
+function cwd(): string {
+    return adn_process_cwd();
+}
+
+function chdir(path: string): bool {
+    return adn_process_chdir(path) == 0;
+}
+
+function exit(code: i32): void {
+    adn_process_exit(code);
+}
+
+function abort(): void {
+    adn_process_abort();
+}

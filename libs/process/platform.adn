@@ -1,0 +1,19 @@
+function os(): string {
+    return adn_process_os();
+}
+
+function arch(): string {
+    return adn_process_arch();
+}
+
+function is_windows(): bool {
+    return adn_process_is_windows() > 0;
+}
+
+function is_linux(): bool {
+    return adn_process_is_linux() > 0;
+}
+
+function is_macos(): bool {
+    return adn_process_is_macos() > 0;
+}

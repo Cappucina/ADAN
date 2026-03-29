@@ -1,0 +1,23 @@
+function env(name: string): string {
+    return adn_process_env(name);
+}
+
+function env_or(name: string, fallback: string): string {
+    if has_env(name) {
+        return env(name);
+    }
+
+    return fallback;
+}
+
+function set_env(name: string, value: string): bool {
+    return adn_process_set_env(name, value) == 0;
+}
+
+function has_env(name: string): bool {
+    return adn_process_has_env(name) > 0;
+}
+
+function env_keys(): string[] {
+    return adn_process_env_keys();
+}

@@ -1,0 +1,11 @@
+function executable_path(): string {
+    return adn_process_executable_path();
+}
+
+function home_dir(): string {
+    return adn_process_home_dir();
+}
+
+function temp_dir(): string {
+    return adn_process_temp_dir();
+}
