@@ -1,0 +1,48 @@
+import "adan/math";
+import "adan/random/core";
+import "adan/random/range";
+
+function bernoulli(p: f64): bool {
+    return range.chance(p);
+}
+
+function trial(probability: f64): bool {
+    return bernoulli(probability);
+}
+
+function exponential(rate: f64): f64 {
+    if rate <= 0.0 {
+        return 0.0;
+    }
+
+    set unit: f64 = core.unit();
+
+    if unit <= 0.0 {
+        unit = 0.0000000001;
+    }
+
+    return (0.0 - math.ln(1.0 - unit)) / rate;
+}
+
+function normal(mean: f64, deviation: f64): f64 {
+    set spread: f64 = deviation;
+
+    if spread < 0.0 {
+        spread = 0.0 - spread;
+    }
+
+    set u1: f64 = core.unit();
+    set u2: f64 = core.unit();
+
+    if u1 <= 0.0 {
+        u1 = 0.0000000001;
+    }
+
+    set magnitude: f64 = math.sqrt((0.0 - 2.0) * math.ln(u1));
+    set angle: f64 = 2.0 * math.pi * u2;
+    return mean + spread * magnitude * math.cos(angle);
+}
+
+function gaussian(mean: f64, deviation: f64): f64 {
+    return normal(mean, deviation);
+}

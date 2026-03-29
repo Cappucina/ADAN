@@ -1,0 +1,68 @@
+import "adan/random/core";
+
+function integer(min: i32, max: i32): i32 {
+    set lower: i32 = min;
+    set upper: i32 = max;
+
+    if upper < lower {
+        set temp: i32 = lower;
+        lower = upper;
+        upper = temp;
+    }
+
+    if lower == upper {
+        return lower;
+    }
+
+    set span: i32 = upper - lower + 1;
+    return lower + (core.raw() % span);
+}
+
+function number(min: f64, max: f64): f64 {
+    set lower: f64 = min;
+    set upper: f64 = max;
+
+    if upper < lower {
+        set temp: f64 = lower;
+        lower = upper;
+        upper = temp;
+    }
+
+    if lower == upper {
+        return lower;
+    }
+
+    return lower + (upper - lower) * core.unit();
+}
+
+function chance(probability: f64): bool {
+    if probability <= 0.0 {
+        return false;
+    }
+
+    if probability >= 1.0 {
+        return true;
+    }
+
+    return core.unit() < probability;
+}
+
+function direction(): i32 {
+    if core.boolean() {
+        return 1;
+    }
+
+    return 0 - 1;
+}
+
+function int(min: i32, max: i32): i32 {
+    return integer(min, max);
+}
+
+function float(min: f64, max: f64): f64 {
+    return number(min, max);
+}
+
+function sign(): i32 {
+    return direction();
+}

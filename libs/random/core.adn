@@ -1,0 +1,47 @@
+import "adan/random/state";
+
+function raw(): i32 {
+    return state.__random_advance() - 1;
+}
+
+function signed(): i32 {
+    set value: i32 = raw();
+
+    if value % 2 == 0 {
+        return value / 2;
+    }
+
+    return 0 - ((value + 1) / 2);
+}
+
+function unit(): f64 {
+    return (f64)raw() / 2147483646.0;
+}
+
+function unit32(): f32 {
+    return (f32)unit();
+}
+
+function boolean(): bool {
+    return raw() % 2 == 0;
+}
+
+function next_u32(): i32 {
+    return raw();
+}
+
+function next_i32(): i32 {
+    return signed();
+}
+
+function next_f64(): f64 {
+    return unit();
+}
+
+function next_f32(): f32 {
+    return unit32();
+}
+
+function next_bool(): bool {
+    return boolean();
+}

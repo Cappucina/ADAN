@@ -1,0 +1,70 @@
+const __random_modulus: i32 = 2147483647;
+const __random_multiplier: i32 = 16807;
+const __random_quotient: i32 = 127773;
+const __random_remainder: i32 = 2836;
+const __random_default_seed: i32 = 1;
+
+set __random_state: i32 = __random_default_seed;
+
+function __random_normalize_seed(value: i32): i32 {
+    if value == 0 {
+        return __random_default_seed;
+    }
+
+    set normalized: i32 = value % __random_modulus;
+
+    if normalized < 0 {
+        normalized += __random_modulus;
+    }
+
+    if normalized == 0 {
+        return __random_default_seed;
+    }
+
+    return normalized;
+}
+
+function seed(value: i32): void {
+    __random_state = __random_normalize_seed(value);
+}
+
+function reseed(): void {
+    seed(__random_advance());
+}
+
+function current_seed(): i32 {
+    return __random_state;
+}
+
+function reset_seed(): void {
+    __random_state = __random_default_seed;
+}
+
+function seed_time(): void {
+    reseed();
+}
+
+function get_seed(): i32 {
+    return current_seed();
+}
+
+function reset(): void {
+    reset_seed();
+}
+
+function __random_advance(): i32 {
+    if __random_state <= 0 or __random_state >= __random_modulus {
+        __random_state = __random_default_seed;
+    }
+
+    set high: i32 = __random_state / __random_quotient;
+    set low: i32 = __random_state % __random_quotient;
+    set next: i32 = __random_multiplier * low - __random_remainder * high;
+
+    if next <= 0 {
+        next += __random_modulus;
+    }
+
+    __random_state = next;
+    return __random_state;
+}

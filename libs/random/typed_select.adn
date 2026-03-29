@@ -1,0 +1,250 @@
+import "adan/random/range";
+
+function __random_copy_i32_array(values: i32[]): i32[] {
+    set result: i32[] = [];
+
+    for set i: i32 = 0; i < values.length(); i++ {
+        result.push(values[i]);
+    }
+
+    return result;
+}
+
+function __random_copy_f64_array(values: f64[]): f64[] {
+    set result: f64[] = [];
+
+    for set i: i32 = 0; i < values.length(); i++ {
+        result.push(values[i]);
+    }
+
+    return result;
+}
+
+function __random_copy_string_array(values: string[]): string[] {
+    set result: string[] = [];
+
+    for set i: i32 = 0; i < values.length(); i++ {
+        result.push(values[i]);
+    }
+
+    return result;
+}
+
+function choice_index_i32(values: i32[]): i32 {
+    if values.length() == 0 {
+        return 0 - 1;
+    }
+
+    return range.integer(0, values.length() - 1);
+}
+
+function choice_i32(values: i32[]): i32 {
+    set index: i32 = choice_index_i32(values);
+
+    if index < 0 {
+        return 0;
+    }
+
+    return values[index];
+}
+
+function choices_i32(values: i32[], count: i32): i32[] {
+    set result: i32[] = [];
+
+    if count <= 0 or values.length() == 0 {
+        return result;
+    }
+
+    set pool: i32[] = __random_copy_i32_array(values);
+    set needed: i32 = count;
+
+    if needed > pool.length() {
+        needed = pool.length();
+    }
+
+    while result.length() < needed {
+        set index: i32 = range.integer(0, pool.length() - 1);
+        result.push(pool.remove(index));
+    }
+
+    return result;
+}
+
+function shuffled_i32(values: i32[]): i32[] {
+    return choices_i32(values, values.length());
+}
+
+function shuffle_self_i32(values: i32[]): void {
+    set reordered: i32[] = shuffled_i32(values);
+    values.clear();
+
+    for set i: i32 = 0; i < reordered.length(); i++ {
+        values.push(reordered[i]);
+    }
+}
+
+function choice_index_f64(values: f64[]): i32 {
+    if values.length() == 0 {
+        return 0 - 1;
+    }
+
+    return range.integer(0, values.length() - 1);
+}
+
+function choice_f64(values: f64[]): f64 {
+    set index: i32 = choice_index_f64(values);
+
+    if index < 0 {
+        return 0.0;
+    }
+
+    return values[index];
+}
+
+function choices_f64(values: f64[], count: i32): f64[] {
+    set result: f64[] = [];
+
+    if count <= 0 or values.length() == 0 {
+        return result;
+    }
+
+    set pool: f64[] = __random_copy_f64_array(values);
+    set needed: i32 = count;
+
+    if needed > pool.length() {
+        needed = pool.length();
+    }
+
+    while result.length() < needed {
+        set index: i32 = range.integer(0, pool.length() - 1);
+        result.push(pool.remove(index));
+    }
+
+    return result;
+}
+
+function shuffled_f64(values: f64[]): f64[] {
+    return choices_f64(values, values.length());
+}
+
+function shuffle_self_f64(values: f64[]): void {
+    set reordered: f64[] = shuffled_f64(values);
+    values.clear();
+
+    for set i: i32 = 0; i < reordered.length(); i++ {
+        values.push(reordered[i]);
+    }
+}
+
+function choice_index_string(values: string[]): i32 {
+    if values.length() == 0 {
+        return 0 - 1;
+    }
+
+    return range.integer(0, values.length() - 1);
+}
+
+function choice_string(values: string[]): string {
+    set index: i32 = choice_index_string(values);
+
+    if index < 0 {
+        return "";
+    }
+
+    return values[index];
+}
+
+function choices_string(values: string[], count: i32): string[] {
+    set result: string[] = [];
+
+    if count <= 0 or values.length() == 0 {
+        return result;
+    }
+
+    set pool: string[] = __random_copy_string_array(values);
+    set needed: i32 = count;
+
+    if needed > pool.length() {
+        needed = pool.length();
+    }
+
+    while result.length() < needed {
+        set index: i32 = range.integer(0, pool.length() - 1);
+        result.push(pool.remove(index));
+    }
+
+    return result;
+}
+
+function shuffled_string(values: string[]): string[] {
+    return choices_string(values, values.length());
+}
+
+function shuffle_self_string(values: string[]): void {
+    set reordered: string[] = shuffled_string(values);
+    values.clear();
+
+    for set i: i32 = 0; i < reordered.length(); i++ {
+        values.push(reordered[i]);
+    }
+}
+
+function pick_index_i32(values: i32[]): i32 {
+    return choice_index_i32(values);
+}
+
+function pick_i32(values: i32[]): i32 {
+    return choice_i32(values);
+}
+
+function sample_i32(values: i32[], count: i32): i32[] {
+    return choices_i32(values, count);
+}
+
+function shuffle_i32(values: i32[]): i32[] {
+    return shuffled_i32(values);
+}
+
+function shuffle_in_place_i32(values: i32[]): void {
+    shuffle_self_i32(values);
+}
+
+function pick_index_f64(values: f64[]): i32 {
+    return choice_index_f64(values);
+}
+
+function pick_f64(values: f64[]): f64 {
+    return choice_f64(values);
+}
+
+function sample_f64(values: f64[], count: i32): f64[] {
+    return choices_f64(values, count);
+}
+
+function shuffle_f64(values: f64[]): f64[] {
+    return shuffled_f64(values);
+}
+
+function shuffle_in_place_f64(values: f64[]): void {
+    shuffle_self_f64(values);
+}
+
+function pick_index_string(values: string[]): i32 {
+    return choice_index_string(values);
+}
+
+function pick_string(values: string[]): string {
+    return choice_string(values);
+}
+
+function sample_string(values: string[], count: i32): string[] {
+    return choices_string(values, count);
+}
+
+function shuffle_string(values: string[]): string[] {
+    return shuffled_string(values);
+}
+
+function shuffle_in_place_string(values: string[]): void {
+    shuffle_self_string(values);
+}

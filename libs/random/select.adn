@@ -1,0 +1,84 @@
+import "adan/random/range";
+
+function __random_copy_any_array(values: any[]): any[] {
+    set result: any[] = [];
+
+    for set i: i32 = 0; i < values.length(); i++ {
+        result.push(values[i]);
+    }
+
+    return result;
+}
+
+function choice_index(values: any[]): i32 {
+    if values.length() == 0 {
+        return 0 - 1;
+    }
+
+    return range.integer(0, values.length() - 1);
+}
+
+function choice(values: any[]): any {
+    set index: i32 = choice_index(values);
+
+    if index < 0 {
+        return "";
+    }
+
+    return values[index];
+}
+
+function choices(values: any[], count: i32): any[] {
+    set result: any[] = [];
+
+    if count <= 0 or values.length() == 0 {
+        return result;
+    }
+
+    set pool: any[] = __random_copy_any_array(values);
+    set needed: i32 = count;
+
+    if needed > pool.length() {
+        needed = pool.length();
+    }
+
+    while result.length() < needed {
+        set index: i32 = range.integer(0, pool.length() - 1);
+        result.push(pool.remove(index));
+    }
+
+    return result;
+}
+
+function shuffled(values: any[]): any[] {
+    return choices(values, values.length());
+}
+
+function shuffle_self(values: any[]): void {
+    set reordered: any[] = shuffled(values);
+    values.clear();
+
+    for set i: i32 = 0; i < reordered.length(); i++ {
+        values.push(reordered[i]);
+    }
+}
+
+function pick_index(values: any[]): i32 {
+    return choice_index(values);
+}
+
+function pick(values: any[]): any {
+    return choice(values);
+}
+
+function sample(values: any[], count: i32): any[] {
+    return choices(values, count);
+}
+
+function shuffle(values: any[]): any[] {
+    return shuffled(values);
+}
+
+function shuffle_in_place(values: any[]): void {
+    shuffle_self(values);
+}

@@ -1,0 +1,45 @@
+import "adan/random/range";
+import "adan/string/internal";
+
+const __random_alphanumeric_chars: string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const __random_hex_chars: string = "0123456789abcdef";
+const __random_uuid_variant_chars: string = "89ab";
+
+function __random_chars(length: i32, charset: string): string {
+    if length <= 0 {
+        return "";
+    }
+
+    set result: string = "";
+    set charset_length: i32 = __string_length(charset);
+
+    if charset_length <= 0 {
+        return result;
+    }
+
+    for set i: i32 = 0; i < length; i++ {
+        result += __string_char(charset, range.integer(0, charset_length - 1));
+    }
+
+    return result;
+}
+
+function token(length: i32): string {
+    return __random_chars(length, __random_alphanumeric_chars);
+}
+
+function hex_token(length: i32): string {
+    return __random_chars(length, __random_hex_chars);
+}
+
+function uuid(): string {
+    return hex_token(8) + "-" + hex_token(4) + "-4" + hex_token(3) + "-" + __random_chars(1, __random_uuid_variant_chars) + hex_token(3) + "-" + hex_token(12);
+}
+
+function alphanumeric(length: i32): string {
+    return token(length);
+}
+
+function hex(length: i32): string {
+    return hex_token(length);
+}
