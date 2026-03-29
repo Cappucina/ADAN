@@ -417,6 +417,23 @@ static IRFunction* ensure_runtime_function(Program* program, const char* name)
 		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
 		return fn;
 	}
+	if (strcmp(name, "adn_flush") == 0)
+	{
+		return ir_function_create_in_module(program->ir, name, ir_type_void());
+	}
+	if (strcmp(name, "adn_write_file") == 0)
+	{
+		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
+		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
+		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
+		return fn;
+	}
+	if (strcmp(name, "adn_read_file") == 0)
+	{
+		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
+		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
+		return fn;
+	}
 	if (strcmp(name, "adn_strconcat") == 0)
 	{
 		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
@@ -713,6 +730,7 @@ static const char* infer_expression_type(Program* program, ASTNode* node)
 			if (starts_with(node->call.callee, "adn_"))
 			{
 				if (strcmp(node->call.callee, "adn_string_format") == 0 ||
+				    strcmp(node->call.callee, "adn_read_file") == 0 ||
 				    strstr(node->call.callee, "_to_string"))
 				{
 					return "string";

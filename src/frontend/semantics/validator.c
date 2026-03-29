@@ -794,6 +794,7 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 				{
 					if (strcmp(node->call.callee, "adn_input") == 0 ||
 					    strcmp(node->call.callee, "adn_string_format") == 0 ||
+					    strcmp(node->call.callee, "adn_read_file") == 0 ||
 					    strstr(node->call.callee, "_to_string") ||
 					    strstr(node->call.callee, "_get_string"))
 					{

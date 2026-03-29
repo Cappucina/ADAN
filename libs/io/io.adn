@@ -3,6 +3,21 @@ function print(format: string, ...args: any): void
 	adn_println(adn_string_format(format, args));
 }
 
+function flush(): void
+{
+	adn_flush();
+}
+
+function write(path: string, content: string): void
+{
+	adn_write_file(path, content);
+}
+
+function read(path: string): string
+{
+	return adn_read_file(path);
+}
+
 function input(prompt: string): string
 {
 	return adn_input(prompt);
