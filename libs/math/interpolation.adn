@@ -1,0 +1,61 @@
+import "adan/math/constants";
+import "adan/math/float";
+
+function lerp(start: f64, finish: f64, amount: f64): f64 {
+    return start + (finish - start) * amount;
+}
+
+function inverse_lerp(start: f64, finish: f64, value: f64): f64 {
+    if start == finish {
+        return 0.0;
+    }
+
+    return (value - start) / (finish - start);
+}
+
+function remap(value: f64, in_min: f64, in_max: f64, out_min: f64, out_max: f64): f64 {
+    return lerp(out_min, out_max, inverse_lerp(in_min, in_max, value));
+}
+
+function deg_to_rad(degrees: f64): f64 {
+    return degrees * (constants.pi / 180.0);
+}
+
+function to_radians(degrees: f64): f64 {
+    return deg_to_rad(degrees);
+}
+
+function rad_to_deg(radians: f64): f64 {
+    return radians * (180.0 / constants.pi);
+}
+
+function to_degrees(radians: f64): f64 {
+    return rad_to_deg(radians);
+}
+
+function normalize_angle(radians: f64): f64 {
+    set reduced: f64 = radians;
+
+    while reduced > constants.pi {
+        reduced -= constants.tau;
+    }
+
+    while reduced < 0.0 - constants.pi {
+        reduced += constants.tau;
+    }
+
+    return reduced;
+}
+
+function wrap_angle(radians: f64): f64 {
+    return normalize_angle(radians);
+}
+
+function smoothstep(edge0: f64, edge1: f64, value: f64): f64 {
+    if edge0 == edge1 {
+        return 0.0;
+    }
+
+    set t: f64 = float.clampf((value - edge0) / (edge1 - edge0), 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+}

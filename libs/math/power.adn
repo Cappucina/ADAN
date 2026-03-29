@@ -1,0 +1,132 @@
+import "adan/math/integer";
+import "adan/math/float";
+
+function pow(base: i32, exponent: i32): i32 {
+    if exponent < 0 {
+        return 0;
+    }
+
+    set result: i32 = 1;
+    set power: i32 = exponent;
+
+    while power > 0 {
+        result *= base;
+        power--;
+    }
+
+    return result;
+}
+
+function sqrt(value: f64): f64 {
+    if value <= 0.0 {
+        return 0.0;
+    }
+
+    set guess: f64 = value;
+    if guess < 1.0 {
+        guess = 1.0;
+    }
+
+    for set i: i32 = 0; i < 24; i++ {
+        guess = (guess + value / guess) / 2.0;
+    }
+
+    return guess;
+}
+
+function cbrt(value: f64): f64 {
+    if value == 0.0 {
+        return 0.0;
+    }
+
+    set guess: f64 = value;
+    if float.absf(guess) < 1.0 {
+        guess = float.signf(value);
+    }
+
+    for set i: i32 = 0; i < 32; i++ {
+        guess = (2.0 * guess + value / (guess * guess)) / 3.0;
+    }
+
+    return guess;
+}
+
+function hypot(x: f64, y: f64): f64 {
+    return sqrt(x * x + y * y);
+}
+
+function exp(value: f64): f64 {
+    set result: f64 = 1.0;
+    set term: f64 = 1.0;
+
+    for set i: i32 = 1; i <= 24; i++ {
+        term = term * value / (f64)i;
+        result += term;
+    }
+
+    return result;
+}
+
+function ln(value: f64): f64 {
+    if value <= 0.0 {
+        return 0.0;
+    }
+
+    set guess: f64 = value - 1.0;
+
+    for set i: i32 = 0; i < 24; i++ {
+        set current: f64 = exp(guess);
+        guess -= (current - value) / current;
+    }
+
+    return guess;
+}
+
+function log10(value: f64): f64 {
+    return ln(value) / ln(10.0);
+}
+
+function log2(value: f64): f64 {
+    return ln(value) / ln(2.0);
+}
+
+function powf(base: f64, exponent: f64): f64 {
+    if exponent == 0.0 {
+        return 1.0;
+    }
+
+    if base == 0.0 {
+        return 0.0;
+    }
+
+    if base < 0.0 {
+        set whole: i32 = (i32)exponent;
+        if (f64)whole == exponent {
+            set result: f64 = 1.0;
+            set positive_power: i32 = integer.abs(whole);
+
+            while positive_power > 0 {
+                result *= 0.0 - base;
+                positive_power--;
+            }
+
+            if whole < 0 {
+                result = 1.0 / result;
+            }
+
+            if whole % 2 == 0 {
+                return result;
+            }
+
+            return 0.0 - result;
+        }
+
+        return 0.0;
+    }
+
+    return exp(exponent * ln(base));
+}
+
+function float_power(base: f64, exponent: f64): f64 {
+    return powf(base, exponent);
+}

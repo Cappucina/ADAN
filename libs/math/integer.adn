@@ -1,0 +1,149 @@
+function abs(input: i32): i32 {
+    if input >= 0 {
+        return input;
+    }
+    else {
+        return 0 - input;
+    }
+}
+
+function min(first: i32, ...rest: i32): i32 {
+    set smallest: i32 = first;
+
+    for set i: i32 = 0; i < rest.length(); i++ {
+        if rest[i] < smallest {
+            smallest = rest[i];
+        }
+    }
+
+    return smallest;
+}
+
+function max(first: i32, ...rest: i32): i32 {
+    set largest: i32 = first;
+
+    for set i: i32 = 0; i < rest.length(); i++ {
+        if rest[i] > largest {
+            largest = rest[i];
+        }
+    }
+
+    return largest;
+}
+
+function clamp(value: i32, lower: i32, upper: i32): i32 {
+    if value < lower {
+        return lower;
+    }
+    else if value > upper {
+        return upper;
+    }
+
+    return value;
+}
+
+function sign(input: i32): i32 {
+    if input > 0 {
+        return 1;
+    }
+    else if input < 0 {
+        return 0 - 1;
+    }
+
+    return 0;
+}
+
+function square(input: i32): i32 {
+    return input * input;
+}
+
+function cube(input: i32): i32 {
+    return input * input * input;
+}
+
+function is_even(input: i32): bool {
+    return input % 2 == 0;
+}
+
+function is_odd(input: i32): bool {
+    return input % 2 !== 0;
+}
+
+function sum(first: i32, ...rest: i32): i32 {
+    set total: i32 = first;
+
+    for set i: i32 = 0; i < rest.length(); i++ {
+        total += rest[i];
+    }
+
+    return total;
+}
+
+function avg(first: i32, ...rest: i32): i32 {
+    set total: i32 = first;
+
+    for set i: i32 = 0; i < rest.length(); i++ {
+        total += rest[i];
+    }
+
+    return total / (rest.length() + 1);
+}
+
+function average(first: i32, ...rest: i32): i32 {
+    set total: i32 = first;
+
+    for set i: i32 = 0; i < rest.length(); i++ {
+        total += rest[i];
+    }
+
+    return total / (rest.length() + 1);
+}
+
+function btwn(value: i32, lower: i32, upper: i32): bool {
+    return value >= lower and value <= upper;
+}
+
+function between(value: i32, lower: i32, upper: i32): bool {
+    return btwn(value, lower, upper);
+}
+
+function gcd(left: i32, right: i32): i32 {
+    set a: i32 = abs(left);
+    set b: i32 = abs(right);
+
+    while b !== 0 {
+        set temp: i32 = b;
+        b = a % b;
+        a = temp;
+    }
+
+    return a;
+}
+
+function lcm(left: i32, right: i32): i32 {
+    if left == 0 or right == 0 {
+        return 0;
+    }
+
+    return abs(left * right) / gcd(left, right);
+}
+
+function fact(input: i32): i32 {
+    if input < 0 {
+        return 0;
+    }
+
+    set result: i32 = 1;
+    set current: i32 = 2;
+
+    while current <= input {
+        result *= current;
+        current++;
+    }
+
+    return result;
+}
+
+function factorial(input: i32): i32 {
+    return fact(input);
+}

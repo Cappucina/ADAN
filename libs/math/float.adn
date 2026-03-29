@@ -1,0 +1,160 @@
+function absf(input: f64): f64 {
+    if input >= 0.0 {
+        return input;
+    }
+
+    return 0.0 - input;
+}
+
+function float_abs(input: f64): f64 {
+    return absf(input);
+}
+
+function minf(first: f64, ...rest: f64): f64 {
+    set smallest: f64 = first;
+
+    for set i: i32 = 0; i < rest.length(); i++ {
+        if rest[i] < smallest {
+            smallest = rest[i];
+        }
+    }
+
+    return smallest;
+}
+
+function float_min(first: f64, ...rest: f64): f64 {
+    set smallest: f64 = first;
+
+    for set i: i32 = 0; i < rest.length(); i++ {
+        if rest[i] < smallest {
+            smallest = rest[i];
+        }
+    }
+
+    return smallest;
+}
+
+function maxf(first: f64, ...rest: f64): f64 {
+    set largest: f64 = first;
+
+    for set i: i32 = 0; i < rest.length(); i++ {
+        if rest[i] > largest {
+            largest = rest[i];
+        }
+    }
+
+    return largest;
+}
+
+function float_max(first: f64, ...rest: f64): f64 {
+    set largest: f64 = first;
+
+    for set i: i32 = 0; i < rest.length(); i++ {
+        if rest[i] > largest {
+            largest = rest[i];
+        }
+    }
+
+    return largest;
+}
+
+function clampf(value: f64, lower: f64, upper: f64): f64 {
+    if value < lower {
+        return lower;
+    }
+    else if value > upper {
+        return upper;
+    }
+
+    return value;
+}
+
+function float_clamp(value: f64, lower: f64, upper: f64): f64 {
+    return clampf(value, lower, upper);
+}
+
+function signf(input: f64): f64 {
+    if input > 0.0 {
+        return 1.0;
+    }
+    else if input < 0.0 {
+        return 0.0 - 1.0;
+    }
+
+    return 0.0;
+}
+
+function float_sign(input: f64): f64 {
+    return signf(input);
+}
+
+function squaref(input: f64): f64 {
+    return input * input;
+}
+
+function float_square(input: f64): f64 {
+    return squaref(input);
+}
+
+function cubef(input: f64): f64 {
+    return input * input * input;
+}
+
+function float_cube(input: f64): f64 {
+    return cubef(input);
+}
+
+function trunc(value: f64): f64 {
+    set whole: i32 = (i32)value;
+    return (f64)whole;
+}
+
+function floor(value: f64): f64 {
+    set whole: i32 = (i32)value;
+    set wholef: f64 = (f64)whole;
+
+    if wholef == value or value >= 0.0 {
+        return wholef;
+    }
+
+    return (f64)(whole - 1);
+}
+
+function ceil(value: f64): f64 {
+    set whole: i32 = (i32)value;
+    set wholef: f64 = (f64)whole;
+
+    if wholef == value or value <= 0.0 {
+        return wholef;
+    }
+
+    return (f64)(whole + 1);
+}
+
+function round(value: f64): f64 {
+    if value >= 0.0 {
+        return floor(value + 0.5);
+    }
+
+    return ceil(value - 0.5);
+}
+
+function frac(value: f64): f64 {
+    return value - floor(value);
+}
+
+function betweenf(value: f64, lower: f64, upper: f64): bool {
+    return value >= lower and value <= upper;
+}
+
+function float_between(value: f64, lower: f64, upper: f64): bool {
+    return betweenf(value, lower, upper);
+}
+
+function nearly_equal(left: f64, right: f64, epsilon: f64): bool {
+    return absf(left - right) <= epsilon;
+}
+
+function close_to(left: f64, right: f64, epsilon: f64): bool {
+    return nearly_equal(left, right, epsilon);
+}
