@@ -34,7 +34,7 @@ static const char* unwrap_string_literal(const char* text, size_t* out_len)
 	return start;
 }
 
-void adn_println(const char* message)
+void adn_print(const char* message)
 {
 	if (!message)
 	{
@@ -76,8 +76,8 @@ void adn_write_file(const char* path, const char* content)
 	FILE* file = fopen(normalized_path, "wb");
 	if (!file)
 	{
-		fprintf(stderr, "Failed to open '%s' for writing: %s (Error)\n",
-		        normalized_path, strerror(errno));
+		fprintf(stderr, "Failed to open '%s' for writing: %s (Error)\n", normalized_path,
+		        strerror(errno));
 		free(normalized_path);
 		exit(1);
 	}
@@ -209,7 +209,7 @@ char* adn_input(const char* prompt)
 #endif
 }
 
-void adn_errorln(const char* fmt, ...)
+void adn_error(const char* fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);

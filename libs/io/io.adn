@@ -1,6 +1,6 @@
 function print(format: string, ...args: any): void
 {
-	adn_println(adn_string_format(format, args));
+	adn_print(adn_string_format(format, args));
 }
 
 function flush(): void
@@ -25,5 +25,5 @@ function input(prompt: string): string
 
 function error(format: string, ...args: any): void
 {
-	adn_errorln(adn_string_format(format, args));
+	adn_error(adn_string_format(format, args));
 }

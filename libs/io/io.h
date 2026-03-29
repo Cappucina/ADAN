@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-void adn_println(const char* message);
+void adn_print(const char* message);
 
 void adn_flush(void);
 
@@ -13,6 +13,6 @@ char* adn_read_file(const char* path);
 
 char* adn_input(const char* prompt);
 
-void adn_errorln(const char* fmt, ...);
+void adn_error(const char* fmt, ...);
 
 #endif
