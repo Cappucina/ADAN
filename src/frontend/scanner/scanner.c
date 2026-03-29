@@ -9,10 +9,10 @@
 #include "scanner.h"
 
 const Keyword keywords[] = {
-	{"function", TOKEN_FUN},
+    {"function", TOKEN_FUN},
     {"import", TOKEN_IMPORT},
     {"set", TOKEN_SET},
-	{"const", TOKEN_CONST},
+    {"const", TOKEN_CONST},
     {"return", TOKEN_RETURN},
     {"if", TOKEN_IF},
     {"else", TOKEN_ELSE},
@@ -21,9 +21,9 @@ const Keyword keywords[] = {
     {"and", TOKEN_AND},
     {"not", TOKEN_NOT},
     {"for", TOKEN_FOR},
-	{"break", TOKEN_BREAK},
-	{"continue", TOKEN_CONTINUE},
-	{"type", TOKEN_TYPE},
+    {"break", TOKEN_BREAK},
+    {"continue", TOKEN_CONTINUE},
+    {"type", TOKEN_TYPE},
 
     {"string", TOKEN_STRING_TYPE},
     {"u8", TOKEN_U8_TYPE},
@@ -36,7 +36,7 @@ const Keyword keywords[] = {
     {"f64", TOKEN_F64_TYPE},
     {"void", TOKEN_VOID_TYPE},
     {"bool", TOKEN_BOOL_TYPE},
-	{"any", TOKEN_ANY_TYPE},
+    {"any", TOKEN_ANY_TYPE},
 
     {"true", TOKEN_TRUE},
     {"false", TOKEN_FALSE},
@@ -231,8 +231,7 @@ Token* scan_next_token(Scanner* scanner)
 
 		advance(scanner);
 
-		size_t length = scanner->position - start_pos -
-		                1;
+		size_t length = scanner->position - start_pos - 1;
 		scanner->in_string_quote = 0;
 
 		char* lexeme = (char*)malloc(length + 3);
@@ -364,8 +363,7 @@ Token* scan_next_token(Scanner* scanner)
 
 		advance(scanner);
 
-		size_t length = scanner->position - start_pos -
-		                1;
+		size_t length = scanner->position - start_pos - 1;
 		scanner->in_string_quote = 0;
 
 		char* lexeme = (char*)malloc(length + 3);

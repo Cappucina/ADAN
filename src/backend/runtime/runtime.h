@@ -15,6 +15,14 @@ char* adn_f64_to_string(double val);
 
 double adn_string_to_f64(const char* s);
 
+int64_t adn_string_length(const char* s);
+
+char* adn_string_char_at(const char* s, int64_t index);
+
+int64_t adn_string_code_at(const char* s, int64_t index);
+
+char* adn_string_from_code(int64_t code);
+
 char* adn_string_format(const char* format, void* args);
 
 void* adn_object_create(void);

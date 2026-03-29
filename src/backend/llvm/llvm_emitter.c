@@ -369,13 +369,14 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 					{
 						char* dname = es_get_val_name(&st, ins->dest);
 						IRType* t_base = ins->dest->type;
-						if (t_base && t_base->kind == IR_T_PTR && t_base->pointee)
+						if (t_base && t_base->kind == IR_T_PTR &&
+						    t_base->pointee)
 						{
 							t_base = t_base->pointee;
 						}
 						char* t = llvm_type_to_string(t_base);
-						fprintf(out, "  %s = alloca %s\n", dname ? dname : "<dst>",
-						        t ? t : "i64");
+						fprintf(out, "  %s = alloca %s\n",
+						        dname ? dname : "<dst>", t ? t : "i64");
 						free(t);
 						break;
 					}

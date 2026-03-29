@@ -9,7 +9,7 @@
 #define S_ISDIR(mode) (((mode) & _S_IFMT) == _S_IFDIR)
 #endif
 #define strtok_r strtok_s
-#define strdup _strdup
+#define strdup   _strdup
 #endif
 
 #include <stddef.h>

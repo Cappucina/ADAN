@@ -106,6 +106,71 @@ double adn_string_to_f64(const char* s)
 	return strtod(s, NULL);
 }
 
+int64_t adn_string_length(const char* s)
+{
+	if (!s)
+	{
+		return 0;
+	}
+	return (int64_t)strlen(s);
+}
+
+char* adn_string_char_at(const char* s, int64_t index)
+{
+	if (!s || index < 0)
+	{
+		return strdup("");
+	}
+
+	size_t length = strlen(s);
+	if ((size_t)index >= length)
+	{
+		return strdup("");
+	}
+
+	char* result = (char*)malloc(2);
+	if (!result)
+	{
+		return NULL;
+	}
+	result[0] = s[index];
+	result[1] = '\0';
+	return result;
+}
+
+int64_t adn_string_code_at(const char* s, int64_t index)
+{
+	if (!s || index < 0)
+	{
+		return -1;
+	}
+
+	size_t length = strlen(s);
+	if ((size_t)index >= length)
+	{
+		return -1;
+	}
+
+	return (unsigned char)s[index];
+}
+
+char* adn_string_from_code(int64_t code)
+{
+	if (code < 0 || code > 255)
+	{
+		return strdup("");
+	}
+
+	char* result = (char*)malloc(2);
+	if (!result)
+	{
+		return NULL;
+	}
+	result[0] = (char)code;
+	result[1] = '\0';
+	return result;
+}
+
 typedef struct
 {
 	char* data;
@@ -343,7 +408,8 @@ static char* adn_value_to_string_spec(const AdnValue* value, char spec)
 			}
 			else if (value->kind == ADN_VALUE_STRING)
 			{
-				integer_value = value->data.string ? strtoll(value->data.string, NULL, 10) : 0;
+				integer_value =
+				    value->data.string ? strtoll(value->data.string, NULL, 10) : 0;
 			}
 			else if (value->kind == ADN_VALUE_PTR)
 			{
@@ -365,7 +431,8 @@ static char* adn_value_to_string_spec(const AdnValue* value, char spec)
 			}
 			else if (value->kind == ADN_VALUE_STRING)
 			{
-				integer_value = value->data.string ? strtoull(value->data.string, NULL, 10) : 0;
+				integer_value =
+				    value->data.string ? strtoull(value->data.string, NULL, 10) : 0;
 			}
 			else if (value->kind == ADN_VALUE_PTR)
 			{
@@ -387,7 +454,8 @@ static char* adn_value_to_string_spec(const AdnValue* value, char spec)
 			}
 			else if (value->kind == ADN_VALUE_STRING)
 			{
-				float_value = value->data.string ? strtod(value->data.string, NULL) : 0.0;
+				float_value =
+				    value->data.string ? strtod(value->data.string, NULL) : 0.0;
 			}
 			else if (value->kind == ADN_VALUE_F64)
 			{
@@ -399,7 +467,8 @@ static char* adn_value_to_string_spec(const AdnValue* value, char spec)
 		case 'c':
 		{
 			char out[2] = {0, 0};
-			if (value->kind == ADN_VALUE_STRING && value->data.string && value->data.string[0] != '\0')
+			if (value->kind == ADN_VALUE_STRING && value->data.string &&
+			    value->data.string[0] != '\0')
 			{
 				out[0] = value->data.string[0];
 			}
@@ -479,7 +548,8 @@ char* adn_string_format(const char* format, void* args)
 			i++;
 			continue;
 		}
-		AdnValue* value = (values && arg_index < values->count) ? &values->items[arg_index++] : NULL;
+		AdnValue* value =
+		    (values && arg_index < values->count) ? &values->items[arg_index++] : NULL;
 		char* replacement = adn_value_to_string_spec(value, spec);
 		if (replacement)
 		{

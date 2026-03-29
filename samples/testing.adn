@@ -1,7 +1,7 @@
 import "adan/io";
 
 function main(): i32 {
-    print("The compiler is working as expected!");
+    io.print("The compiler is working as expected!");
 
     return 0;
 }

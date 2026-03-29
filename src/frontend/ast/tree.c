@@ -188,9 +188,9 @@ ASTNode* ast_create_program(ASTNode** decls, size_t count, size_t line, size_t c
 }
 
 ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, size_t param_count,
-										 ASTNode* return_type, ASTNode* body, bool is_variadic,
-										 const char* variadic_name, ASTNode* variadic_type,
-										 size_t line, size_t column)
+                                         ASTNode* return_type, ASTNode* body, bool is_variadic,
+                                         const char* variadic_name, ASTNode* variadic_type,
+                                         size_t line, size_t column)
 {
 	ASTNode* node = ast_init(AST_FUNCTION_DECLARATION, line, column);
 	if (!node)
@@ -208,7 +208,8 @@ ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, siz
 	node->func_decl.params = params;
 	node->func_decl.param_count = param_count;
 	node->func_decl.is_variadic = is_variadic;
-	node->func_decl.variadic_name = variadic_name ? clone_string(variadic_name, strlen(variadic_name)) : NULL;
+	node->func_decl.variadic_name =
+	    variadic_name ? clone_string(variadic_name, strlen(variadic_name)) : NULL;
 	node->func_decl.variadic_type = variadic_type;
 	if (variadic_name && !node->func_decl.variadic_name)
 	{
@@ -221,7 +222,7 @@ ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, siz
 }
 
 ASTNode* ast_create_variable_declaration(const char* name, ASTNode* type, ASTNode* initializer,
-	                                     bool is_mutable, size_t line, size_t column)
+                                         bool is_mutable, size_t line, size_t column)
 {
 	ASTNode* node = ast_init(AST_VARIABLE_DECLARATION, line, column);
 	if (!node)
@@ -243,7 +244,7 @@ ASTNode* ast_create_variable_declaration(const char* name, ASTNode* type, ASTNod
 }
 
 ASTNode* ast_create_type_declaration(const char* name, ASTNode* value_type, size_t line,
-	                                 size_t column)
+                                     size_t column)
 {
 	ASTNode* node = ast_init(AST_TYPE_DECLARATION, line, column);
 	if (!node)
@@ -546,8 +547,7 @@ ASTNode* ast_create_object_literal(ASTObjectProperty* properties, size_t count, 
 	return node;
 }
 
-ASTNode* ast_create_array_literal(ASTNode** elements, size_t count, size_t line,
-                                  size_t column)
+ASTNode* ast_create_array_literal(ASTNode** elements, size_t count, size_t line, size_t column)
 {
 	ASTNode* node = ast_init(AST_ARRAY_LITERAL, line, column);
 	node->array_literal.elements = elements;
@@ -555,8 +555,7 @@ ASTNode* ast_create_array_literal(ASTNode** elements, size_t count, size_t line,
 	return node;
 }
 
-ASTNode* ast_create_member_access(ASTNode* object, ASTNode* property, size_t line,
-                                  size_t column)
+ASTNode* ast_create_member_access(ASTNode* object, ASTNode* property, size_t line, size_t column)
 {
 	ASTNode* node = ast_init(AST_MEMBER_ACCESS, line, column);
 	node->member_access.object = object;
@@ -564,8 +563,7 @@ ASTNode* ast_create_member_access(ASTNode* object, ASTNode* property, size_t lin
 	return node;
 }
 
-ASTNode* ast_create_array_access(ASTNode* array, ASTNode* index, size_t line,
-                                 size_t column)
+ASTNode* ast_create_array_access(ASTNode* array, ASTNode* index, size_t line, size_t column)
 {
 	ASTNode* node = ast_init(AST_ARRAY_ACCESS, line, column);
 	node->array_access.array = array;

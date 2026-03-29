@@ -3,8 +3,8 @@
 
 #include "parser.h"
 
-void parser_declare_variable(Parser* parser, const char* name, const char* type,
-	                        bool is_mutable, unsigned int size);
+void parser_declare_variable(Parser* parser, const char* name, const char* type, bool is_mutable,
+                             unsigned int size);
 
 void parser_declare_function(Parser* parser, const char* name, const char* return_type);
 

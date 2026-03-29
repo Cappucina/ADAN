@@ -243,15 +243,15 @@ ASTNode* ast_create_return(ASTNode* expr, size_t line, size_t column);
 ASTNode* ast_create_program(ASTNode** decls, size_t count, size_t line, size_t column);
 
 ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, size_t param_count,
-										 ASTNode* return_type, ASTNode* body, bool is_variadic,
-										 const char* variadic_name, ASTNode* variadic_type,
-										 size_t line, size_t column);
+                                         ASTNode* return_type, ASTNode* body, bool is_variadic,
+                                         const char* variadic_name, ASTNode* variadic_type,
+                                         size_t line, size_t column);
 
 ASTNode* ast_create_variable_declaration(const char* name, ASTNode* type, ASTNode* initializer,
-	                                     bool is_mutable, size_t line, size_t column);
+                                         bool is_mutable, size_t line, size_t column);
 
 ASTNode* ast_create_type_declaration(const char* name, ASTNode* value_type, size_t line,
-	                                 size_t column);
+                                     size_t column);
 
 ASTNode* ast_create_import(const char* path, size_t line, size_t column);
 
@@ -296,14 +296,11 @@ ASTNode* ast_create_for(ASTNode* var_decl, ASTNode* condition, ASTNode* incremen
 ASTNode* ast_create_object_literal(ASTObjectProperty* properties, size_t count, size_t line,
                                    size_t column);
 
-ASTNode* ast_create_array_literal(ASTNode** elements, size_t count, size_t line,
-                                  size_t column);
+ASTNode* ast_create_array_literal(ASTNode** elements, size_t count, size_t line, size_t column);
 
-ASTNode* ast_create_member_access(ASTNode* object, ASTNode* property, size_t line,
-                                  size_t column);
+ASTNode* ast_create_member_access(ASTNode* object, ASTNode* property, size_t line, size_t column);
 
-ASTNode* ast_create_array_access(ASTNode* array, ASTNode* index, size_t line,
-                                 size_t column);
+ASTNode* ast_create_array_access(ASTNode* array, ASTNode* index, size_t line, size_t column);
 
 void ast_print(ASTNode* node, int indent);
 

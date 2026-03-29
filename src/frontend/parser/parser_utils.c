@@ -7,8 +7,8 @@
 #include "../../helper.h"
 #include "../../stm.h"
 
-void parser_declare_variable(Parser* parser, const char* name, const char* type,
-	                        bool is_mutable, unsigned int size)
+void parser_declare_variable(Parser* parser, const char* name, const char* type, bool is_mutable,
+                             unsigned int size)
 {
 	if (!parser)
 	{
@@ -22,12 +22,8 @@ void parser_declare_variable(Parser* parser, const char* name, const char* type,
 	snprintf(line_buffer, sizeof(line_buffer), "%zu",
 	         parser->current ? parser->current->line : 0);
 
-	stm_insert(parser->symbol_table_stack->current_scope, (char*)name, (char*)type,
-	           is_mutable, size,
-	           line_buffer,
-	           NULL,
-	           NULL
-	);
+	stm_insert(parser->symbol_table_stack->current_scope, (char*)name, (char*)type, is_mutable,
+	           size, line_buffer, NULL, NULL);
 	printf("Declared variable '%s' of type '%s' with size %u in scope level %d. (Info)\n", name,
 	       type, size, parser->scope_depth);
 }
@@ -46,13 +42,8 @@ void parser_declare_function(Parser* parser, const char* name, const char* retur
 	snprintf(line_buffer, sizeof(line_buffer), "%zu",
 	         parser->current ? parser->current->line : 0);
 
-	stm_insert(parser->symbol_table_stack->current_scope, (char*)name, (char*)return_type,
-	           0,
-	           0,
-	           line_buffer,
-	           NULL,
-	           NULL
-	);
+	stm_insert(parser->symbol_table_stack->current_scope, (char*)name, (char*)return_type, 0, 0,
+	           line_buffer, NULL, NULL);
 	printf("Declared function '%s' with return type '%s' in scope level %d. (Info)\n", name,
 	       return_type, parser->scope_depth);
 }
