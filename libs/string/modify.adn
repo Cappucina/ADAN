@@ -1,0 +1,85 @@
+import "adan/string/internal";
+import "adan/string/access";
+import "adan/string/compare";
+import "adan/string/search";
+
+function concat(value: string, other: string): string {
+	return value + other;
+}
+
+function append(value: string, other: string): string {
+	return concat(value, other);
+}
+
+function prepend(value: string, other: string): string {
+	return concat(other, value);
+}
+
+function insert(source: string, index: i32, value: string): string {
+	set length: i32 = __string_length(source);
+	set offset: i32 = index;
+
+	if offset < 0 {
+		offset = 0;
+	}
+
+	if offset > length {
+		offset = length;
+	}
+
+	return access.slice(source, 0, offset) + value + access.slice(source, offset, length);
+}
+
+function remove(value: string, start: i32, length: i32): string {
+	set total_length: i32 = __string_length(value);
+	set from: i32 = start;
+	set amount: i32 = length;
+
+	if from < 0 {
+		from = 0;
+	}
+
+	if amount <= 0 or from >= total_length {
+		return "" + value;
+	}
+
+	set to: i32 = from + amount;
+	if to > total_length {
+		to = total_length;
+	}
+
+	return access.slice(value, 0, from) + access.slice(value, to, total_length);
+}
+
+function replace(value: string, old: string, new: string): string {
+	set index: i32 = search.index_of(value, old);
+	if index < 0 or __string_length(old) == 0 {
+		return "" + value;
+	}
+
+	return access.slice(value, 0, index) + new + access.slice(value, index + __string_length(old), __string_length(value));
+}
+
+function replace_all(value: string, old: string, new: string): string {
+	set old_length: i32 = __string_length(old);
+	if old_length == 0 {
+		return "" + value;
+	}
+
+	set result: string = "";
+	set value_length: i32 = __string_length(value);
+	set i: i32 = 0;
+
+	while i < value_length {
+		if i <= value_length - old_length and compare.equals(access.slice(value, i, i + old_length), old) {
+			result += new;
+			i += old_length;
+		}
+		else {
+			result += __string_char(value, i);
+			i++;
+		}
+	}
+
+	return result;
+}

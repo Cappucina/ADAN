@@ -1,0 +1,94 @@
+import "adan/string/internal";
+
+function to_upper(value: string): string {
+	set result: string = "";
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		result += __string_from_code(__string_to_upper_code(__string_code(value, i)));
+	}
+
+	return result;
+}
+
+function upper(value: string): string {
+	return to_upper(value);
+}
+
+function to_lower(value: string): string {
+	set result: string = "";
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		result += __string_from_code(__string_to_lower_code(__string_code(value, i)));
+	}
+
+	return result;
+}
+
+function lower(value: string): string {
+	return to_lower(value);
+}
+
+function capitalize(value: string): string {
+	set lowered: string = to_lower(value);
+	set result: string = "";
+	set changed: bool = false;
+
+	for set i: i32 = 0; i < __string_length(lowered); i++ {
+		set code: i32 = __string_code(lowered, i);
+
+		if changed == false and __string_is_alpha_code(code) {
+			result += __string_from_code(__string_to_upper_code(code));
+			changed = true;
+		}
+		else {
+			result += __string_from_code(code);
+		}
+	}
+
+	return result;
+}
+
+function title(value: string): string {
+	set lowered: string = to_lower(value);
+	set result: string = "";
+	set capitalize_next: bool = true;
+
+	for set i: i32 = 0; i < __string_length(lowered); i++ {
+		set code: i32 = __string_code(lowered, i);
+
+		if capitalize_next and __string_is_alpha_code(code) {
+			result += __string_from_code(__string_to_upper_code(code));
+			capitalize_next = false;
+		}
+		else {
+			result += __string_from_code(code);
+			capitalize_next = __string_is_title_separator_code(code);
+		}
+	}
+
+	return result;
+}
+
+function swap_case(value: string): string {
+	set result: string = "";
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		set code: i32 = __string_code(value, i);
+
+		if __string_is_lower_code(code) {
+			result += __string_from_code(__string_to_upper_code(code));
+		}
+		else if __string_is_upper_code(code) {
+			result += __string_from_code(__string_to_lower_code(code));
+		}
+		else {
+			result += __string_from_code(code);
+		}
+	}
+
+	return result;
+}
+
+function invert_case(value: string): string {
+	return swap_case(value);
+}

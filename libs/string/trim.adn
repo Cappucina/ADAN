@@ -1,0 +1,89 @@
+import "adan/string/internal";
+import "adan/string/access";
+
+function trim(value: string): string {
+	return trim_end(trim_start(value));
+}
+
+function trim_start(value: string): string {
+	set length: i32 = __string_length(value);
+	set start: i32 = 0;
+
+	while start < length and __string_is_whitespace_code(__string_code(value, start)) {
+		start++;
+	}
+
+	return access.slice(value, start, length);
+}
+
+function trim_left(value: string): string {
+	return trim_start(value);
+}
+
+function trim_end(value: string): string {
+	set end: i32 = __string_length(value);
+
+	while end > 0 and __string_is_whitespace_code(__string_code(value, end - 1)) {
+		end--;
+	}
+
+	return access.slice(value, 0, end);
+}
+
+function trim_right(value: string): string {
+	return trim_end(value);
+}
+
+function pad_start(value: string, length: i32, char: string): string {
+	set value_length: i32 = __string_length(value);
+	set pad_value: string = char;
+
+	if __string_length(pad_value) == 0 {
+		pad_value = " ";
+	}
+
+	if length <= value_length {
+		return "" + value;
+	}
+
+	set needed: i32 = length - value_length;
+	set pad_length: i32 = __string_length(pad_value);
+	set prefix: string = "";
+
+	for set i: i32 = 0; i < needed; i++ {
+		prefix += __string_char(pad_value, i % pad_length);
+	}
+
+	return prefix + value;
+}
+
+function pad_left(value: string, length: i32, char: string): string {
+	return pad_start(value, length, char);
+}
+
+function pad_end(value: string, length: i32, char: string): string {
+	set value_length: i32 = __string_length(value);
+	set pad_value: string = char;
+
+	if __string_length(pad_value) == 0 {
+		pad_value = " ";
+	}
+
+	if length <= value_length {
+		return "" + value;
+	}
+
+	set needed: i32 = length - value_length;
+	set pad_length: i32 = __string_length(pad_value);
+	set suffix: string = "";
+
+	for set i: i32 = 0; i < needed; i++ {
+		suffix += __string_char(pad_value, i % pad_length);
+	}
+
+	return value + suffix;
+}
+
+function pad_right(value: string, length: i32, char: string): string {
+	return pad_end(value, length, char);
+}

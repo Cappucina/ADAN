@@ -1,0 +1,36 @@
+import "adan/string/internal";
+
+function is_empty(value: string): bool {
+	return __string_length(value) == 0;
+}
+
+function clone(value: string): string {
+	return "" + value;
+}
+
+function repeat(value: string, count: i32): string {
+	if count <= 0 or is_empty(value) {
+		return "";
+	}
+
+	set result: string = "";
+
+	for set i: i32 = 0; i < count; i++ {
+		result += value;
+	}
+
+	return result;
+}
+
+function reverse(value: string): string {
+	set result: string = "";
+	set length: i32 = __string_length(value);
+	set i: i32 = length - 1;
+
+	while i >= 0 {
+		result += __string_char(value, i);
+		i--;
+	}
+
+	return result;
+}

@@ -1,0 +1,56 @@
+import "adan/string/internal";
+
+function equals(value: string, other: string): bool {
+	if __string_length(value) !== __string_length(other) {
+		return false;
+	}
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		if __string_code(value, i) !== __string_code(other, i) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function matches(value: string, other: string): bool {
+	return equals(value, other);
+}
+
+function compare(value: string, other: string): i32 {
+	set left_length: i32 = __string_length(value);
+	set right_length: i32 = __string_length(other);
+	set limit: i32 = left_length;
+
+	if right_length < limit {
+		limit = right_length;
+	}
+
+	for set i: i32 = 0; i < limit; i++ {
+		set left_code: i32 = __string_code(value, i);
+		set right_code: i32 = __string_code(other, i);
+
+		if left_code < right_code {
+			return 0 - 1;
+		}
+
+		if left_code > right_code {
+			return 1;
+		}
+	}
+
+	if left_length < right_length {
+		return 0 - 1;
+	}
+
+	if left_length > right_length {
+		return 1;
+	}
+
+	return 0;
+}
+
+function order(value: string, other: string): i32 {
+	return compare(value, other);
+}

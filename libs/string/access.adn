@@ -1,0 +1,67 @@
+import "adan/string/internal";
+
+function char_at(value: string, index: i32): string {
+	return __string_char(value, index);
+}
+
+function at(value: string, index: i32): string {
+	return char_at(value, index);
+}
+
+function code_at(value: string, index: i32): i32 {
+	return __string_code(value, index);
+}
+
+function codepoint_at(value: string, index: i32): i32 {
+	return code_at(value, index);
+}
+
+function first(value: string): string {
+	return char_at(value, 0);
+}
+
+function slice(value: string, start: i32, end: i32): string {
+	set length: i32 = __string_length(value);
+	set from: i32 = start;
+	set to: i32 = end;
+
+	if from < 0 {
+		from = 0;
+	}
+
+	if to < 0 {
+		to = 0;
+	}
+
+	if from > length {
+		from = length;
+	}
+
+	if to > length {
+		to = length;
+	}
+
+	if to < from {
+		to = from;
+	}
+
+	set result: string = "";
+
+	for set i: i32 = from; i < to; i++ {
+		result += __string_char(value, i);
+	}
+
+	return result;
+}
+
+function substr(value: string, start: i32, length: i32): string {
+	if length <= 0 {
+		return "";
+	}
+
+	return slice(value, start, start + length);
+}
+
+function substring(value: string, start: i32, length: i32): string {
+	return substr(value, start, length);
+}

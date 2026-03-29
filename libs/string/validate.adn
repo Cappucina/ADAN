@@ -1,0 +1,105 @@
+import "adan/string/internal";
+
+function is_alpha(value: string): bool {
+	if __string_length(value) == 0 {
+		return false;
+	}
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		if __string_is_alpha_code(__string_code(value, i)) == false {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function is_numeric(value: string): bool {
+	if __string_length(value) == 0 {
+		return false;
+	}
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		if __string_is_numeric_code(__string_code(value, i)) == false {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function is_digits(value: string): bool {
+	return is_numeric(value);
+}
+
+function is_alnum(value: string): bool {
+	if __string_length(value) == 0 {
+		return false;
+	}
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		if __string_is_alnum_code(__string_code(value, i)) == false {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function is_alphanumeric(value: string): bool {
+	return is_alnum(value);
+}
+
+function is_space(value: string): bool {
+	if __string_length(value) == 0 {
+		return false;
+	}
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		if __string_is_whitespace_code(__string_code(value, i)) == false {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function is_whitespace(value: string): bool {
+	return is_space(value);
+}
+
+function is_lower(value: string): bool {
+	set saw_alpha: bool = false;
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		set code: i32 = __string_code(value, i);
+
+		if __string_is_alpha_code(code) {
+			saw_alpha = true;
+
+			if __string_is_lower_code(code) == false {
+				return false;
+			}
+		}
+	}
+
+	return saw_alpha;
+}
+
+function is_upper(value: string): bool {
+	set saw_alpha: bool = false;
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		set code: i32 = __string_code(value, i);
+
+		if __string_is_alpha_code(code) {
+			saw_alpha = true;
+
+			if __string_is_upper_code(code) == false {
+				return false;
+			}
+		}
+	}
+
+	return saw_alpha;
+}

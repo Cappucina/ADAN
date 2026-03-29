@@ -1,0 +1,105 @@
+import "adan/string/internal";
+import "adan/string/access";
+import "adan/string/compare";
+
+function contains(value: string, part: string): bool {
+	return index_of(value, part) >= 0;
+}
+
+function starts_with(value: string, prefix: string): bool {
+	set prefix_length: i32 = __string_length(prefix);
+	if prefix_length > __string_length(value) {
+		return false;
+	}
+
+	return compare.equals(access.slice(value, 0, prefix_length), prefix);
+}
+
+function ends_with(value: string, suffix: string): bool {
+	set value_length: i32 = __string_length(value);
+	set suffix_length: i32 = __string_length(suffix);
+
+	if suffix_length > value_length {
+		return false;
+	}
+
+	return compare.equals(access.slice(value, value_length - suffix_length, value_length), suffix);
+}
+
+function index_of(value: string, part: string): i32 {
+	set value_length: i32 = __string_length(value);
+	set part_length: i32 = __string_length(part);
+
+	if part_length == 0 {
+		return 0;
+	}
+
+	if part_length > value_length {
+		return 0 - 1;
+	}
+
+	for set i: i32 = 0; i <= value_length - part_length; i++ {
+		if compare.equals(access.slice(value, i, i + part_length), part) {
+			return i;
+		}
+	}
+
+	return 0 - 1;
+}
+
+function find(value: string, part: string): i32 {
+	return index_of(value, part);
+}
+
+function last_index_of(value: string, part: string): i32 {
+	set value_length: i32 = __string_length(value);
+	set part_length: i32 = __string_length(part);
+
+	if part_length == 0 {
+		return value_length;
+	}
+
+	if part_length > value_length {
+		return 0 - 1;
+	}
+
+	set i: i32 = value_length - part_length;
+
+	while i >= 0 {
+		if compare.equals(access.slice(value, i, i + part_length), part) {
+			return i;
+		}
+
+		i--;
+	}
+
+	return 0 - 1;
+}
+
+function find_last(value: string, part: string): i32 {
+	return last_index_of(value, part);
+}
+
+function count(value: string, part: string): i32 {
+	set value_length: i32 = __string_length(value);
+	set part_length: i32 = __string_length(part);
+
+	if part_length == 0 or part_length > value_length {
+		return 0;
+	}
+
+	set total: i32 = 0;
+	set i: i32 = 0;
+
+	while i <= value_length - part_length {
+		if compare.equals(access.slice(value, i, i + part_length), part) {
+			total++;
+			i += part_length;
+		}
+		else {
+			i++;
+		}
+	}
+
+	return total;
+}

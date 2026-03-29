@@ -1,0 +1,102 @@
+import "adan/string/internal";
+import "adan/string/access";
+import "adan/string/compare";
+
+function split(value: string, delim: string): string[] {
+	set result: string[] = [];
+	set delim_length: i32 = __string_length(delim);
+	set value_length: i32 = __string_length(value);
+
+	if delim_length == 0 {
+		for set i: i32 = 0; i < value_length; i++ {
+			result.push(__string_char(value, i));
+		}
+
+		return result;
+	}
+
+	set start: i32 = 0;
+	set i: i32 = 0;
+
+	while i <= value_length - delim_length {
+		if compare.equals(access.slice(value, i, i + delim_length), delim) {
+			result.push(access.slice(value, start, i));
+			i += delim_length;
+			start = i;
+		}
+		else {
+			i++;
+		}
+	}
+
+	result.push(access.slice(value, start, value_length));
+	return result;
+}
+
+function split_lines(value: string): string[] {
+	set result: string[] = [];
+	set current: string = "";
+	set length: i32 = __string_length(value);
+	set i: i32 = 0;
+
+	while i < length {
+		set code: i32 = __string_code(value, i);
+
+		if code == 10 or code == 13 {
+			result.push(current);
+			current = "";
+
+			if code == 13 and i + 1 < length and __string_code(value, i + 1) == 10 {
+				i++;
+			}
+		}
+		else {
+			current += __string_char(value, i);
+		}
+
+		i++;
+	}
+
+	result.push(current);
+	return result;
+}
+
+function split_whitespace(value: string): string[] {
+	set result: string[] = [];
+	set current: string = "";
+	set length: i32 = __string_length(value);
+
+	for set i: i32 = 0; i < length; i++ {
+		set code: i32 = __string_code(value, i);
+
+		if __string_is_whitespace_code(code) {
+			if __string_length(current) > 0 {
+				result.push(current);
+				current = "";
+			}
+		}
+		else {
+			current += __string_char(value, i);
+		}
+	}
+
+	if __string_length(current) > 0 {
+		result.push(current);
+	}
+
+	return result;
+}
+
+function join(parts: string[], delim: string): string {
+	set result: string = "";
+
+	for set i: i32 = 0; i < parts.length(); i++ {
+		if i > 0 {
+			result += delim;
+		}
+
+		result += parts[i];
+	}
+
+	return result;
+}

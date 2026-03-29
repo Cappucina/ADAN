@@ -1,0 +1,59 @@
+function __string_length(value: string): i32 {
+    return adn_string_length(value);
+}
+
+function __string_char(value: string, index: i32): string {
+    return adn_string_char_at(value, index);
+}
+
+function __string_code(value: string, index: i32): i32 {
+    return adn_string_code_at(value, index);
+}
+
+function __string_from_code(code: i32): string {
+    return adn_string_from_code(code);
+}
+
+function __string_is_whitespace_code(code: i32): bool {
+    return code == 32 or code == 9 or code == 10 or code == 13;
+}
+
+function __string_is_numeric_code(code: i32): bool {
+    return code >= 48 and code <= 57;
+}
+
+function __string_is_lower_code(code: i32): bool {
+    return code >= 97 and code <= 122;
+}
+
+function __string_is_upper_code(code: i32): bool {
+    return code >= 65 and code <= 90;
+}
+
+function __string_is_alpha_code(code: i32): bool {
+    return __string_is_lower_code(code) or __string_is_upper_code(code);
+}
+
+function __string_is_alnum_code(code: i32): bool {
+    return __string_is_alpha_code(code) or __string_is_numeric_code(code);
+}
+
+function __string_to_upper_code(code: i32): i32 {
+    if __string_is_lower_code(code) {
+        return code - 32;
+    }
+
+    return code;
+}
+
+function __string_to_lower_code(code: i32): i32 {
+    if __string_is_upper_code(code) {
+        return code + 32;
+    }
+
+    return code;
+}
+
+function __string_is_title_separator_code(code: i32): bool {
+    return __string_is_whitespace_code(code) or code == 95 or code == 45 or code == 47 or code == 46;
+}

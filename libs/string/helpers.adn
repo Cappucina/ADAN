@@ -1,0 +1,84 @@
+import "adan/string/internal";
+import "adan/string/access";
+import "adan/string/search";
+import "adan/string/split";
+import "adan/string/trim";
+
+function lines(value: string): string[] {
+	return split.split_lines(value);
+}
+
+function words(value: string): string[] {
+	return split.split_whitespace(value);
+}
+
+function chars(value: string): string[] {
+	set result: string[] = [];
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		result.push(__string_char(value, i));
+	}
+
+	return result;
+}
+
+function collapse_whitespace(value: string): string {
+	set result: string = "";
+	set in_space: bool = true;
+
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		set code: i32 = __string_code(value, i);
+
+		if __string_is_whitespace_code(code) {
+			if in_space == false {
+				result += " ";
+				in_space = true;
+			}
+		}
+		else {
+			result += __string_from_code(code);
+			in_space = false;
+		}
+	}
+
+	set start: i32 = 0;
+	set finish: i32 = __string_length(result);
+
+	while start < finish and __string_is_whitespace_code(__string_code(result, start)) {
+		start++;
+	}
+
+	while finish > start and __string_is_whitespace_code(__string_code(result, finish - 1)) {
+		finish--;
+	}
+
+	return access.slice(result, start, finish);
+}
+
+function normalize_whitespace(value: string): string {
+	return collapse_whitespace(value);
+}
+
+function remove_prefix(value: string, prefix: string): string {
+	if search.starts_with(value, prefix) {
+		return access.slice(value, __string_length(prefix), __string_length(value));
+	}
+
+	return "" + value;
+}
+
+function strip_prefix(value: string, prefix: string): string {
+	return remove_prefix(value, prefix);
+}
+
+function remove_suffix(value: string, suffix: string): string {
+	if search.ends_with(value, suffix) {
+		return access.slice(value, 0, __string_length(value) - __string_length(suffix));
+	}
+
+	return "" + value;
+}
+
+function strip_suffix(value: string, suffix: string): string {
+	return remove_suffix(value, suffix);
+}
