@@ -1,0 +1,104 @@
+import "adan/io";
+import "adan/string/internal";
+
+const trace_level: i32 = 0;
+const debug_level: i32 = 1;
+const info_level: i32 = 2;
+const warn_level: i32 = 3;
+const error_level: i32 = 4;
+const silent_level: i32 = 5;
+
+const __log_default_level: i32 = info_level;
+
+set __log_level: i32 = __log_default_level;
+set __log_prefix: string = "";
+
+function level(): i32 {
+    return __log_level;
+}
+
+function set_level(value: i32): void {
+    if value < trace_level {
+        __log_level = trace_level;
+        return;
+    }
+
+    if value > silent_level {
+        __log_level = silent_level;
+        return;
+    }
+
+    __log_level = value;
+}
+
+function reset(): void {
+    __log_level = __log_default_level;
+    __log_prefix = "";
+}
+
+function quiet(): void {
+    set_level(silent_level);
+}
+
+function verbose(): void {
+    set_level(trace_level);
+}
+
+function set_prefix(value: string): void {
+    __log_prefix = value;
+}
+
+function clear_prefix(): void {
+    __log_prefix = "";
+}
+
+function enabled(message_level: i32): bool {
+    return __log_level < silent_level and message_level >= __log_level;
+}
+
+function __log_compose(label: string, format: string, args: any[]): string {
+    set message: string = adn_string_format(format, args);
+    set line: string = "[" + label + "] " + message;
+
+    if __string_length(__log_prefix) > 0 {
+        return __log_prefix + " " + line;
+    }
+
+    return line;
+}
+
+function __log_emit(message_level: i32, label: string, format: string, args: any[]): void {
+    if enabled(message_level) == false {
+        return;
+    }
+
+    io.print("%s", __log_compose(label, format, args));
+}
+
+function trace(format: string, ...args: any): void {
+    __log_emit(trace_level, "TRACE", format, args);
+}
+
+function debug(format: string, ...args: any): void {
+    __log_emit(debug_level, "DEBUG", format, args);
+}
+
+function info(format: string, ...args: any): void {
+    __log_emit(info_level, "INFO", format, args);
+}
+
+function warn(format: string, ...args: any): void {
+    __log_emit(warn_level, "WARN", format, args);
+}
+
+function error(format: string, ...args: any): void {
+    __log_emit(error_level, "ERROR", format, args);
+}
+
+function success(format: string, ...args: any): void {
+    __log_emit(info_level, "SUCCESS", format, args);
+}
+
+function fatal(format: string, ...args: any): void {
+    io.error("%s", __log_compose("FATAL", format, args));
+}
