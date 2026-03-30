@@ -1,0 +1,31 @@
+function get(value: any, key: string): any {
+    return "";
+}
+
+function index(value: any, at: i32): any {
+    return "";
+}
+
+function get_string(value: any, key: string, fallback: string): string {
+    return fallback;
+}
+
+function get_i32(value: any, key: string, fallback: i32): i32 {
+    return fallback;
+}
+
+function get_f64(value: any, key: string, fallback: f64): f64 {
+    return fallback;
+}
+
+function get_bool(value: any, key: string, fallback: bool): bool {
+    return fallback;
+}
+
+function has(value: any, key: string): bool {
+    return false;
+}
+
+function len(value: any): i32 {
+    return 0;
+}

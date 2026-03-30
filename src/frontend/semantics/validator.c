@@ -187,10 +187,12 @@ typedef struct
 
 typedef struct
 {
+	char* library_root;
 	char* module_name;
 	char* public_name;
 	char* internal_name;
 	char* type;
+	bool is_private;
 	bool is_function;
 } ModuleExport;
 
@@ -203,6 +205,8 @@ static ModuleExport* module_exports = NULL;
 
 static size_t module_export_count = 0;
 static size_t module_export_capacity = 0;
+
+static char current_validation_library_root[128] = "";
 
 void validator_cleanup()
 {
@@ -269,6 +273,7 @@ void validator_cleanup()
 
 	for (size_t i = 0; i < module_export_count; i++)
 	{
+		free(module_exports[i].library_root);
 		free(module_exports[i].module_name);
 		free(module_exports[i].public_name);
 		free(module_exports[i].internal_name);
@@ -509,6 +514,52 @@ static bool is_internal_import_name(const char* name)
 	return starts_with(name, "__ns_");
 }
 
+static bool is_private_decl_name(const char* name)
+{
+	return name && starts_with(name, "__") && !is_internal_import_name(name);
+}
+
+static bool derive_library_root(const char* import_path, char* output, size_t output_size)
+{
+	if (!import_path || !output || output_size == 0)
+	{
+		return false;
+	}
+
+	const char* prefix = "adan/";
+	if (!starts_with(import_path, prefix))
+	{
+		return false;
+	}
+
+	const char* rel = import_path + strlen(prefix);
+	const char* slash = strchr(rel, '/');
+	size_t length = slash ? (size_t)(slash - rel) : strlen(rel);
+	if (length == 0 || length + 1 > output_size)
+	{
+		return false;
+	}
+
+	memcpy(output, rel, length);
+	output[length] = '\0';
+	return true;
+}
+
+static bool module_export_visible(const ModuleExport* export_entry)
+{
+	if (!export_entry)
+	{
+		return false;
+	}
+
+	if (!export_entry->is_private)
+	{
+		return true;
+	}
+
+	return current_validation_library_root[0] != '\0';
+}
+
 static bool is_module_call_name(const char* name)
 {
 	return starts_with(name, "__modulecall_");
@@ -591,7 +642,8 @@ static ModuleExport* find_module_export(const char* module_name, const char* pub
 	{
 		if (module_exports[i].module_name && module_exports[i].public_name &&
 		    strcmp(module_exports[i].module_name, module_name) == 0 &&
-		    strcmp(module_exports[i].public_name, public_name) == 0)
+		    strcmp(module_exports[i].public_name, public_name) == 0 &&
+		    module_export_visible(&module_exports[i]))
 		{
 			return &module_exports[i];
 		}
@@ -619,11 +671,11 @@ static ModuleExport* find_module_export_by_internal(const char* internal_name)
 	return NULL;
 }
 
-static void register_module_export(const char* module_name, const char* public_name,
-	                               const char* internal_name, const char* type,
-	                               bool is_function)
+static void register_module_export(const char* library_root, const char* module_name,
+	                               const char* public_name, const char* internal_name,
+	                               const char* type, bool is_private, bool is_function)
 {
-	if (!module_name || !public_name || !internal_name || !type)
+	if (!library_root || !module_name || !public_name || !internal_name || !type)
 	{
 		return;
 	}
@@ -646,10 +698,12 @@ static void register_module_export(const char* module_name, const char* public_n
 	}
 
 	ModuleExport* export_entry = &module_exports[module_export_count++];
+	export_entry->library_root = clone_string(library_root, strlen(library_root));
 	export_entry->module_name = clone_string(module_name, strlen(module_name));
 	export_entry->public_name = clone_string(public_name, strlen(public_name));
 	export_entry->internal_name = clone_string(internal_name, strlen(internal_name));
 	export_entry->type = clone_string(type, strlen(type));
+	export_entry->is_private = is_private;
 	export_entry->is_function = is_function;
 }
 
@@ -1733,10 +1787,12 @@ static void rewrite_import_bindings_in_node(ASTNode* node, ImportBinding* bindin
 	}
 }
 
-static void collect_module_exports(ASTNode* ast, const char* module_name,
+static void collect_module_exports(ASTNode* ast, const char* library_root,
+	                               const char* module_name,
 	                               ImportBinding** out_bindings, size_t* out_binding_count)
 {
-	if (!ast || ast->type != AST_PROGRAM || !module_name || !out_bindings || !out_binding_count)
+	if (!ast || ast->type != AST_PROGRAM || !library_root || !module_name || !out_bindings ||
+	    !out_binding_count)
 	{
 		return;
 	}
@@ -1772,9 +1828,11 @@ static void collect_module_exports(ASTNode* ast, const char* module_name,
 
 					if (strcmp(export_entry->module_name, imported_namespace) == 0)
 					{
-						register_module_export(module_name, export_entry->public_name,
+						register_module_export(library_root, module_name,
+						                       export_entry->public_name,
 						                       export_entry->internal_name,
 						                       export_entry->type,
+						                       export_entry->is_private,
 						                       export_entry->is_function);
 					}
 				}
@@ -1784,13 +1842,53 @@ static void collect_module_exports(ASTNode* ast, const char* module_name,
 
 		if (decl->type == AST_FUNCTION_DECLARATION && decl->func_decl.name)
 		{
+			if (is_private_decl_name(decl->func_decl.name))
+			{
+				char internal_name[256];
+				if (!build_internal_import_name(module_name, decl->func_decl.name, internal_name,
+				                               sizeof(internal_name)))
+				{
+					continue;
+				}
+
+				register_module_export(library_root, module_name, decl->func_decl.name,
+				                       internal_name,
+				                       decl->func_decl.return_type &&
+				                               decl->func_decl.return_type->type_node.name
+				                           ? decl->func_decl.return_type->type_node.name
+				                           : "any",
+				                       true,
+				                       true);
+
+				if (binding_count + 1 > binding_capacity)
+				{
+					size_t next_capacity = binding_capacity == 0 ? 8 : binding_capacity * 2;
+					ImportBinding* resized = realloc(bindings, sizeof(ImportBinding) * next_capacity);
+					if (!resized)
+					{
+						continue;
+					}
+					bindings = resized;
+					binding_capacity = next_capacity;
+				}
+
+				bindings[binding_count].public_name =
+				    clone_string(decl->func_decl.name, strlen(decl->func_decl.name));
+				bindings[binding_count].internal_name =
+				    clone_string(internal_name, strlen(internal_name));
+				bindings[binding_count].decl_type = AST_FUNCTION_DECLARATION;
+				binding_count++;
+				continue;
+			}
+
 			if (is_internal_import_name(decl->func_decl.name))
 			{
 				ModuleExport* existing = find_module_export_by_internal(decl->func_decl.name);
 				if (existing)
 				{
-					register_module_export(module_name, existing->public_name,
-					                       existing->internal_name, existing->type, true);
+					register_module_export(library_root, module_name, existing->public_name,
+					                       existing->internal_name, existing->type,
+					                       existing->is_private, true);
 				}
 				continue;
 			}
@@ -1802,11 +1900,12 @@ static void collect_module_exports(ASTNode* ast, const char* module_name,
 				continue;
 			}
 
-			register_module_export(module_name, decl->func_decl.name, internal_name,
+			register_module_export(library_root, module_name, decl->func_decl.name, internal_name,
 			                       decl->func_decl.return_type &&
 			                               decl->func_decl.return_type->type_node.name
 			                           ? decl->func_decl.return_type->type_node.name
 			                           : "any",
+			                       false,
 			                       true);
 
 			if (binding_count + 1 > binding_capacity)
@@ -1830,13 +1929,52 @@ static void collect_module_exports(ASTNode* ast, const char* module_name,
 		}
 		else if (decl->type == AST_VARIABLE_DECLARATION && decl->var_decl.name)
 		{
+			if (is_private_decl_name(decl->var_decl.name))
+			{
+				char internal_name[256];
+				if (!build_internal_import_name(module_name, decl->var_decl.name, internal_name,
+				                               sizeof(internal_name)))
+				{
+					continue;
+				}
+
+				register_module_export(library_root, module_name, decl->var_decl.name,
+				                       internal_name,
+				                       decl->var_decl.type && decl->var_decl.type->type_node.name
+				                           ? decl->var_decl.type->type_node.name
+				                           : "any",
+				                       true,
+				                       false);
+
+				if (binding_count + 1 > binding_capacity)
+				{
+					size_t next_capacity = binding_capacity == 0 ? 8 : binding_capacity * 2;
+					ImportBinding* resized = realloc(bindings, sizeof(ImportBinding) * next_capacity);
+					if (!resized)
+					{
+						continue;
+					}
+					bindings = resized;
+					binding_capacity = next_capacity;
+				}
+
+				bindings[binding_count].public_name =
+				    clone_string(decl->var_decl.name, strlen(decl->var_decl.name));
+				bindings[binding_count].internal_name =
+				    clone_string(internal_name, strlen(internal_name));
+				bindings[binding_count].decl_type = AST_VARIABLE_DECLARATION;
+				binding_count++;
+				continue;
+			}
+
 			if (is_internal_import_name(decl->var_decl.name))
 			{
 				ModuleExport* existing = find_module_export_by_internal(decl->var_decl.name);
 				if (existing)
 				{
-					register_module_export(module_name, existing->public_name,
-					                       existing->internal_name, existing->type, false);
+					register_module_export(library_root, module_name, existing->public_name,
+					                       existing->internal_name, existing->type,
+					                       existing->is_private, false);
 				}
 				continue;
 			}
@@ -1848,10 +1986,11 @@ static void collect_module_exports(ASTNode* ast, const char* module_name,
 				continue;
 			}
 
-			register_module_export(module_name, decl->var_decl.name, internal_name,
+			register_module_export(library_root, module_name, decl->var_decl.name, internal_name,
 			                       decl->var_decl.type && decl->var_decl.type->type_node.name
 			                           ? decl->var_decl.type->type_node.name
 			                           : "any",
+			                       false,
 			                       false);
 
 			if (binding_count + 1 > binding_capacity)
@@ -1875,6 +2014,36 @@ static void collect_module_exports(ASTNode* ast, const char* module_name,
 		}
 		else if (decl->type == AST_TYPE_DECLARATION && decl->type_decl.name)
 		{
+			if (is_private_decl_name(decl->type_decl.name))
+			{
+				char internal_name[256];
+				if (!build_internal_import_name(module_name, decl->type_decl.name, internal_name,
+				                               sizeof(internal_name)))
+				{
+					continue;
+				}
+
+				if (binding_count + 1 > binding_capacity)
+				{
+					size_t next_capacity = binding_capacity == 0 ? 8 : binding_capacity * 2;
+					ImportBinding* resized = realloc(bindings, sizeof(ImportBinding) * next_capacity);
+					if (!resized)
+					{
+						continue;
+					}
+					bindings = resized;
+					binding_capacity = next_capacity;
+				}
+
+				bindings[binding_count].public_name =
+				    clone_string(decl->type_decl.name, strlen(decl->type_decl.name));
+				bindings[binding_count].internal_name =
+				    clone_string(internal_name, strlen(internal_name));
+				bindings[binding_count].decl_type = AST_TYPE_DECLARATION;
+				binding_count++;
+				continue;
+			}
+
 			if (is_internal_import_name(decl->type_decl.name))
 			{
 				continue;
@@ -1944,7 +2113,8 @@ static const char* module_type_for_name(const char* module_name)
 	for (size_t i = 0; i < module_export_count && written + 2 < sizeof(slots[slot]); i++)
 	{
 		ModuleExport* export_entry = &module_exports[i];
-		if (!export_entry->module_name || strcmp(export_entry->module_name, module_name) != 0)
+		if (!export_entry->module_name || strcmp(export_entry->module_name, module_name) != 0 ||
+		    !module_export_visible(export_entry))
 		{
 			continue;
 		}
@@ -1971,16 +2141,13 @@ static void redeclare_known_module_import(SemanticAnalyzer* analyzer, ASTNode* n
 	{
 		ModuleExport* export_entry = &module_exports[i];
 		if (!export_entry->module_name || strcmp(export_entry->module_name, module_name) != 0 ||
-		    !export_entry->internal_name || !export_entry->type)
+		    !export_entry->internal_name || !export_entry->type ||
+		    !module_export_visible(export_entry))
 		{
 			continue;
 		}
 
 		declare_symbol(analyzer, node, export_entry->internal_name, export_entry->type, false);
-		if (export_entry->public_name && starts_with(export_entry->public_name, "__"))
-		{
-			declare_symbol(analyzer, node, export_entry->public_name, export_entry->type, false);
-		}
 	}
 }
 
@@ -2005,35 +2172,31 @@ static void declare_imported_symbols(SemanticAnalyzer* analyzer, ASTNode* ast)
 				if (decl->func_decl.name && decl->func_decl.return_type &&
 				    decl->func_decl.return_type->type_node.name)
 				{
+						ModuleExport* export_entry = find_module_export_by_internal(decl->func_decl.name);
+						if (is_internal_import_name(decl->func_decl.name) &&
+						    (!export_entry || !module_export_visible(export_entry)))
+						{
+							break;
+						}
 					declare_symbol(analyzer, decl, decl->func_decl.name,
 					               decl->func_decl.return_type->type_node.name,
 					               false);
 					register_function_signature(decl);
-					ModuleExport* export_entry = find_module_export_by_internal(decl->func_decl.name);
-					if (export_entry && export_entry->public_name &&
-					    starts_with(export_entry->public_name, "__"))
-					{
-						declare_symbol(analyzer, decl, export_entry->public_name,
-						               decl->func_decl.return_type->type_node.name,
-						               false);
-					}
 				}
 				break;
 			case AST_VARIABLE_DECLARATION:
 				if (decl->var_decl.name && decl->var_decl.type &&
 				    decl->var_decl.type->type_node.name)
 				{
+						ModuleExport* export_entry = find_module_export_by_internal(decl->var_decl.name);
+						if (is_internal_import_name(decl->var_decl.name) &&
+						    (!export_entry || !module_export_visible(export_entry)))
+						{
+							break;
+						}
 					declare_symbol(analyzer, decl, decl->var_decl.name,
 					               decl->var_decl.type->type_node.name,
 					               decl->var_decl.is_mutable);
-					ModuleExport* export_entry = find_module_export_by_internal(decl->var_decl.name);
-					if (export_entry && export_entry->public_name &&
-					    starts_with(export_entry->public_name, "__"))
-					{
-						declare_symbol(analyzer, decl, export_entry->public_name,
-						               decl->var_decl.type->type_node.name,
-						               decl->var_decl.is_mutable);
-					}
 				}
 				break;
 			default:
@@ -2410,6 +2573,14 @@ void validate_import_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 		return;
 	}
 
+	char imported_library_root[128];
+	if (!derive_library_root(normalized, imported_library_root, sizeof(imported_library_root)))
+	{
+		semantic_error(analyzer, node, "Failed to determine library root.");
+		ast_free(lib_ast);
+		return;
+	}
+
 	char bundle_path[512];
 	if (build_lib_dir(normalized, bundle_path, sizeof(bundle_path)) &&
 	    bundle_path_exists(bundle_path))
@@ -2418,16 +2589,24 @@ void validate_import_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 	}
 	mark_imported_path(normalized);
 	ASTNode* previous_ast = analyzer->ast;
+	char previous_library_root[128];
+	snprintf(previous_library_root, sizeof(previous_library_root), "%s",
+	         current_validation_library_root);
 	sts_push_scope(analyzer->symbol_table_stack);
 	declare_imported_symbols(analyzer, lib_ast);
 	analyzer->ast = lib_ast;
+	snprintf(current_validation_library_root, sizeof(current_validation_library_root), "%s",
+	         imported_library_root);
 	validate_program(analyzer, lib_ast);
+	snprintf(current_validation_library_root, sizeof(current_validation_library_root), "%s",
+	         previous_library_root);
 	analyzer->ast = previous_ast;
 	sts_pop_scope(analyzer->symbol_table_stack);
 
 	ImportBinding* bindings = NULL;
 	size_t binding_count = 0;
-	collect_module_exports(lib_ast, namespace_name, &bindings, &binding_count);
+	collect_module_exports(lib_ast, imported_library_root, namespace_name, &bindings,
+	                     &binding_count);
 	rewrite_import_bindings_in_node(lib_ast, bindings, binding_count);
 	free_import_bindings(bindings, binding_count);
 

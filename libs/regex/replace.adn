@@ -1,0 +1,11 @@
+function replace(pattern: string, text: string, replacement: string): string {
+    return "";
+}
+
+function replace_all(pattern: string, text: string, replacement: string): string {
+    return "";
+}
+
+function split(pattern: string, text: string): string[] {
+    return [];
+}

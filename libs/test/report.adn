@@ -1,0 +1,65 @@
+import "adan/io";
+import "adan/string/internal";
+
+set __test_suite_name: string = "";
+set __test_passed_count: i32 = 0;
+set __test_failed_count: i32 = 0;
+set __test_total_count: i32 = 0;
+
+function __test_record_pass(name: string): void {
+	__test_passed_count++;
+	__test_total_count++;
+	io.print("[PASS] %s\n", name);
+}
+
+function __test_record_fail(name: string, details: string): void {
+	__test_failed_count++;
+	__test_total_count++;
+
+	if __string_length(details) > 0 {
+		io.print("[FAIL] %s - %s\n", name, details);
+		return;
+	}
+
+	io.print("[FAIL] %s\n", name);
+}
+
+function begin_suite(name: string): void {
+	reset();
+	__test_suite_name = name;
+
+	if __string_length(name) > 0 {
+		io.print("== %s ==\n", name);
+	}
+}
+
+function end_suite(): i32 {
+	if __string_length(__test_suite_name) > 0 {
+		io.print("== end %s ==\n", __test_suite_name);
+	}
+
+	io.print("passed: %d\n", __test_passed_count);
+	io.print("failed: %d\n", __test_failed_count);
+	io.print("total: %d\n", __test_total_count);
+
+	return __test_failed_count;
+}
+
+function passed(): i32 {
+	return __test_passed_count;
+}
+
+function failed(): i32 {
+	return __test_failed_count;
+}
+
+function total(): i32 {
+	return __test_total_count;
+}
+
+function reset(): void {
+	__test_suite_name = "";
+	__test_passed_count = 0;
+	__test_failed_count = 0;
+	__test_total_count = 0;
+}

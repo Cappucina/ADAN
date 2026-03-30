@@ -1,0 +1,19 @@
+function matches(pattern: string, text: string): bool {
+    return false;
+}
+
+function find(pattern: string, text: string): i32 {
+    return -1;
+}
+
+function contains(pattern: string, text: string): bool {
+    return false;
+}
+
+function starts_with(pattern: string, text: string): bool {
+    return false;
+}
+
+function ends_with(pattern: string, text: string): bool {
+    return false;
+}

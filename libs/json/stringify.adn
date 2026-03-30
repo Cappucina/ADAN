@@ -1,0 +1,11 @@
+function stringify(value: any): string {
+    return "";
+}
+
+function pretty(value: any): string {
+    return "";
+}
+
+function quote(value: string): string {
+    return "";
+}

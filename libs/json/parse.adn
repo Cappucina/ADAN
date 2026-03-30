@@ -1,0 +1,35 @@
+function parse(text: string): any {
+    return "";
+}
+
+function parse_object(text: string): any {
+    return "";
+}
+
+function parse_array(text: string): any {
+    return "";
+}
+
+function valid(text: string): bool {
+    return false;
+}
+
+function parse_value(text: string, index: i32): {value:any,next:i32,ok:bool} {
+    return { value: "", next: index, ok: false };
+}
+
+function parse_string(text: string, index: i32): {value:string,next:i32,ok:bool} {
+    return { value: "", next: index, ok: false };
+}
+
+function parse_number(text: string, index: i32): {value:f64,next:i32,ok:bool} {
+    return { value: 0.0, next: index, ok: false };
+}
+
+function parse_array_inner(text: string, index: i32): {value:any,next:i32,ok:bool} {
+    return { value: [], next: index, ok: false };
+}
+
+function parse_object_inner(text: string, index: i32): {value:any,next:i32,ok:bool} {
+    return { value: {}, next: index, ok: false };
+}

@@ -1,0 +1,27 @@
+function is_null(value: any): bool {
+    return false;
+}
+
+function is_bool(value: any): bool {
+    return false;
+}
+
+function is_number(value: any): bool {
+    return false;
+}
+
+function is_string(value: any): bool {
+    return false;
+}
+
+function is_array(value: any): bool {
+    return false;
+}
+
+function is_object(value: any): bool {
+    return false;
+}
+
+function type_of(value: any): string {
+    return "";
+}

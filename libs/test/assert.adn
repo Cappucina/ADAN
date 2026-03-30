@@ -1,0 +1,98 @@
+import "adan/test/report";
+import "adan/string/compare";
+import "adan/string/search";
+import "adan/math/float";
+
+function ok(value: bool, name: string): void {
+	if value {
+		report.__test_record_pass(name);
+		return;
+	}
+
+	report.__test_record_fail(name, "expected true");
+}
+
+function fail(name: string): void {
+	report.__test_record_fail(name, "forced failure");
+}
+
+function eq_i32(left: i32, right: i32, name: string): void {
+	if left == right {
+		report.__test_record_pass(name);
+		return;
+	}
+
+	report.__test_record_fail(name, "expected equal i32 values");
+}
+
+function eq_i64(left: i64, right: i64, name: string): void {
+	if left == right {
+		report.__test_record_pass(name);
+		return;
+	}
+
+	report.__test_record_fail(name, "expected equal i64 values");
+}
+
+function eq_f64(left: f64, right: f64, epsilon: f64, name: string): void {
+	set tolerance: f64 = epsilon;
+	if tolerance < 0.0 {
+		tolerance = 0.0 - tolerance;
+	}
+
+	if float.nearly_equal(left, right, tolerance) {
+		report.__test_record_pass(name);
+		return;
+	}
+
+	report.__test_record_fail(name, "expected equal f64 values");
+}
+
+function eq_bool(left: bool, right: bool, name: string): void {
+	if left == right {
+		report.__test_record_pass(name);
+		return;
+	}
+
+	report.__test_record_fail(name, "expected equal bool values");
+}
+
+function eq_string(left: string, right: string, name: string): void {
+	if compare.equals(left, right) {
+		report.__test_record_pass(name);
+		return;
+	}
+
+	report.__test_record_fail(name, "expected equal strings");
+}
+
+function neq_i32(left: i32, right: i32, name: string): void {
+	if left !== right {
+		report.__test_record_pass(name);
+		return;
+	}
+
+	report.__test_record_fail(name, "expected different i32 values");
+}
+
+function neq_string(left: string, right: string, name: string): void {
+	if compare.equals(left, right) == false {
+		report.__test_record_pass(name);
+		return;
+	}
+
+	report.__test_record_fail(name, "expected different strings");
+}
+
+function contains(text: string, part: string, name: string): void {
+	if search.contains(text, part) {
+		report.__test_record_pass(name);
+		return;
+	}
+
+	report.__test_record_fail(name, "expected text to contain part");
+}
+
+function approx(left: f64, right: f64, epsilon: f64, name: string): void {
+	eq_f64(left, right, epsilon, name);
+}

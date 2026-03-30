@@ -1,0 +1,11 @@
+function valid(pattern: string): bool {
+    return false;
+}
+
+function escape(text: string): string {
+    return "";
+}
+
+function compile(pattern: string): string {
+    return "";
+}
