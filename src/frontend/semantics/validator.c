@@ -1753,6 +1753,35 @@ static void collect_module_exports(ASTNode* ast, const char* module_name,
 			continue;
 		}
 
+		if (decl->type == AST_IMPORT_STATEMENT && decl->import.path)
+		{
+			char normalized[512];
+			char imported_namespace[128];
+			if (normalize_import_path(decl->import.path, normalized, sizeof(normalized)) &&
+			    derive_import_namespace(normalized, imported_namespace,
+			                         sizeof(imported_namespace)))
+			{
+				for (size_t j = 0; j < module_export_count; j++)
+				{
+					ModuleExport* export_entry = &module_exports[j];
+					if (!export_entry->module_name || !export_entry->public_name ||
+					    !export_entry->internal_name || !export_entry->type)
+					{
+						continue;
+					}
+
+					if (strcmp(export_entry->module_name, imported_namespace) == 0)
+					{
+						register_module_export(module_name, export_entry->public_name,
+						                       export_entry->internal_name,
+						                       export_entry->type,
+						                       export_entry->is_function);
+					}
+				}
+			}
+			continue;
+		}
+
 		if (decl->type == AST_FUNCTION_DECLARATION && decl->func_decl.name)
 		{
 			if (is_internal_import_name(decl->func_decl.name))
