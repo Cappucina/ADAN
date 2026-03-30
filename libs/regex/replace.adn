@@ -1,11 +1,25 @@
+import "adan/regex/internal";
+
 function replace(pattern: string, text: string, replacement: string): string {
-    return "";
+	if internal.can_use_pure_replacement(pattern, text, replacement) {
+		return internal.replace_ascii(pattern, text, replacement);
+	}
+
+	return adn_regex_replace(pattern, text, replacement);
 }
 
 function replace_all(pattern: string, text: string, replacement: string): string {
-    return "";
+	if internal.can_use_pure_replacement(pattern, text, replacement) {
+		return internal.replace_all_ascii(pattern, text, replacement);
+	}
+
+	return adn_regex_replace_all(pattern, text, replacement);
 }
 
 function split(pattern: string, text: string): string[] {
-    return [];
+	if internal.can_use_pure(pattern, text) {
+		return internal.split_ascii(pattern, text);
+	}
+
+	return adn_regex_split(pattern, text);
 }

@@ -1154,7 +1154,8 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 				if (starts_with(node->call.callee, "adn_"))
 				{
 					if (strcmp(node->call.callee, "adn_process_args") == 0 ||
-					    strcmp(node->call.callee, "adn_process_env_keys") == 0)
+					    strcmp(node->call.callee, "adn_process_env_keys") == 0 ||
+					    strcmp(node->call.callee, "adn_regex_split") == 0)
 					{
 						return "array<string>";
 					}
@@ -1166,6 +1167,10 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 					if (strcmp(node->call.callee, "adn_input") == 0 ||
 					    strcmp(node->call.callee, "adn_string_format") == 0 ||
 					    strcmp(node->call.callee, "adn_read_file") == 0 ||
+					    strcmp(node->call.callee, "adn_regex_escape") == 0 ||
+					    strcmp(node->call.callee, "adn_regex_compile") == 0 ||
+					    strcmp(node->call.callee, "adn_regex_replace") == 0 ||
+					    strcmp(node->call.callee, "adn_regex_replace_all") == 0 ||
 					    strcmp(node->call.callee, "adn_string_char_at") == 0 ||
 					    strcmp(node->call.callee, "adn_process_name") == 0 ||
 					    strcmp(node->call.callee, "adn_process_arg") == 0 ||
@@ -1188,6 +1193,12 @@ static const char* resolve_expression_type(SemanticAnalyzer* analyzer, ASTNode* 
 						return "f64";
 					}
 					if (strcmp(node->call.callee, "adn_string_code_at") == 0 ||
+					    strcmp(node->call.callee, "adn_regex_valid") == 0 ||
+					    strcmp(node->call.callee, "adn_regex_matches") == 0 ||
+					    strcmp(node->call.callee, "adn_regex_find") == 0 ||
+					    strcmp(node->call.callee, "adn_regex_contains") == 0 ||
+					    strcmp(node->call.callee, "adn_regex_starts_with") == 0 ||
+					    strcmp(node->call.callee, "adn_regex_ends_with") == 0 ||
 					    strcmp(node->call.callee, "adn_process_id") == 0 ||
 					    strcmp(node->call.callee, "adn_process_parent_id") == 0 ||
 					    strcmp(node->call.callee, "adn_process_arg_count") == 0 ||

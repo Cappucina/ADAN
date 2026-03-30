@@ -107,6 +107,11 @@ static bool is_process_runtime_name(const char* name)
 	return starts_with(name, "adn_process_");
 }
 
+static bool is_regex_runtime_name(const char* name)
+{
+	return starts_with(name, "adn_regex_");
+}
+
 static bool is_string_runtime_name(const char* name)
 {
 	return strcmp(name, "adn_strconcat") == 0 || strcmp(name, "adn_string_format") == 0 ||
@@ -199,6 +204,34 @@ static const char* infer_process_runtime_return_type(const char* name)
 	    ends_with(name, "_kill") || ends_with(name, "_is_running") ||
 	    ends_with(name, "_id") || ends_with(name, "_parent_id") ||
 	    ends_with(name, "_arg_count") || starts_with(name, "adn_process_is_"))
+	{
+		return "i32";
+	}
+
+	return NULL;
+}
+
+static const char* infer_regex_runtime_return_type(const char* name)
+{
+	if (!is_regex_runtime_name(name))
+	{
+		return NULL;
+	}
+
+	if (ends_with(name, "_escape") || ends_with(name, "_compile") ||
+	    ends_with(name, "_replace") || ends_with(name, "_replace_all"))
+	{
+		return "string";
+	}
+
+	if (ends_with(name, "_split"))
+	{
+		return "array<string>";
+	}
+
+	if (ends_with(name, "_valid") || ends_with(name, "_matches") ||
+	    ends_with(name, "_find") || ends_with(name, "_contains") ||
+	    ends_with(name, "_starts_with") || ends_with(name, "_ends_with"))
 	{
 		return "i32";
 	}
@@ -362,6 +395,51 @@ static IRFunction* ensure_process_runtime_function(Program* program, const char*
 		}
 
 		return create_runtime_function_with_params(program, name, return_type, NULL, 0);
+	}
+
+	return NULL;
+}
+
+static IRFunction* ensure_regex_runtime_function(Program* program, const char* name)
+{
+	IRType* ptr_type;
+
+	if (!is_regex_runtime_name(name))
+	{
+		return NULL;
+	}
+
+	ptr_type = ir_type_ptr(ir_type_i64());
+
+	if (ends_with(name, "_escape") || ends_with(name, "_compile"))
+	{
+		IRType* param_types[1] = {ptr_type};
+		return create_runtime_function_with_params(program, name, ptr_type, param_types,
+		                                         1);
+	}
+
+	if (ends_with(name, "_valid"))
+	{
+		IRType* param_types[1] = {ptr_type};
+		return create_runtime_function_with_params(program, name, ir_type_i64(),
+		                                         param_types, 1);
+	}
+
+	if (ends_with(name, "_matches") || ends_with(name, "_find") ||
+	    ends_with(name, "_contains") || ends_with(name, "_starts_with") ||
+	    ends_with(name, "_ends_with") || ends_with(name, "_split"))
+	{
+		IRType* param_types[2] = {ptr_type, ptr_type};
+		IRType* return_type = ends_with(name, "_split") ? ptr_type : ir_type_i64();
+		return create_runtime_function_with_params(program, name, return_type, param_types,
+		                                         2);
+	}
+
+	if (ends_with(name, "_replace") || ends_with(name, "_replace_all"))
+	{
+		IRType* param_types[3] = {ptr_type, ptr_type, ptr_type};
+		return create_runtime_function_with_params(program, name, ptr_type, param_types,
+		                                         3);
 	}
 
 	return NULL;
@@ -1391,6 +1469,12 @@ static IRFunction* ensure_runtime_function(Program* program, const char* name)
 		return fn;
 	}
 
+	fn = ensure_regex_runtime_function(program, name);
+	if (fn)
+	{
+		return fn;
+	}
+
 	fn = ensure_object_runtime_function(program, name);
 	if (fn)
 	{
@@ -1501,6 +1585,10 @@ static const char* infer_expression_type(Program* program, ASTNode* node)
 				if (!runtime_type)
 				{
 					runtime_type = infer_process_runtime_return_type(node->call.callee);
+				}
+				if (!runtime_type)
+				{
+					runtime_type = infer_regex_runtime_return_type(node->call.callee);
 				}
 				if (!runtime_type)
 				{

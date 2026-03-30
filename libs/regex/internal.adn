@@ -1,0 +1,1071 @@
+import "adan/string/internal";
+import "adan/string/access";
+import "adan/string/compare";
+
+type regex_term = {ok:bool,atom_start:i32,atom_end:i32,next:i32,min:i32,max:i32};
+type regex_exec_result = {ok:bool,index:i32,capture_starts:i32[],capture_ends:i32[]};
+type regex_match_result = {ok:bool,start:i32,end:i32,capture_starts:i32[],capture_ends:i32[]};
+type regex_escape_result = {ok:bool,kind:i32,code:i32,next:i32};
+
+function is_ascii(value: string): bool {
+	for set i: i32 = 0; i < __string_length(value); i++ {
+		if __string_code(value, i) > 127 {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function pattern_needs_native(pattern: string): bool {
+	set length: i32 = __string_length(pattern);
+	set in_class: bool = false;
+
+	for set i: i32 = 0; i < length; i++ {
+		set code: i32 = __string_code(pattern, i);
+
+		if code > 127 {
+			return true;
+		}
+
+		if code == 92 {
+			if i + 1 >= length {
+				return false;
+			}
+
+			set next_code: i32 = __string_code(pattern, i + 1);
+			if in_class == false and next_code >= 49 and next_code <= 57 {
+				return true;
+			}
+
+			if next_code == 98 or next_code == 66 or next_code == 120 or next_code == 117 or next_code == 85 or next_code == 112 or next_code == 80 {
+				return true;
+			}
+
+			i++;
+			continue;
+		}
+
+		if code == 91 {
+			if i + 1 < length and __string_code(pattern, i + 1) == 58 {
+				return true;
+			}
+
+			in_class = true;
+			continue;
+		}
+
+		if code == 93 {
+			in_class = false;
+			continue;
+		}
+
+		if in_class {
+			continue;
+		}
+
+		if code == 40 and i + 1 < length and __string_code(pattern, i + 1) == 63 {
+			if i + 2 >= length {
+				return true;
+			}
+
+			if __string_code(pattern, i + 2) !== 58 {
+				return true;
+			}
+		}
+
+		if (code == 42 or code == 43 or code == 63) and i + 1 < length and __string_code(pattern, i + 1) == 63 {
+			return true;
+		}
+
+		if code == 125 and i + 1 < length and __string_code(pattern, i + 1) == 63 {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function text_needs_native(text: string): bool {
+	return is_ascii(text) == false;
+}
+
+function replacement_needs_native(replacement: string): bool {
+	return is_ascii(replacement) == false;
+}
+
+function can_use_pure(pattern: string, text: string): bool {
+	return pattern_needs_native(pattern) == false and text_needs_native(text) == false;
+}
+
+function can_use_pure_replacement(pattern: string, text: string, replacement: string): bool {
+	return can_use_pure(pattern, text) and replacement_needs_native(replacement) == false;
+}
+
+function __regex_clone_i32_array(values: i32[]): i32[] {
+	set result: i32[] = [];
+
+	for set i: i32 = 0; i < values.length(); i++ {
+		result.push(values[i]);
+	}
+
+	return result;
+}
+
+function __regex_make_exec(ok: bool, index: i32, capture_starts: i32[], capture_ends: i32[]): regex_exec_result {
+	return {
+		ok: ok,
+		index: index,
+		capture_starts: capture_starts,
+		capture_ends: capture_ends,
+	};
+}
+
+function __regex_fail_exec(index: i32, capture_starts: i32[], capture_ends: i32[]): regex_exec_result {
+	return __regex_make_exec(false, index, capture_starts, capture_ends);
+}
+
+function __regex_make_match(ok: bool, start: i32, end: i32, capture_starts: i32[], capture_ends: i32[]): regex_match_result {
+	return {
+		ok: ok,
+		start: start,
+		end: end,
+		capture_starts: capture_starts,
+		capture_ends: capture_ends,
+	};
+}
+
+function __regex_fail_match(): regex_match_result {
+	return __regex_make_match(false, 0, 0, [], []);
+}
+
+function __regex_make_escape(ok: bool, kind: i32, code: i32, next: i32): regex_escape_result {
+	return {
+		ok: ok,
+		kind: kind,
+		code: code,
+		next: next,
+	};
+}
+
+function __regex_is_newline(code: i32): bool {
+	return code == 10 or code == 13;
+}
+
+function __regex_is_word(code: i32): bool {
+	return code == 95 or __string_is_alnum_code(code);
+}
+
+function __regex_is_space(code: i32): bool {
+	return __string_is_whitespace_code(code);
+}
+
+function __regex_is_digit(code: i32): bool {
+	return __string_is_numeric_code(code);
+}
+
+function __regex_matches_builtin(kind: i32, code: i32): bool {
+	if kind == 1 {
+		return __regex_is_digit(code);
+	}
+
+	if kind == 2 {
+		return __regex_is_digit(code) == false;
+	}
+
+	if kind == 3 {
+		return __regex_is_space(code);
+	}
+
+	if kind == 4 {
+		return __regex_is_space(code) == false;
+	}
+
+	if kind == 5 {
+		return __regex_is_word(code);
+	}
+
+	if kind == 6 {
+		return __regex_is_word(code) == false;
+	}
+
+	return false;
+}
+
+function __regex_parse_escape(pattern: string, index: i32, allow_builtin: bool): regex_escape_result {
+	set length: i32 = __string_length(pattern);
+	if index >= length {
+		return __regex_make_escape(false, 0, 0, index);
+	}
+
+	set code: i32 = __string_code(pattern, index);
+	if code !== 92 {
+		return __regex_make_escape(true, 0, code, index + 1);
+	}
+
+	if index + 1 >= length {
+		return __regex_make_escape(false, 0, 0, index + 1);
+	}
+
+	set next_code: i32 = __string_code(pattern, index + 1);
+	if allow_builtin {
+		if next_code == 100 {
+			return __regex_make_escape(true, 1, 0, index + 2);
+		}
+
+		if next_code == 68 {
+			return __regex_make_escape(true, 2, 0, index + 2);
+		}
+
+		if next_code == 115 {
+			return __regex_make_escape(true, 3, 0, index + 2);
+		}
+
+		if next_code == 83 {
+			return __regex_make_escape(true, 4, 0, index + 2);
+		}
+
+		if next_code == 119 {
+			return __regex_make_escape(true, 5, 0, index + 2);
+		}
+
+		if next_code == 87 {
+			return __regex_make_escape(true, 6, 0, index + 2);
+		}
+	}
+
+	if next_code == 110 {
+		return __regex_make_escape(true, 0, 10, index + 2);
+	}
+
+	if next_code == 114 {
+		return __regex_make_escape(true, 0, 13, index + 2);
+	}
+
+	if next_code == 116 {
+		return __regex_make_escape(true, 0, 9, index + 2);
+	}
+
+	if next_code == 102 {
+		return __regex_make_escape(true, 0, 12, index + 2);
+	}
+
+	if next_code == 118 {
+		return __regex_make_escape(true, 0, 11, index + 2);
+	}
+
+	return __regex_make_escape(true, 0, next_code, index + 2);
+}
+
+function __regex_find_group_end(pattern: string, start: i32, end: i32): i32 {
+	set depth: i32 = 0;
+	set in_class: bool = false;
+	set i: i32 = start;
+
+	while i < end {
+		set code: i32 = __string_code(pattern, i);
+
+		if code == 92 {
+			i += 2;
+			continue;
+		}
+
+		if in_class {
+			if code == 93 {
+				in_class = false;
+			}
+
+			i++;
+			continue;
+		}
+
+		if code == 91 {
+			in_class = true;
+			i++;
+			continue;
+		}
+
+		if code == 40 {
+			depth++;
+		}
+
+		if code == 41 {
+			depth--;
+			if depth == 0 {
+				return i + 1;
+			}
+		}
+
+		i++;
+	}
+
+	return 0 - 1;
+}
+
+function __regex_find_class_end(pattern: string, start: i32, end: i32): i32 {
+	set i: i32 = start + 1;
+	set allow_close: bool = false;
+
+	if i < end and __string_code(pattern, i) == 94 {
+		i++;
+	}
+
+	while i < end {
+		set code: i32 = __string_code(pattern, i);
+
+		if code == 92 {
+			i += 2;
+			allow_close = true;
+			continue;
+		}
+
+		if code == 93 and allow_close {
+			return i + 1;
+		}
+
+		allow_close = true;
+		i++;
+	}
+
+	return 0 - 1;
+}
+
+function __regex_group_body_start(pattern: string, atom_start: i32, atom_end: i32): i32 {
+	if atom_start + 2 < atom_end and __string_code(pattern, atom_start + 1) == 63 and __string_code(pattern, atom_start + 2) == 58 {
+		return atom_start + 3;
+	}
+
+	return atom_start + 1;
+}
+
+function __regex_is_capturing_group(pattern: string, atom_start: i32, atom_end: i32): bool {
+	if atom_start + 2 < atom_end and __string_code(pattern, atom_start + 1) == 63 and __string_code(pattern, atom_start + 2) == 58 {
+		return false;
+	}
+
+	return true;
+}
+
+function __regex_count_captures_before(pattern: string, limit: i32): i32 {
+	set count: i32 = 0;
+	set in_class: bool = false;
+	set i: i32 = 0;
+
+	while i < limit {
+		set code: i32 = __string_code(pattern, i);
+
+		if code == 92 {
+			i += 2;
+			continue;
+		}
+
+		if in_class {
+			if code == 93 {
+				in_class = false;
+			}
+
+			i++;
+			continue;
+		}
+
+		if code == 91 {
+			in_class = true;
+			i++;
+			continue;
+		}
+
+		if code == 40 {
+			if i + 2 < limit and __string_code(pattern, i + 1) == 63 and __string_code(pattern, i + 2) == 58 {
+				i++;
+				continue;
+			}
+
+			count++;
+		}
+
+		i++;
+	}
+
+	return count;
+}
+
+function count_captures(pattern: string): i32 {
+	return __regex_count_captures_before(pattern, __string_length(pattern));
+}
+
+function __regex_init_capture_array(count: i32): i32[] {
+	set values: i32[] = [];
+
+	for set i: i32 = 0; i < count; i++ {
+		values.push(0 - 1);
+	}
+
+	return values;
+}
+
+function __regex_parse_quantifier(pattern: string, atom_end: i32, end: i32): regex_term {
+	set next: i32 = atom_end;
+	set min: i32 = 1;
+	set max: i32 = 1;
+
+	if next >= end {
+		return { ok: true, atom_start: 0, atom_end: atom_end, next: next, min: min, max: max };
+	}
+
+	set code: i32 = __string_code(pattern, next);
+	if code == 42 {
+		return { ok: true, atom_start: 0, atom_end: atom_end, next: next + 1, min: 0, max: 0 - 1 };
+	}
+
+	if code == 43 {
+		return { ok: true, atom_start: 0, atom_end: atom_end, next: next + 1, min: 1, max: 0 - 1 };
+	}
+
+	if code == 63 {
+		return { ok: true, atom_start: 0, atom_end: atom_end, next: next + 1, min: 0, max: 1 };
+	}
+
+	if code == 123 {
+		set i: i32 = next + 1;
+		set first: i32 = 0;
+		set second: i32 = 0 - 2;
+		set saw_digit: bool = false;
+
+		while i < end and __string_is_numeric_code(__string_code(pattern, i)) {
+			saw_digit = true;
+			first = first * 10 + (__string_code(pattern, i) - 48);
+			i++;
+		}
+
+		if saw_digit == false {
+			return { ok: true, atom_start: 0, atom_end: atom_end, next: atom_end, min: 1, max: 1 };
+		}
+
+		if i < end and __string_code(pattern, i) == 44 {
+			i++;
+			if i < end and __string_is_numeric_code(__string_code(pattern, i)) {
+				second = 0;
+				while i < end and __string_is_numeric_code(__string_code(pattern, i)) {
+					second = second * 10 + (__string_code(pattern, i) - 48);
+					i++;
+				}
+			}
+			else {
+				second = 0 - 1;
+			}
+		}
+		else {
+			second = first;
+		}
+
+		if i < end and __string_code(pattern, i) == 125 {
+			if second >= 0 and second < first {
+				return { ok: false, atom_start: 0, atom_end: atom_end, next: i + 1, min: 0, max: 0 };
+			}
+
+			return { ok: true, atom_start: 0, atom_end: atom_end, next: i + 1, min: first, max: second };
+		}
+	}
+
+	return { ok: true, atom_start: 0, atom_end: atom_end, next: atom_end, min: 1, max: 1 };
+}
+
+function __regex_parse_term(pattern: string, start: i32, end: i32): regex_term {
+	if start >= end {
+		return { ok: false, atom_start: start, atom_end: start, next: start, min: 0, max: 0 };
+	}
+
+	set atom_end: i32 = start + 1;
+	set code: i32 = __string_code(pattern, start);
+
+	if code == 40 {
+		atom_end = __regex_find_group_end(pattern, start, end);
+		if atom_end < 0 {
+			return { ok: false, atom_start: start, atom_end: start, next: start, min: 0, max: 0 };
+		}
+	}
+	else if code == 91 {
+		atom_end = __regex_find_class_end(pattern, start, end);
+		if atom_end < 0 {
+			return { ok: false, atom_start: start, atom_end: start, next: start, min: 0, max: 0 };
+		}
+	}
+	else if code == 92 {
+		set escaped: regex_escape_result = __regex_parse_escape(pattern, start, true);
+		if escaped.ok == false {
+			return { ok: false, atom_start: start, atom_end: start, next: start, min: 0, max: 0 };
+		}
+
+		atom_end = escaped.next;
+	}
+	else if code == 124 or code == 41 or code == 42 or code == 43 or code == 63 {
+		return { ok: false, atom_start: start, atom_end: start, next: start, min: 0, max: 0 };
+	}
+
+	set quantifier: regex_term = __regex_parse_quantifier(pattern, atom_end, end);
+	if quantifier.ok == false {
+		return quantifier;
+	}
+
+	return {
+		ok: true,
+		atom_start: start,
+		atom_end: atom_end,
+		next: quantifier.next,
+		min: quantifier.min,
+		max: quantifier.max,
+	};
+}
+
+function __regex_validate_sequence(pattern: string, start: i32, end: i32): bool {
+	set i: i32 = start;
+
+	while i < end {
+		set term: regex_term = __regex_parse_term(pattern, i, end);
+		if term.ok == false {
+			return false;
+		}
+
+		if __string_code(pattern, term.atom_start) == 40 {
+			set body_start: i32 = __regex_group_body_start(pattern, term.atom_start, term.atom_end);
+			if __regex_validate_expression(pattern, body_start, term.atom_end - 1) == false {
+				return false;
+			}
+		}
+
+		i = term.next;
+	}
+
+	return true;
+}
+
+function __regex_validate_expression(pattern: string, start: i32, end: i32): bool {
+	set branch_start: i32 = start;
+	set i: i32 = start;
+
+	while i < end {
+		set code: i32 = __string_code(pattern, i);
+
+		if code == 92 {
+			i += 2;
+			continue;
+		}
+
+		if code == 91 {
+			set class_end: i32 = __regex_find_class_end(pattern, i, end);
+			if class_end < 0 {
+				return false;
+			}
+
+			i = class_end;
+			continue;
+		}
+
+		if code == 40 {
+			set group_end: i32 = __regex_find_group_end(pattern, i, end);
+			if group_end < 0 {
+				return false;
+			}
+
+			i = group_end;
+			continue;
+		}
+
+		if code == 124 {
+			if __regex_validate_sequence(pattern, branch_start, i) == false {
+				return false;
+			}
+
+			branch_start = i + 1;
+		}
+
+		i++;
+	}
+
+	return __regex_validate_sequence(pattern, branch_start, end);
+}
+
+function valid_ascii(pattern: string): bool {
+	if pattern_needs_native(pattern) {
+		return false;
+	}
+
+	return __regex_validate_expression(pattern, 0, __string_length(pattern));
+}
+
+function __regex_class_matches(pattern: string, atom_start: i32, atom_end: i32, text_code: i32): bool {
+	set i: i32 = atom_start + 1;
+	set negated: bool = false;
+	set matched: bool = false;
+	set limit: i32 = atom_end - 1;
+
+	if i < limit and __string_code(pattern, i) == 94 {
+		negated = true;
+		i++;
+	}
+
+	while i < limit {
+		set item: regex_escape_result = __regex_parse_escape(pattern, i, true);
+		if item.ok == false {
+			return false;
+		}
+
+		if item.kind > 0 {
+			if __regex_matches_builtin(item.kind, text_code) {
+				matched = true;
+			}
+
+			i = item.next;
+			continue;
+		}
+
+		if item.next < limit and __string_code(pattern, item.next) == 45 and item.next + 1 < limit {
+			set range_end: regex_escape_result = __regex_parse_escape(pattern, item.next + 1, false);
+			if range_end.ok == false {
+				return false;
+			}
+
+			set low: i32 = item.code;
+			set high: i32 = range_end.code;
+			if low > high {
+				set swap: i32 = low;
+				low = high;
+				high = swap;
+			}
+
+			if text_code >= low and text_code <= high {
+				matched = true;
+			}
+
+			i = range_end.next;
+			continue;
+		}
+
+		if text_code == item.code {
+			matched = true;
+		}
+
+		i = item.next;
+	}
+
+	if negated {
+		return matched == false;
+	}
+
+	return matched;
+}
+
+function __regex_match_expression(pattern: string, start: i32, end: i32, text: string, index: i32, capture_starts: i32[], capture_ends: i32[]): regex_exec_result;
+function __regex_match_sequence(pattern: string, start: i32, end: i32, text: string, index: i32, capture_starts: i32[], capture_ends: i32[]): regex_exec_result;
+function __regex_match_repetition(pattern: string, term: regex_term, rest_start: i32, end: i32, text: string, index: i32, capture_starts: i32[], capture_ends: i32[], count: i32): regex_exec_result;
+
+function __regex_match_atom(pattern: string, atom_start: i32, atom_end: i32, text: string, index: i32, capture_starts: i32[], capture_ends: i32[]): regex_exec_result {
+	set text_length: i32 = __string_length(text);
+	set code: i32 = __string_code(pattern, atom_start);
+
+	if code == 94 {
+		if index == 0 {
+			return __regex_make_exec(true, index, capture_starts, capture_ends);
+		}
+
+		return __regex_fail_exec(index, capture_starts, capture_ends);
+	}
+
+	if code == 36 {
+		if index == text_length {
+			return __regex_make_exec(true, index, capture_starts, capture_ends);
+		}
+
+		return __regex_fail_exec(index, capture_starts, capture_ends);
+	}
+
+	if code == 46 {
+		if index >= text_length {
+			return __regex_fail_exec(index, capture_starts, capture_ends);
+		}
+
+		set text_code: i32 = __string_code(text, index);
+		if __regex_is_newline(text_code) {
+			return __regex_fail_exec(index, capture_starts, capture_ends);
+		}
+
+		return __regex_make_exec(true, index + 1, capture_starts, capture_ends);
+	}
+
+	if code == 91 {
+		if index >= text_length {
+			return __regex_fail_exec(index, capture_starts, capture_ends);
+		}
+
+		if __regex_class_matches(pattern, atom_start, atom_end, __string_code(text, index)) {
+			return __regex_make_exec(true, index + 1, capture_starts, capture_ends);
+		}
+
+		return __regex_fail_exec(index, capture_starts, capture_ends);
+	}
+
+	if code == 40 {
+		set body_start: i32 = __regex_group_body_start(pattern, atom_start, atom_end);
+		set result: regex_exec_result = __regex_match_expression(pattern, body_start, atom_end - 1, text, index, capture_starts, capture_ends);
+		if result.ok == false {
+			return result;
+		}
+
+		if __regex_is_capturing_group(pattern, atom_start, atom_end) {
+			set capture_index: i32 = __regex_count_captures_before(pattern, atom_start) + 1;
+			set next_starts: i32[] = __regex_clone_i32_array(result.capture_starts);
+			set next_ends: i32[] = __regex_clone_i32_array(result.capture_ends);
+			next_starts[capture_index] = index;
+			next_ends[capture_index] = result.index;
+			return __regex_make_exec(true, result.index, next_starts, next_ends);
+		}
+
+		return result;
+	}
+
+	if code == 92 {
+		set escaped: regex_escape_result = __regex_parse_escape(pattern, atom_start, true);
+		if escaped.ok == false {
+			return __regex_fail_exec(index, capture_starts, capture_ends);
+		}
+
+		if index >= text_length {
+			return __regex_fail_exec(index, capture_starts, capture_ends);
+		}
+
+		set text_code: i32 = __string_code(text, index);
+		if escaped.kind > 0 {
+			if __regex_matches_builtin(escaped.kind, text_code) {
+				return __regex_make_exec(true, index + 1, capture_starts, capture_ends);
+			}
+
+			return __regex_fail_exec(index, capture_starts, capture_ends);
+		}
+
+		if text_code == escaped.code {
+			return __regex_make_exec(true, index + 1, capture_starts, capture_ends);
+		}
+
+		return __regex_fail_exec(index, capture_starts, capture_ends);
+	}
+
+	if index >= text_length {
+		return __regex_fail_exec(index, capture_starts, capture_ends);
+	}
+
+	if __string_code(text, index) == code {
+		return __regex_make_exec(true, index + 1, capture_starts, capture_ends);
+	}
+
+	return __regex_fail_exec(index, capture_starts, capture_ends);
+}
+
+function __regex_match_repetition(pattern: string, term: regex_term, rest_start: i32, end: i32, text: string, index: i32, capture_starts: i32[], capture_ends: i32[], count: i32): regex_exec_result {
+	if count >= term.min {
+		set rest_result: regex_exec_result = __regex_match_sequence(pattern, rest_start, end, text, index, __regex_clone_i32_array(capture_starts), __regex_clone_i32_array(capture_ends));
+		if rest_result.ok {
+			return rest_result;
+		}
+	}
+
+	if term.max >= 0 and count >= term.max {
+		return __regex_fail_exec(index, capture_starts, capture_ends);
+	}
+
+	set atom_result: regex_exec_result = __regex_match_atom(pattern, term.atom_start, term.atom_end, text, index, __regex_clone_i32_array(capture_starts), __regex_clone_i32_array(capture_ends));
+	if atom_result.ok == false {
+		return __regex_fail_exec(index, capture_starts, capture_ends);
+	}
+
+	if atom_result.index == index {
+		if count + 1 >= term.min {
+			return __regex_match_sequence(pattern, rest_start, end, text, atom_result.index, atom_result.capture_starts, atom_result.capture_ends);
+		}
+
+		return __regex_fail_exec(index, capture_starts, capture_ends);
+	}
+
+	return __regex_match_repetition(pattern, term, rest_start, end, text, atom_result.index, atom_result.capture_starts, atom_result.capture_ends, count + 1);
+}
+
+function __regex_match_sequence(pattern: string, start: i32, end: i32, text: string, index: i32, capture_starts: i32[], capture_ends: i32[]): regex_exec_result {
+	if start >= end {
+		return __regex_make_exec(true, index, capture_starts, capture_ends);
+	}
+
+	set term: regex_term = __regex_parse_term(pattern, start, end);
+	if term.ok == false {
+		return __regex_fail_exec(index, capture_starts, capture_ends);
+	}
+
+	if term.min == 1 and term.max == 1 {
+		set atom_result: regex_exec_result = __regex_match_atom(pattern, term.atom_start, term.atom_end, text, index, capture_starts, capture_ends);
+		if atom_result.ok == false {
+			return atom_result;
+		}
+
+		return __regex_match_sequence(pattern, term.next, end, text, atom_result.index, atom_result.capture_starts, atom_result.capture_ends);
+	}
+
+	return __regex_match_repetition(pattern, term, term.next, end, text, index, capture_starts, capture_ends, 0);
+}
+
+function __regex_match_expression(pattern: string, start: i32, end: i32, text: string, index: i32, capture_starts: i32[], capture_ends: i32[]): regex_exec_result {
+	set branch_start: i32 = start;
+	set i: i32 = start;
+
+	while i < end {
+		set code: i32 = __string_code(pattern, i);
+
+		if code == 92 {
+			i += 2;
+			continue;
+		}
+
+		if code == 91 {
+			set class_end: i32 = __regex_find_class_end(pattern, i, end);
+			if class_end < 0 {
+				return __regex_fail_exec(index, capture_starts, capture_ends);
+			}
+
+			i = class_end;
+			continue;
+		}
+
+		if code == 40 {
+			set group_end: i32 = __regex_find_group_end(pattern, i, end);
+			if group_end < 0 {
+				return __regex_fail_exec(index, capture_starts, capture_ends);
+			}
+
+			i = group_end;
+			continue;
+		}
+
+		if code == 124 {
+			set branch_result: regex_exec_result = __regex_match_sequence(pattern, branch_start, i, text, index, __regex_clone_i32_array(capture_starts), __regex_clone_i32_array(capture_ends));
+			if branch_result.ok {
+				return branch_result;
+			}
+
+			branch_start = i + 1;
+		}
+
+		i++;
+	}
+
+	return __regex_match_sequence(pattern, branch_start, end, text, index, __regex_clone_i32_array(capture_starts), __regex_clone_i32_array(capture_ends));
+}
+
+function find_match(pattern: string, text: string, start_index: i32): regex_match_result {
+	if can_use_pure(pattern, text) == false {
+		return __regex_fail_match();
+	}
+
+	set capture_count_value: i32 = count_captures(pattern) + 1;
+	set pattern_length: i32 = __string_length(pattern);
+	set text_length: i32 = __string_length(text);
+	set start: i32 = start_index;
+
+	if start < 0 {
+		start = 0;
+	}
+
+	if start > text_length {
+		start = text_length;
+	}
+
+	for set i: i32 = start; i <= text_length; i++ {
+		set capture_starts: i32[] = __regex_init_capture_array(capture_count_value);
+		set capture_ends: i32[] = __regex_init_capture_array(capture_count_value);
+		set result: regex_exec_result = __regex_match_expression(pattern, 0, pattern_length, text, i, capture_starts, capture_ends);
+		if result.ok {
+			result.capture_starts[0] = i;
+			result.capture_ends[0] = result.index;
+			return __regex_make_match(true, i, result.index, result.capture_starts, result.capture_ends);
+		}
+	}
+
+	return __regex_fail_match();
+}
+
+function matches_ascii(pattern: string, text: string): bool {
+	set match: regex_match_result = find_match(pattern, text, 0);
+	return match.ok and match.start == 0 and match.end == __string_length(text);
+}
+
+function find_ascii(pattern: string, text: string): i32 {
+	set match: regex_match_result = find_match(pattern, text, 0);
+	if match.ok {
+		return match.start;
+	}
+
+	return 0 - 1;
+}
+
+function contains_ascii(pattern: string, text: string): bool {
+	return find_ascii(pattern, text) >= 0;
+}
+
+function starts_with_ascii(pattern: string, text: string): bool {
+	set match: regex_match_result = find_match(pattern, text, 0);
+	return match.ok and match.start == 0;
+}
+
+function ends_with_ascii(pattern: string, text: string): bool {
+	set length: i32 = __string_length(text);
+	set match: regex_match_result = find_match(pattern, text, 0);
+
+	while match.ok {
+		if match.end == length {
+			return true;
+		}
+
+		set next_start: i32 = match.start + 1;
+		if match.end == match.start {
+			next_start = match.start + 1;
+		}
+
+		match = find_match(pattern, text, next_start);
+	}
+
+	return false;
+}
+
+function __regex_expand_replacement(replacement: string, text: string, match: regex_match_result): string {
+	set result: string = "";
+	set i: i32 = 0;
+	set length: i32 = __string_length(replacement);
+
+	while i < length {
+		set code: i32 = __string_code(replacement, i);
+
+		if code == 36 and i + 1 < length {
+			set next_code: i32 = __string_code(replacement, i + 1);
+			if next_code == 36 {
+				result += "$";
+				i += 2;
+				continue;
+			}
+
+			if next_code == 38 {
+				result += access.slice(text, match.capture_starts[0], match.capture_ends[0]);
+				i += 2;
+				continue;
+			}
+
+			if __string_is_numeric_code(next_code) {
+				set value: i32 = 0;
+				i++;
+				while i < length and __string_is_numeric_code(__string_code(replacement, i)) {
+					value = value * 10 + (__string_code(replacement, i) - 48);
+					i++;
+				}
+
+				if value >= 0 and value < match.capture_starts.length() and match.capture_starts[value] >= 0 and match.capture_ends[value] >= match.capture_starts[value] {
+					result += access.slice(text, match.capture_starts[value], match.capture_ends[value]);
+				}
+
+				continue;
+			}
+		}
+
+		if code == 92 and i + 1 < length and __string_is_numeric_code(__string_code(replacement, i + 1)) {
+			set value: i32 = 0;
+			i++;
+			while i < length and __string_is_numeric_code(__string_code(replacement, i)) {
+				value = value * 10 + (__string_code(replacement, i) - 48);
+				i++;
+			}
+
+			if value >= 0 and value < match.capture_starts.length() and match.capture_starts[value] >= 0 and match.capture_ends[value] >= match.capture_starts[value] {
+				result += access.slice(text, match.capture_starts[value], match.capture_ends[value]);
+			}
+
+			continue;
+		}
+
+		result += __string_char(replacement, i);
+		i++;
+	}
+
+	return result;
+}
+
+function replace_ascii(pattern: string, text: string, replacement: string): string {
+	set match: regex_match_result = find_match(pattern, text, 0);
+	if match.ok == false {
+		return "" + text;
+	}
+
+	return access.slice(text, 0, match.start) + __regex_expand_replacement(replacement, text, match) + access.slice(text, match.end, __string_length(text));
+}
+
+function replace_all_ascii(pattern: string, text: string, replacement: string): string {
+	set result: string = "";
+	set emit_start: i32 = 0;
+	set search_start: i32 = 0;
+	set text_length: i32 = __string_length(text);
+
+	while search_start <= text_length {
+		set match: regex_match_result = find_match(pattern, text, search_start);
+		if match.ok == false {
+			break;
+		}
+
+		result += access.slice(text, emit_start, match.start);
+		result += __regex_expand_replacement(replacement, text, match);
+
+		if match.end == match.start {
+			if match.start < text_length {
+				result += __string_char(text, match.start);
+				emit_start = match.start + 1;
+				search_start = match.start + 1;
+			}
+			else {
+				emit_start = match.end;
+				search_start = text_length + 1;
+			}
+		}
+		else {
+			emit_start = match.end;
+			search_start = match.end;
+		}
+	}
+
+	return result + access.slice(text, emit_start, text_length);
+}
+
+function split_ascii(pattern: string, text: string): string[] {
+	set result: string[] = [];
+	set emit_start: i32 = 0;
+	set search_start: i32 = 0;
+	set text_length: i32 = __string_length(text);
+
+	while search_start <= text_length {
+		set match: regex_match_result = find_match(pattern, text, search_start);
+		if match.ok == false {
+			break;
+		}
+
+		result.push(access.slice(text, emit_start, match.start));
+
+		if match.end == match.start {
+			if match.start < text_length {
+				emit_start = match.start;
+				search_start = match.start + 1;
+			}
+			else {
+				emit_start = match.end;
+				search_start = text_length + 1;
+			}
+		}
+		else {
+			emit_start = match.end;
+			search_start = match.end;
+		}
+	}
+
+	result.push(access.slice(text, emit_start, text_length));
+	return result;
+}

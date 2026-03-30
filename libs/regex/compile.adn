@@ -1,11 +1,25 @@
+import "adan/regex/internal";
+
 function valid(pattern: string): bool {
-    return false;
+	if internal.pattern_needs_native(pattern) {
+		return adn_regex_valid(pattern) !== 0;
+	}
+
+	return internal.valid_ascii(pattern);
 }
 
 function escape(text: string): string {
-    return "";
+	return adn_regex_escape(text);
 }
 
 function compile(pattern: string): string {
-    return "";
+	if valid(pattern) == false {
+		return "";
+	}
+
+	if internal.pattern_needs_native(pattern) {
+		return adn_regex_compile(pattern);
+	}
+
+	return "" + pattern;
 }

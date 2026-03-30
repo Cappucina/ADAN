@@ -1,19 +1,41 @@
+import "adan/regex/internal";
+
 function matches(pattern: string, text: string): bool {
-    return false;
+	if internal.can_use_pure(pattern, text) {
+		return internal.matches_ascii(pattern, text);
+	}
+
+	return adn_regex_matches(pattern, text) !== 0;
 }
 
 function find(pattern: string, text: string): i32 {
-    return -1;
+	if internal.can_use_pure(pattern, text) {
+		return internal.find_ascii(pattern, text);
+	}
+
+	return adn_regex_find(pattern, text);
 }
 
 function contains(pattern: string, text: string): bool {
-    return false;
+	if internal.can_use_pure(pattern, text) {
+		return internal.contains_ascii(pattern, text);
+	}
+
+	return adn_regex_contains(pattern, text) !== 0;
 }
 
 function starts_with(pattern: string, text: string): bool {
-    return false;
+	if internal.can_use_pure(pattern, text) {
+		return internal.starts_with_ascii(pattern, text);
+	}
+
+	return adn_regex_starts_with(pattern, text) !== 0;
 }
 
 function ends_with(pattern: string, text: string): bool {
-    return false;
+	if internal.can_use_pure(pattern, text) {
+		return internal.ends_with_ascii(pattern, text);
+	}
+
+	return adn_regex_ends_with(pattern, text) !== 0;
 }
