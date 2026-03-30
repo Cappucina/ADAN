@@ -35,6 +35,8 @@ void adn_object_set_string(void* object, const char* key, const char* value);
 
 void adn_object_set_ptr(void* object, const char* key, void* value);
 
+int64_t adn_object_has(void* object, const char* key);
+
 int64_t adn_object_get_i64(void* object, const char* key);
 
 double adn_object_get_f64(void* object, const char* key);

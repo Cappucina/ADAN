@@ -914,7 +914,25 @@ static bool build_lib_dir(const char* import_path, char* output, size_t output_s
 
 	const char* rel = import_path + strlen(prefix);
 	int written = snprintf(output, output_size, "libs/%s", rel);
-	return written > 0 && (size_t)written < output_size;
+	if (!(written > 0 && (size_t)written < output_size))
+	{
+		return false;
+	}
+
+	struct stat st;
+	if (stat(output, &st) == 0 && S_ISDIR(st.st_mode))
+	{
+		return true;
+	}
+
+	char* slash = strrchr(output, '/');
+	if (!slash || slash <= output)
+	{
+		return false;
+	}
+
+	*slash = '\0';
+	return stat(output, &st) == 0 && S_ISDIR(st.st_mode);
 }
 
 static bool bundle_path_exists(const char* path)

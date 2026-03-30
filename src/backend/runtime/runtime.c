@@ -743,6 +743,11 @@ void adn_object_set_ptr(void* object, const char* key, void* value)
 	adn_object_store_value(adn_object_cast(object), key, adn_value_from_ptr(value));
 }
 
+int64_t adn_object_has(void* object, const char* key)
+{
+	return adn_object_find_entry(adn_object_cast(object), key) != NULL;
+}
+
 int64_t adn_object_get_i64(void* object, const char* key)
 {
 	AdnObjectEntry* entry = adn_object_find_entry(adn_object_cast(object), key);

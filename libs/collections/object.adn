@@ -1,0 +1,51 @@
+function has(value: any, key: string): bool {
+	return adn_collections_object_has(value, key) !== 0;
+}
+
+function get_i32_or(value: any, key: string, fallback: i32): i32 {
+	if has(value, key) == false {
+		return fallback;
+	}
+
+	return (i32)adn_collections_object_get_i64(value, key);
+}
+
+function get_f64_or(value: any, key: string, fallback: f64): f64 {
+	if has(value, key) == false {
+		return fallback;
+	}
+
+	return adn_collections_object_get_f64(value, key);
+}
+
+function get_string_or(value: any, key: string, fallback: string): string {
+	if has(value, key) == false {
+		return fallback;
+	}
+
+	return adn_collections_object_get_string(value, key);
+}
+
+function get_ptr_or(value: any, key: string, fallback: any): any {
+	if has(value, key) == false {
+		return fallback;
+	}
+
+	return adn_collections_object_get_ptr(value, key);
+}
+
+function set_i32(value: any, key: string, item: i32): void {
+	adn_collections_object_set_i64(value, key, item);
+}
+
+function set_f64(value: any, key: string, item: f64): void {
+	adn_collections_object_set_f64(value, key, item);
+}
+
+function set_string(value: any, key: string, item: string): void {
+	adn_collections_object_set_string(value, key, item);
+}
+
+function set_ptr(value: any, key: string, item: any): void {
+	adn_collections_object_set_ptr(value, key, item);
+}

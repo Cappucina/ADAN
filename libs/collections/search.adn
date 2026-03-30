@@ -1,0 +1,57 @@
+import "adan/string/compare";
+
+function index_of_i32(values: i32[], target: i32): i32 {
+	for set i: i32 = 0; i < values.length(); i++ {
+		if values[i] == target {
+			return i;
+		}
+	}
+
+	return 0 - 1;
+}
+
+function contains_i32(values: i32[], target: i32): bool {
+	return index_of_i32(values, target) >= 0;
+}
+
+function index_of_i64(values: i64[], target: i64): i32 {
+	for set i: i32 = 0; i < values.length(); i++ {
+		if values[i] == target {
+			return i;
+		}
+	}
+
+	return 0 - 1;
+}
+
+function contains_i64(values: i64[], target: i64): bool {
+	return index_of_i64(values, target) >= 0;
+}
+
+function index_of_f64(values: f64[], target: f64): i32 {
+	for set i: i32 = 0; i < values.length(); i++ {
+		if values[i] == target {
+			return i;
+		}
+	}
+
+	return 0 - 1;
+}
+
+function contains_f64(values: f64[], target: f64): bool {
+	return index_of_f64(values, target) >= 0;
+}
+
+function index_of_string(values: string[], target: string): i32 {
+	for set i: i32 = 0; i < values.length(); i++ {
+		if compare.equals(values[i], target) {
+			return i;
+		}
+	}
+
+	return 0 - 1;
+}
+
+function contains_string(values: string[], target: string): bool {
+	return index_of_string(values, target) >= 0;
+}

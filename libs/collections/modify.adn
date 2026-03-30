@@ -1,0 +1,29 @@
+function push(values: any[], value: any): void {
+	values.push(value);
+}
+
+function pop(values: any[]): any {
+	return values.pop();
+}
+
+function clear(values: any[]): void {
+	values.clear();
+}
+
+function append(left: any[], right: any[]): any[] {
+	set result: any[] = [];
+
+	for set i: i32 = 0; i < left.length(); i++ {
+		result.push(left[i]);
+	}
+
+	for set j: i32 = 0; j < right.length(); j++ {
+		result.push(right[j]);
+	}
+
+	return result;
+}
+
+function remove_at(values: any[], index: i32): any {
+	return values.remove(index);
+}

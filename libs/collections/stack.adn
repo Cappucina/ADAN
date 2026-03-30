@@ -1,0 +1,27 @@
+type stack = {items:any[]};
+
+function stack_make(): stack {
+	return {
+		items: []
+	};
+}
+
+function stack_is_empty(value: stack): bool {
+	return value.items.length() == 0;
+}
+
+function stack_length(value: stack): i32 {
+	return value.items.length();
+}
+
+function stack_push(value: stack, item: any): void {
+	value.items.push(item);
+}
+
+function stack_pop(value: stack): any {
+	return value.items.pop();
+}
+
+function stack_peek(value: stack): any {
+	return value.items[value.items.length() - 1];
+}

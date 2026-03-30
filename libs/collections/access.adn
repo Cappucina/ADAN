@@ -1,0 +1,60 @@
+function at(values: any[], index: i32): any {
+    return values[index];
+}
+
+function first(values: any[]): any {
+    return at(values, 0);
+}
+
+function last(values: any[]): any {
+    return at(values, values.length() - 1);
+}
+
+function slice(values: any[], start: i32, end: i32): any[] {
+    set cut_arr: any[] = [];
+    set length: i32 = values.length();
+    set from: i32 = start;
+    set to: i32 = end;
+
+    if from < 0 {
+        from = 0;
+    }
+
+    if to < 0 {
+        to = 0;
+    }
+
+    if from > length {
+        from = length;
+    }
+
+    if to > length {
+        to = length;
+    }
+
+    if to < from {
+        to = from;
+    }
+
+    for set i: i32 = from; i < to; i++ {
+        cut_arr.push(values[i]);
+    }
+
+    return cut_arr;
+}
+
+function take(values: any[], count: i32): any[] {
+    if count <= 0 {
+        return [];
+    }
+
+    return slice(values, 0, count);
+}
+
+function drop(values: any[], count: i32): any[] {
+    if count <= 0 {
+        return slice(values, 0, values.length());
+    }
+
+    return slice(values, count, values.length());
+}

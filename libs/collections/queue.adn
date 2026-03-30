@@ -1,0 +1,29 @@
+type queue = {
+    items:any[]
+};
+
+function queue_make(): queue {
+    return {
+        items: []
+    };
+}
+
+function queue_is_empty(value: queue): bool {
+    return value.items.length() == 0;
+}
+
+function queue_length(value: queue): i32 {
+    return value.items.length();
+}
+
+function queue_push(value: queue, item: any): void {
+    value.items.push(item);
+}
+
+function queue_pop(value: queue): any {
+    return value.items.remove(0);
+}
+
+function queue_peek(value: queue): any {
+    return value.items[0];
+}

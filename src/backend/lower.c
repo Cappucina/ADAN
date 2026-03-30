@@ -80,6 +80,293 @@ static bool starts_with(const char* text, const char* prefix)
 	return text && prefix && strncmp(text, prefix, strlen(prefix)) == 0;
 }
 
+static bool ends_with(const char* text, const char* suffix)
+{
+	if (!text || !suffix)
+	{
+		return false;
+	}
+
+	size_t text_length = strlen(text);
+	size_t suffix_length = strlen(suffix);
+	if (suffix_length > text_length)
+	{
+		return false;
+	}
+
+	return strcmp(text + text_length - suffix_length, suffix) == 0;
+}
+
+static bool is_object_runtime_name(const char* name)
+{
+	return starts_with(name, "adn_") && strstr(name, "_object_") != NULL;
+}
+
+static bool is_process_runtime_name(const char* name)
+{
+	return starts_with(name, "adn_process_");
+}
+
+static bool is_string_runtime_name(const char* name)
+{
+	return strcmp(name, "adn_strconcat") == 0 || strcmp(name, "adn_string_format") == 0 ||
+	       starts_with(name, "adn_string_") ||
+	       (starts_with(name, "adn_") &&
+	        (ends_with(name, "_to_string") || ends_with(name, "_to_i32") ||
+	         ends_with(name, "_to_f64")));
+}
+
+static IRFunction* create_runtime_function_with_params(Program* program, const char* name,
+	                                                   IRType* return_type,
+	                                                   IRType** param_types,
+	                                                   size_t param_count)
+{
+	IRFunction* fn = ir_function_create_in_module(program->ir, name, return_type);
+	if (!fn)
+	{
+		return NULL;
+	}
+
+	for (size_t i = 0; i < param_count; i++)
+	{
+		ir_param_create(fn, NULL, param_types[i]);
+	}
+
+	return fn;
+}
+
+static const char* infer_string_runtime_return_type(const char* name)
+{
+	if (!is_string_runtime_name(name))
+	{
+		return NULL;
+	}
+
+	if (strcmp(name, "adn_strconcat") == 0 || strcmp(name, "adn_string_format") == 0 ||
+	    ends_with(name, "_to_string") || ends_with(name, "_char_at") ||
+	    ends_with(name, "_from_code"))
+	{
+		return "string";
+	}
+
+	if (ends_with(name, "_to_f64"))
+	{
+		return "f64";
+	}
+
+	if (ends_with(name, "_to_i32") || ends_with(name, "_code_at") ||
+	    ends_with(name, "_length"))
+	{
+		return "i32";
+	}
+
+	return NULL;
+}
+
+static const char* infer_process_runtime_return_type(const char* name)
+{
+	if (!is_process_runtime_name(name))
+	{
+		return NULL;
+	}
+
+	if (ends_with(name, "_args") || ends_with(name, "_env_keys"))
+	{
+		return "array<string>";
+	}
+
+	if (ends_with(name, "_run_capture") || ends_with(name, "_run_capture_args"))
+	{
+		return "object{code:i32,stdout:string,stderr:string,ok:bool}";
+	}
+
+	if (ends_with(name, "_abort") || ends_with(name, "_exit"))
+	{
+		return "void";
+	}
+
+	if (ends_with(name, "_arg") || ends_with(name, "_env") || ends_with(name, "_name") ||
+	    ends_with(name, "_cwd") || ends_with(name, "_os") || ends_with(name, "_arch") ||
+	    ends_with(name, "_executable_path") || ends_with(name, "_home_dir") ||
+	    ends_with(name, "_temp_dir"))
+	{
+		return "string";
+	}
+
+	if (ends_with(name, "_set_env") || ends_with(name, "_has_env") ||
+	    ends_with(name, "_chdir") || ends_with(name, "_run") ||
+	    ends_with(name, "_run_args") || ends_with(name, "_spawn") ||
+	    ends_with(name, "_kill") || ends_with(name, "_is_running") ||
+	    ends_with(name, "_id") || ends_with(name, "_parent_id") ||
+	    ends_with(name, "_arg_count") || starts_with(name, "adn_process_is_"))
+	{
+		return "i32";
+	}
+
+	return NULL;
+}
+
+static IRFunction* ensure_string_runtime_function(Program* program, const char* name)
+{
+	if (!is_string_runtime_name(name))
+	{
+		return NULL;
+	}
+
+	IRType* ptr_type = ir_type_ptr(ir_type_i64());
+
+	if (strcmp(name, "adn_strconcat") == 0 || strcmp(name, "adn_string_format") == 0)
+	{
+		IRType* param_types[2] = {ptr_type, ptr_type};
+		return create_runtime_function_with_params(program, name, ptr_type, param_types, 2);
+	}
+
+	if (ends_with(name, "_to_string"))
+	{
+		IRType* param_types[1] = {strstr(name, "f64") ? ir_type_f64() : ir_type_i64()};
+		return create_runtime_function_with_params(program, name, ptr_type, param_types, 1);
+	}
+
+	if (ends_with(name, "_to_i32"))
+	{
+		IRType* param_types[1] = {ptr_type};
+		return create_runtime_function_with_params(program, name, ir_type_i64(), param_types,
+		                                         1);
+	}
+
+	if (ends_with(name, "_to_f64"))
+	{
+		IRType* param_types[1] = {ptr_type};
+		return create_runtime_function_with_params(program, name, ir_type_f64(), param_types,
+		                                         1);
+	}
+
+	if (ends_with(name, "_length"))
+	{
+		IRType* param_types[1] = {ptr_type};
+		return create_runtime_function_with_params(program, name, ir_type_i64(), param_types,
+		                                         1);
+	}
+
+	if (ends_with(name, "_char_at"))
+	{
+		IRType* param_types[2] = {ptr_type, ir_type_i64()};
+		return create_runtime_function_with_params(program, name, ptr_type, param_types, 2);
+	}
+
+	if (ends_with(name, "_code_at"))
+	{
+		IRType* param_types[2] = {ptr_type, ir_type_i64()};
+		return create_runtime_function_with_params(program, name, ir_type_i64(), param_types,
+		                                         2);
+	}
+
+	if (ends_with(name, "_from_code"))
+	{
+		IRType* param_types[1] = {ir_type_i64()};
+		return create_runtime_function_with_params(program, name, ptr_type, param_types, 1);
+	}
+
+	return NULL;
+}
+
+static IRFunction* ensure_process_runtime_function(Program* program, const char* name)
+{
+	if (!is_process_runtime_name(name))
+	{
+		return NULL;
+	}
+
+	IRType* ptr_type = ir_type_ptr(ir_type_i64());
+
+	if (ends_with(name, "_abort"))
+	{
+		return create_runtime_function_with_params(program, name, ir_type_void(), NULL, 0);
+	}
+
+	if (ends_with(name, "_exit"))
+	{
+		IRType* param_types[1] = {ir_type_i64()};
+		return create_runtime_function_with_params(program, name, ir_type_void(), param_types,
+		                                         1);
+	}
+
+	if (ends_with(name, "_set_env"))
+	{
+		IRType* param_types[2] = {ptr_type, ptr_type};
+		return create_runtime_function_with_params(program, name, ir_type_i64(), param_types,
+		                                         2);
+	}
+
+	if (ends_with(name, "_run_capture_args"))
+	{
+		IRType* param_types[2] = {ptr_type, ptr_type};
+		return create_runtime_function_with_params(program, name, ptr_type, param_types, 2);
+	}
+
+	if (ends_with(name, "_run_capture"))
+	{
+		IRType* param_types[1] = {ptr_type};
+		return create_runtime_function_with_params(program, name, ptr_type, param_types, 1);
+	}
+
+	if (ends_with(name, "_run_args") || ends_with(name, "_spawn"))
+	{
+		IRType* param_types[2] = {ptr_type, ptr_type};
+		return create_runtime_function_with_params(program, name, ir_type_i64(), param_types,
+		                                         2);
+	}
+
+	if (ends_with(name, "_kill") || ends_with(name, "_is_running"))
+	{
+		IRType* param_types[1] = {ir_type_i64()};
+		return create_runtime_function_with_params(program, name, ir_type_i64(), param_types,
+		                                         1);
+	}
+
+	if (ends_with(name, "_has_env") || ends_with(name, "_chdir") ||
+	    ends_with(name, "_run"))
+	{
+		IRType* param_types[1] = {ptr_type};
+		return create_runtime_function_with_params(program, name, ir_type_i64(), param_types,
+		                                         1);
+	}
+
+	if (ends_with(name, "_env"))
+	{
+		IRType* param_types[1] = {ptr_type};
+		return create_runtime_function_with_params(program, name, ptr_type, param_types, 1);
+	}
+
+	if (ends_with(name, "_arg"))
+	{
+		IRType* param_types[1] = {ir_type_i64()};
+		return create_runtime_function_with_params(program, name, ptr_type, param_types, 1);
+	}
+
+	if (ends_with(name, "_args") || ends_with(name, "_env_keys") ||
+	    ends_with(name, "_id") || ends_with(name, "_parent_id") ||
+	    ends_with(name, "_arg_count") || ends_with(name, "_name") ||
+	    ends_with(name, "_cwd") || ends_with(name, "_os") || ends_with(name, "_arch") ||
+	    ends_with(name, "_executable_path") || ends_with(name, "_home_dir") ||
+	    ends_with(name, "_temp_dir") || starts_with(name, "adn_process_is_"))
+	{
+		IRType* return_type = ir_type_i64();
+		if (ends_with(name, "_args") || ends_with(name, "_env_keys") ||
+		    ends_with(name, "_name") || ends_with(name, "_cwd") ||
+		    ends_with(name, "_os") || ends_with(name, "_arch") ||
+		    ends_with(name, "_executable_path") || ends_with(name, "_home_dir") ||
+		    ends_with(name, "_temp_dir"))
+		{
+			return_type = ptr_type;
+		}
+
+		return create_runtime_function_with_params(program, name, return_type, NULL, 0);
+	}
+
+	return NULL;
+}
+
 static const char* member_method_name(const char* callee)
 {
 	const char* prefix = "__member_";
@@ -227,6 +514,399 @@ static const char* build_array_type_name(const char* element_type)
 	char buffer[256];
 	snprintf(buffer, sizeof(buffer), "array<%s>", element_type ? element_type : "any");
 	return cache_type_string(buffer);
+}
+
+typedef enum RuntimeValueKind
+{
+	RUNTIME_VALUE_I64,
+	RUNTIME_VALUE_F64,
+	RUNTIME_VALUE_STRING,
+	RUNTIME_VALUE_PTR,
+} RuntimeValueKind;
+
+static bool is_array_runtime_name(const char* name)
+{
+	return starts_with(name, "adn_array_");
+}
+
+static RuntimeValueKind runtime_value_kind_from_type(const char* type_name)
+{
+	if (!type_name || strcmp(type_name, "string") == 0)
+	{
+		return RUNTIME_VALUE_STRING;
+	}
+
+	if (strcmp(type_name, "f32") == 0 || strcmp(type_name, "f64") == 0)
+	{
+		return RUNTIME_VALUE_F64;
+	}
+
+	if (strcmp(type_name, "object") == 0 || strcmp(type_name, "any") == 0 ||
+	    is_array_type_name(type_name) || is_object_type_name(type_name))
+	{
+		return RUNTIME_VALUE_PTR;
+	}
+
+	return RUNTIME_VALUE_I64;
+}
+
+static RuntimeValueKind runtime_value_kind_from_runtime_name(const char* name)
+{
+	if (!name)
+	{
+		return RUNTIME_VALUE_I64;
+	}
+
+	if (ends_with(name, "_f64"))
+	{
+		return RUNTIME_VALUE_F64;
+	}
+
+	if (ends_with(name, "_string"))
+	{
+		return RUNTIME_VALUE_STRING;
+	}
+
+	if (ends_with(name, "_ptr"))
+	{
+		return RUNTIME_VALUE_PTR;
+	}
+
+	return RUNTIME_VALUE_I64;
+}
+
+static IRType* runtime_ir_type(RuntimeValueKind kind)
+{
+	if (kind == RUNTIME_VALUE_F64)
+	{
+		return ir_type_f64();
+	}
+
+	if (kind == RUNTIME_VALUE_STRING || kind == RUNTIME_VALUE_PTR)
+	{
+		return ir_type_ptr(ir_type_i64());
+	}
+
+	return ir_type_i64();
+}
+
+static const char* runtime_value_kind_suffix(RuntimeValueKind kind)
+{
+	if (kind == RUNTIME_VALUE_F64)
+	{
+		return "f64";
+	}
+
+	if (kind == RUNTIME_VALUE_STRING)
+	{
+		return "string";
+	}
+
+	if (kind == RUNTIME_VALUE_PTR)
+	{
+		return "ptr";
+	}
+
+	return "i64";
+}
+
+static const char* build_collection_runtime_name(const char* collection_name,
+	                                             const char* action,
+	                                             RuntimeValueKind kind)
+{
+	char buffer[64];
+	snprintf(buffer, sizeof(buffer), "adn_%s_%s_%s", collection_name, action,
+	         runtime_value_kind_suffix(kind));
+	return cache_type_string(buffer);
+}
+
+static IRValue* coerce_runtime_write_value(IRValue* value, RuntimeValueKind kind)
+{
+	if (!value)
+	{
+		return NULL;
+	}
+
+	if (kind == RUNTIME_VALUE_F64 && value->type && value->type->kind == IR_T_F32)
+	{
+		return ir_emit_fpcvt(current_block, value, ir_type_f64());
+	}
+
+	return value;
+}
+
+static IRValue* coerce_runtime_read_value(IRValue* value, RuntimeValueKind kind,
+	                                     const char* declared_type)
+{
+	if (!value)
+	{
+		return NULL;
+	}
+
+	if (kind == RUNTIME_VALUE_F64 && declared_type && strcmp(declared_type, "f32") == 0)
+	{
+		return ir_emit_fpcvt(current_block, value, ir_type_f32());
+	}
+
+	return value;
+}
+
+static const char* infer_array_method_return_type(const char* method_name,
+	                                              const char* receiver_type)
+{
+	const char* element_type = extract_array_element_type(receiver_type);
+
+	if (strcmp(method_name, "length") == 0 || strcmp(method_name, "len") == 0)
+	{
+		return "i32";
+	}
+
+	if (strcmp(method_name, "slice") == 0)
+	{
+		return receiver_type ? receiver_type : "array<any>";
+	}
+
+	if (strcmp(method_name, "pop") == 0 || strcmp(method_name, "remove") == 0)
+	{
+		return element_type ? element_type : "any";
+	}
+
+	return "void";
+}
+
+static const char* infer_internal_array_call_return_type(const char* callee,
+	                                                    const char* array_type)
+{
+	if (!starts_with(callee, "__array_"))
+	{
+		return NULL;
+	}
+
+	if (strcmp(callee, "__array_length") == 0)
+	{
+		return "i32";
+	}
+
+	if (strcmp(callee, "__array_slice") == 0)
+	{
+		return array_type ? array_type : "array<any>";
+	}
+
+	if (strcmp(callee, "__array_pop") == 0 || strcmp(callee, "__array_remove") == 0)
+	{
+		const char* element_type = extract_array_element_type(array_type);
+		return element_type ? element_type : "any";
+	}
+
+	return "void";
+}
+
+static const char* infer_array_runtime_return_type(const char* name)
+{
+	if (!is_array_runtime_name(name))
+	{
+		return NULL;
+	}
+
+	if (ends_with(name, "_create") || ends_with(name, "_slice") ||
+	    ends_with(name, "_get_ptr") || ends_with(name, "_pop_ptr") ||
+	    ends_with(name, "_remove_ptr"))
+	{
+		return "any";
+	}
+
+	if (strstr(name, "_push_") != NULL || strstr(name, "_insert_") != NULL ||
+	    ends_with(name, "_clear"))
+	{
+		return "void";
+	}
+
+	if (ends_with(name, "_get_string") || ends_with(name, "_pop_string") ||
+	    ends_with(name, "_remove_string"))
+	{
+		return "string";
+	}
+
+	if (ends_with(name, "_get_f64") || ends_with(name, "_pop_f64") ||
+	    ends_with(name, "_remove_f64"))
+	{
+		return "f64";
+	}
+
+	if (ends_with(name, "_length") || ends_with(name, "_get_i64") ||
+	    ends_with(name, "_pop_i64") || ends_with(name, "_remove_i64"))
+	{
+		return "i32";
+	}
+
+	return NULL;
+}
+
+static const char* infer_object_runtime_return_type(const char* name)
+{
+	if (!is_object_runtime_name(name))
+	{
+		return NULL;
+	}
+
+	if (ends_with(name, "_create") || ends_with(name, "_get_ptr"))
+	{
+		return "any";
+	}
+
+	if (ends_with(name, "_set_i64") || ends_with(name, "_set_f64") ||
+	    ends_with(name, "_set_string") || ends_with(name, "_set_ptr"))
+	{
+		return "void";
+	}
+
+	if (ends_with(name, "_has") || ends_with(name, "_get_i64"))
+	{
+		return "i32";
+	}
+
+	if (ends_with(name, "_get_f64"))
+	{
+		return "f64";
+	}
+
+	if (ends_with(name, "_get_string"))
+	{
+		return "string";
+	}
+
+	return NULL;
+}
+
+static IRFunction* ensure_array_runtime_function(Program* program, const char* name)
+{
+	if (!is_array_runtime_name(name))
+	{
+		return NULL;
+	}
+
+	if (ends_with(name, "_create"))
+	{
+		return create_runtime_function_with_params(program, name,
+		                                         ir_type_ptr(ir_type_i64()), NULL, 0);
+	}
+
+	if (ends_with(name, "_clear"))
+	{
+		IRType* param_types[1] = {ir_type_ptr(ir_type_i64())};
+		return create_runtime_function_with_params(program, name, ir_type_void(), param_types,
+		                                         1);
+	}
+
+	if (ends_with(name, "_length"))
+	{
+		IRType* param_types[1] = {ir_type_ptr(ir_type_i64())};
+		return create_runtime_function_with_params(program, name, ir_type_i64(), param_types,
+		                                         1);
+	}
+
+	RuntimeValueKind kind = runtime_value_kind_from_runtime_name(name);
+	IRType* value_type = runtime_ir_type(kind);
+	IRType* ptr_type = ir_type_ptr(ir_type_i64());
+
+	if (strstr(name, "_push_") != NULL)
+	{
+		IRType* param_types[2] = {ptr_type, value_type};
+		return create_runtime_function_with_params(program, name, ir_type_void(), param_types,
+		                                         2);
+	}
+
+	if (strstr(name, "_pop_") != NULL)
+	{
+		IRType* param_types[1] = {ptr_type};
+		return create_runtime_function_with_params(program, name, value_type, param_types, 1);
+	}
+
+	if (strstr(name, "_get_") != NULL || strstr(name, "_remove_") != NULL)
+	{
+		IRType* param_types[2] = {ptr_type, ir_type_i64()};
+		return create_runtime_function_with_params(program, name, value_type, param_types, 2);
+	}
+
+	if (strstr(name, "_insert_") != NULL)
+	{
+		IRType* param_types[3] = {ptr_type, ir_type_i64(), value_type};
+		return create_runtime_function_with_params(program, name, ir_type_void(), param_types,
+		                                         3);
+	}
+
+	if (ends_with(name, "_slice"))
+	{
+		IRType* param_types[3] = {ptr_type, ir_type_i64(), ir_type_i64()};
+		return create_runtime_function_with_params(program, name, ptr_type, param_types, 3);
+	}
+
+	return NULL;
+}
+
+static IRFunction* ensure_object_runtime_function(Program* program, const char* name)
+{
+	if (!is_object_runtime_name(name))
+	{
+		return NULL;
+	}
+
+	IRType* ptr_type = ir_type_ptr(ir_type_i64());
+
+	if (ends_with(name, "_create"))
+	{
+		return create_runtime_function_with_params(program, name, ptr_type, NULL, 0);
+	}
+
+	if (ends_with(name, "_has"))
+	{
+		IRType* param_types[2] = {ptr_type, ptr_type};
+		return create_runtime_function_with_params(program, name, ir_type_i64(), param_types,
+		                                         2);
+	}
+
+	RuntimeValueKind kind = runtime_value_kind_from_runtime_name(name);
+	IRType* value_type = runtime_ir_type(kind);
+
+	if (strstr(name, "_set_") != NULL)
+	{
+		IRType* param_types[3] = {ptr_type, ptr_type, value_type};
+		return create_runtime_function_with_params(program, name, ir_type_void(), param_types,
+		                                         3);
+	}
+
+	if (strstr(name, "_get_") != NULL)
+	{
+		IRType* param_types[2] = {ptr_type, ptr_type};
+		return create_runtime_function_with_params(program, name, value_type, param_types, 2);
+	}
+
+	return NULL;
+}
+
+static IRValue* lower_collection_runtime_call(Program* program, const char* collection_name,
+	                                          const char* action,
+	                                          const char* value_type,
+	                                          IRValue** args, size_t nargs,
+	                                          size_t value_arg_index,
+	                                          bool returns_value)
+{
+	RuntimeValueKind kind = runtime_value_kind_from_type(value_type);
+	const char* runtime_name = build_collection_runtime_name(collection_name, action, kind);
+
+	if (value_arg_index != (size_t)-1 && value_arg_index < nargs)
+	{
+		args[value_arg_index] = coerce_runtime_write_value(args[value_arg_index], kind);
+	}
+
+	IRFunction* fn = ensure_runtime_function(program, runtime_name);
+	IRValue* value = ir_emit_call(current_block, fn, args, nargs);
+	if (!returns_value)
+	{
+		return value;
+	}
+
+	return coerce_runtime_read_value(value, kind, value_type);
 }
 
 static const char* find_object_property_type(const char* object_type, const char* property_name)
@@ -699,329 +1379,27 @@ static IRFunction* ensure_runtime_function(Program* program, const char* name)
 		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
 		return fn;
 	}
-	if (strcmp(name, "adn_strconcat") == 0)
+	fn = ensure_string_runtime_function(program, name);
+	if (fn)
 	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
 		return fn;
 	}
-	if (strcmp(name, "adn_string_format") == 0)
+
+	fn = ensure_process_runtime_function(program, name);
+	if (fn)
 	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
 		return fn;
 	}
-	if (strcmp(name, "adn_i32_to_string") == 0)
+
+	fn = ensure_object_runtime_function(program, name);
+	if (fn)
 	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
 		return fn;
 	}
-	if (strcmp(name, "adn_f64_to_string") == 0)
+
+	fn = ensure_array_runtime_function(program, name);
+	if (fn)
 	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_f64());
-		return fn;
-	}
-	if (strcmp(name, "adn_string_to_i32") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_string_to_f64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_f64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_string_length") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_string_char_at") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_string_code_at") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_string_from_code") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_process_id") == 0 || strcmp(name, "adn_process_parent_id") == 0 ||
-	    strcmp(name, "adn_process_arg_count") == 0)
-	{
-		return ir_function_create_in_module(program->ir, name, ir_type_i64());
-	}
-	if (strcmp(name, "adn_process_arg") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_process_name") == 0 || strcmp(name, "adn_process_env") == 0 ||
-	    strcmp(name, "adn_process_cwd") == 0 || strcmp(name, "adn_process_os") == 0 ||
-	    strcmp(name, "adn_process_arch") == 0 ||
-	    strcmp(name, "adn_process_executable_path") == 0 ||
-	    strcmp(name, "adn_process_home_dir") == 0 ||
-	    strcmp(name, "adn_process_temp_dir") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		if (strcmp(name, "adn_process_env") == 0)
-		{
-			ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		}
-		return fn;
-	}
-	if (strcmp(name, "adn_process_args") == 0 || strcmp(name, "adn_process_env_keys") == 0)
-	{
-		return ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-	}
-	if (strcmp(name, "adn_process_set_env") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_process_has_env") == 0 || strcmp(name, "adn_process_chdir") == 0 ||
-	    strcmp(name, "adn_process_run") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_process_exit") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_process_abort") == 0)
-	{
-		return ir_function_create_in_module(program->ir, name, ir_type_void());
-	}
-	if (strcmp(name, "adn_process_is_windows") == 0 ||
-	    strcmp(name, "adn_process_is_linux") == 0 ||
-	    strcmp(name, "adn_process_is_macos") == 0)
-	{
-		return ir_function_create_in_module(program->ir, name, ir_type_i64());
-	}
-	if (strcmp(name, "adn_process_run_args") == 0 || strcmp(name, "adn_process_spawn") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_process_run_capture") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_process_run_capture_args") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_process_kill") == 0 || strcmp(name, "adn_process_is_running") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_object_create") == 0 || strcmp(name, "adn_array_create") == 0)
-	{
-		return ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-	}
-	if (strcmp(name, "adn_object_set_i64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_object_set_f64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_f64());
-		return fn;
-	}
-	if (strcmp(name, "adn_object_set_string") == 0 || strcmp(name, "adn_object_set_ptr") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_object_get_i64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_object_get_f64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_f64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_object_get_string") == 0 || strcmp(name, "adn_object_get_ptr") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_array_push_i64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_array_pop_i64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_array_push_f64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_f64());
-		return fn;
-	}
-	if (strcmp(name, "adn_array_pop_f64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_f64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_array_push_string") == 0 || strcmp(name, "adn_array_push_ptr") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_array_pop_string") == 0 || strcmp(name, "adn_array_pop_ptr") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_array_clear") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_array_length") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_array_get_i64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_array_get_f64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_f64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_array_get_string") == 0 || strcmp(name, "adn_array_get_ptr") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_array_insert_i64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_array_insert_f64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_f64());
-		return fn;
-	}
-	if (strcmp(name, "adn_array_insert_string") == 0 ||
-	    strcmp(name, "adn_array_insert_ptr") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_void());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		return fn;
-	}
-	if (strcmp(name, "adn_array_remove_i64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_array_remove_f64") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_f64());
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_array_remove_string") == 0 ||
-	    strcmp(name, "adn_array_remove_ptr") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		return fn;
-	}
-	if (strcmp(name, "adn_array_slice") == 0)
-	{
-		fn = ir_function_create_in_module(program->ir, name, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_ptr(ir_type_i64()));
-		ir_param_create(fn, NULL, ir_type_i64());
-		ir_param_create(fn, NULL, ir_type_i64());
 		return fn;
 	}
 
@@ -1094,24 +1472,10 @@ static const char* infer_expression_type(Program* program, ASTNode* node)
 				    node->call.arg_count > 0
 				        ? infer_expression_type(program, node->call.args[0])
 				        : NULL;
-				const char* element_type = extract_array_element_type(receiver_type);
 				if (is_array_type_name(receiver_type) &&
 				    is_array_member_method_name(member_method))
 				{
-					if (strcmp(member_method, "length") == 0 ||
-					    strcmp(member_method, "len") == 0)
-					{
-						return "i32";
-					}
-					if (strcmp(member_method, "slice") == 0)
-					{
-						return receiver_type ? receiver_type : "array<any>";
-					}
-					if (strcmp(member_method, "remove") == 0)
-					{
-						return element_type ? element_type : "any";
-					}
-					return "void";
+					return infer_array_method_return_type(member_method, receiver_type);
 				}
 
 				ASTNode* decl = find_function_declaration(program->ast_root, member_method);
@@ -1128,89 +1492,33 @@ static const char* infer_expression_type(Program* program, ASTNode* node)
 				    node->call.arg_count > 0
 				        ? infer_expression_type(program, node->call.args[0])
 				        : NULL;
-				const char* element_type = extract_array_element_type(array_type);
-				if (strcmp(node->call.callee, "__array_length") == 0)
-				{
-					return "i32";
-				}
-				if (strcmp(node->call.callee, "__array_slice") == 0)
-				{
-					return array_type ? array_type : "array<any>";
-				}
-				if (strcmp(node->call.callee, "__array_pop") == 0 ||
-				    strcmp(node->call.callee, "__array_remove") == 0)
-				{
-					return element_type ? element_type : "any";
-				}
-				return "void";
+				return infer_internal_array_call_return_type(node->call.callee, array_type);
 			}
 			if (starts_with(node->call.callee, "adn_"))
 			{
-				if (strcmp(node->call.callee, "adn_process_args") == 0 ||
-				    strcmp(node->call.callee, "adn_process_env_keys") == 0)
+				const char* runtime_type = infer_string_runtime_return_type(
+				    node->call.callee);
+				if (!runtime_type)
 				{
-					return "array<string>";
+					runtime_type = infer_process_runtime_return_type(node->call.callee);
 				}
-				if (strcmp(node->call.callee, "adn_process_run_capture") == 0 ||
-				    strcmp(node->call.callee, "adn_process_run_capture_args") == 0)
+				if (!runtime_type)
 				{
-					return "object{code:i32,stdout:string,stderr:string,ok:bool}";
+					runtime_type = infer_array_runtime_return_type(node->call.callee);
 				}
-				if (strcmp(node->call.callee, "adn_string_format") == 0 ||
-				    strcmp(node->call.callee, "adn_read_file") == 0 ||
-				    strcmp(node->call.callee, "adn_string_char_at") == 0 ||
-				    strcmp(node->call.callee, "adn_process_name") == 0 ||
-				    strcmp(node->call.callee, "adn_process_arg") == 0 ||
-				    strcmp(node->call.callee, "adn_process_env") == 0 ||
-				    strcmp(node->call.callee, "adn_process_cwd") == 0 ||
-				    strcmp(node->call.callee, "adn_process_os") == 0 ||
-				    strcmp(node->call.callee, "adn_process_arch") == 0 ||
-				    strcmp(node->call.callee, "adn_process_executable_path") == 0 ||
-				    strcmp(node->call.callee, "adn_process_home_dir") == 0 ||
-				    strcmp(node->call.callee, "adn_process_temp_dir") == 0 ||
-				    strcmp(node->call.callee, "adn_string_from_code") == 0 ||
-				    strstr(node->call.callee, "_to_string"))
+				if (!runtime_type)
 				{
-					return "string";
+					runtime_type = infer_object_runtime_return_type(node->call.callee);
 				}
-				if (strstr(node->call.callee, "_to_f64"))
+				if (!runtime_type &&
+				    (strcmp(node->call.callee, "adn_read_file") == 0 ||
+				     strcmp(node->call.callee, "adn_input") == 0))
 				{
-					return "f64";
+					runtime_type = "string";
 				}
-				if (strcmp(node->call.callee, "adn_string_code_at") == 0 ||
-				    strcmp(node->call.callee, "adn_process_id") == 0 ||
-				    strcmp(node->call.callee, "adn_process_parent_id") == 0 ||
-				    strcmp(node->call.callee, "adn_process_arg_count") == 0 ||
-				    strcmp(node->call.callee, "adn_process_run") == 0 ||
-				    strcmp(node->call.callee, "adn_process_run_args") == 0 ||
-				    strcmp(node->call.callee, "adn_process_spawn") == 0 ||
-				    strcmp(node->call.callee, "adn_process_set_env") == 0 ||
-				    strcmp(node->call.callee, "adn_process_has_env") == 0 ||
-				    strcmp(node->call.callee, "adn_process_chdir") == 0 ||
-				    strcmp(node->call.callee, "adn_process_kill") == 0 ||
-				    strcmp(node->call.callee, "adn_process_is_running") == 0 ||
-				    strcmp(node->call.callee, "adn_process_is_windows") == 0 ||
-				    strcmp(node->call.callee, "adn_process_is_linux") == 0 ||
-				    strcmp(node->call.callee, "adn_process_is_macos") == 0 ||
-				    strstr(node->call.callee, "_to_i32") ||
-				    strstr(node->call.callee, "_get_i64") ||
-				    strstr(node->call.callee, "_length"))
+				if (runtime_type)
 				{
-					return "i32";
-				}
-				if (strstr(node->call.callee, "_get_f64"))
-				{
-					return "f64";
-				}
-				if (strstr(node->call.callee, "_get_string") ||
-				    strcmp(node->call.callee, "adn_input") == 0)
-				{
-					return "string";
-				}
-				if (strstr(node->call.callee, "create") ||
-				    strstr(node->call.callee, "_get_ptr"))
-				{
-					return "any";
+					return runtime_type;
 				}
 			}
 			{
@@ -1294,89 +1602,22 @@ static IRValue* lower_array_method_call(Program* program, ASTNode* node, IRValue
 	if (strcmp(node->call.callee, "__array_push") == 0 && nargs == 2)
 	{
 		const char* value_type = infer_expression_type(program, node->call.args[1]);
-		const char* runtime_name = "adn_array_push_ptr";
-		if (!value_type || strcmp(value_type, "string") == 0)
-		{
-			runtime_name = "adn_array_push_string";
-		}
-		else if (strcmp(value_type, "f32") == 0 || strcmp(value_type, "f64") == 0)
-		{
-			runtime_name = "adn_array_push_f64";
-			if (args[1] && args[1]->type && args[1]->type->kind == IR_T_F32)
-			{
-				args[1] = ir_emit_fpcvt(current_block, args[1], ir_type_f64());
-			}
-		}
-		else if (strcmp(value_type, "object") == 0 || strcmp(value_type, "any") == 0 ||
-		         is_array_type_name(value_type) || is_object_type_name(value_type))
-		{
-			runtime_name = "adn_array_push_ptr";
-		}
-		else
-		{
-			runtime_name = "adn_array_push_i64";
-		}
-		IRFunction* fn = ensure_runtime_function(program, runtime_name);
-		return ir_emit_call(current_block, fn, args, nargs);
+		return lower_collection_runtime_call(program, "array", "push", value_type, args,
+		                                  nargs, 1, false);
 	}
 	if (strcmp(node->call.callee, "__array_pop") == 0 && nargs == 1)
 	{
 		const char* array_type = infer_expression_type(program, node->call.args[0]);
 		const char* element_type = extract_array_element_type(array_type);
-		const char* runtime_name = "adn_array_pop_ptr";
-		if (!element_type || strcmp(element_type, "string") == 0)
-		{
-			runtime_name = "adn_array_pop_string";
-		}
-		else if (strcmp(element_type, "f32") == 0 || strcmp(element_type, "f64") == 0)
-		{
-			runtime_name = "adn_array_pop_f64";
-		}
-		else if (strcmp(element_type, "object") == 0 || strcmp(element_type, "any") == 0 ||
-		         is_array_type_name(element_type) || is_object_type_name(element_type))
-		{
-			runtime_name = "adn_array_pop_ptr";
-		}
-		else
-		{
-			runtime_name = "adn_array_pop_i64";
-		}
-		IRFunction* fn = ensure_runtime_function(program, runtime_name);
-		IRValue* value = ir_emit_call(current_block, fn, args, nargs);
-		if (element_type && strcmp(element_type, "f32") == 0)
-		{
-			return ir_emit_fpcvt(current_block, value, ir_type_f32());
-		}
-		return value;
+		return lower_collection_runtime_call(program, "array", "pop", element_type, args,
+		                                  nargs, (size_t)-1, true);
 	}
 	if (strcmp(node->call.callee, "__array_insert") == 0 && nargs == 3)
 	{
 		const char* array_type = infer_expression_type(program, node->call.args[0]);
 		const char* element_type = extract_array_element_type(array_type);
-		const char* runtime_name = "adn_array_insert_ptr";
-		if (!element_type || strcmp(element_type, "string") == 0)
-		{
-			runtime_name = "adn_array_insert_string";
-		}
-		else if (strcmp(element_type, "f32") == 0 || strcmp(element_type, "f64") == 0)
-		{
-			runtime_name = "adn_array_insert_f64";
-			if (args[2] && args[2]->type && args[2]->type->kind == IR_T_F32)
-			{
-				args[2] = ir_emit_fpcvt(current_block, args[2], ir_type_f64());
-			}
-		}
-		else if (strcmp(element_type, "object") == 0 || strcmp(element_type, "any") == 0 ||
-		         is_array_type_name(element_type) || is_object_type_name(element_type))
-		{
-			runtime_name = "adn_array_insert_ptr";
-		}
-		else
-		{
-			runtime_name = "adn_array_insert_i64";
-		}
-		IRFunction* fn = ensure_runtime_function(program, runtime_name);
-		return ir_emit_call(current_block, fn, args, nargs);
+		return lower_collection_runtime_call(program, "array", "insert", element_type,
+		                                  args, nargs, 2, false);
 	}
 	if (strcmp(node->call.callee, "__array_slice") == 0 && (nargs == 2 || nargs == 3))
 	{
@@ -1395,31 +1636,8 @@ static IRValue* lower_array_method_call(Program* program, ASTNode* node, IRValue
 	{
 		const char* array_type = infer_expression_type(program, node->call.args[0]);
 		const char* element_type = extract_array_element_type(array_type);
-		const char* runtime_name = "adn_array_remove_ptr";
-		if (!element_type || strcmp(element_type, "string") == 0)
-		{
-			runtime_name = "adn_array_remove_string";
-		}
-		else if (strcmp(element_type, "f32") == 0 || strcmp(element_type, "f64") == 0)
-		{
-			runtime_name = "adn_array_remove_f64";
-		}
-		else if (strcmp(element_type, "object") == 0 || strcmp(element_type, "any") == 0 ||
-		         is_array_type_name(element_type) || is_object_type_name(element_type))
-		{
-			runtime_name = "adn_array_remove_ptr";
-		}
-		else
-		{
-			runtime_name = "adn_array_remove_i64";
-		}
-		IRFunction* fn = ensure_runtime_function(program, runtime_name);
-		IRValue* value = ir_emit_call(current_block, fn, args, nargs);
-		if (element_type && strcmp(element_type, "f32") == 0)
-		{
-			return ir_emit_fpcvt(current_block, value, ir_type_f32());
-		}
-		return value;
+		return lower_collection_runtime_call(program, "array", "remove", element_type,
+		                                  args, nargs, (size_t)-1, true);
 	}
 	return NULL;
 }
@@ -1454,31 +1672,9 @@ static IRValue* lower_object_literal(Program* program, ASTNode* node)
 		IRValue* key = ir_const_string(program->ir, property.key);
 		IRValue* value = lower_expression(program, property.value);
 		const char* value_type = infer_expression_type(program, property.value);
-		const char* runtime_name = "adn_object_set_ptr";
-		if (!value_type || strcmp(value_type, "string") == 0)
-		{
-			runtime_name = "adn_object_set_string";
-		}
-		else if (strcmp(value_type, "f32") == 0 || strcmp(value_type, "f64") == 0)
-		{
-			runtime_name = "adn_object_set_f64";
-			if (value && value->type && value->type->kind == IR_T_F32)
-			{
-				value = ir_emit_fpcvt(current_block, value, ir_type_f64());
-			}
-		}
-		else if (strcmp(value_type, "object") == 0 || strcmp(value_type, "any") == 0 ||
-		         is_array_type_name(value_type) || is_object_type_name(value_type))
-		{
-			runtime_name = "adn_object_set_ptr";
-		}
-		else
-		{
-			runtime_name = "adn_object_set_i64";
-		}
-		IRFunction* set_fn = ensure_runtime_function(program, runtime_name);
 		IRValue* args[3] = {object, key, value};
-		ir_emit_call(current_block, set_fn, args, 3);
+		lower_collection_runtime_call(program, "object", "set", value_type, args, 3, 2,
+		                          false);
 	}
 	return object;
 }
@@ -1506,32 +1702,9 @@ static IRValue* lower_member_access(Program* program, ASTNode* node)
 	const char* property_type = infer_expression_type(program, node);
 	IRValue* object = lower_expression(program, node->member_access.object);
 	IRValue* key = ir_const_string(program->ir, node->member_access.property->identifier.name);
-	const char* runtime_name = "adn_object_get_ptr";
-	if (!property_type || strcmp(property_type, "string") == 0)
-	{
-		runtime_name = "adn_object_get_string";
-	}
-	else if (strcmp(property_type, "f32") == 0 || strcmp(property_type, "f64") == 0)
-	{
-		runtime_name = "adn_object_get_f64";
-	}
-	else if (strcmp(property_type, "object") == 0 || strcmp(property_type, "any") == 0 ||
-	         is_array_type_name(property_type) || is_object_type_name(property_type))
-	{
-		runtime_name = "adn_object_get_ptr";
-	}
-	else
-	{
-		runtime_name = "adn_object_get_i64";
-	}
-	IRFunction* fn = ensure_runtime_function(program, runtime_name);
 	IRValue* args[2] = {object, key};
-	IRValue* value = ir_emit_call(current_block, fn, args, 2);
-	if (property_type && strcmp(property_type, "f32") == 0)
-	{
-		return ir_emit_fpcvt(current_block, value, ir_type_f32());
-	}
-	return value;
+	return lower_collection_runtime_call(program, "object", "get", property_type, args, 2,
+	                                  (size_t)-1, true);
 }
 
 static IRValue* lower_array_access(Program* program, ASTNode* node)
@@ -1539,32 +1712,9 @@ static IRValue* lower_array_access(Program* program, ASTNode* node)
 	const char* element_type = infer_expression_type(program, node);
 	IRValue* array = lower_expression(program, node->array_access.array);
 	IRValue* index = lower_expression(program, node->array_access.index);
-	const char* runtime_name = "adn_array_get_ptr";
-	if (!element_type || strcmp(element_type, "string") == 0)
-	{
-		runtime_name = "adn_array_get_string";
-	}
-	else if (strcmp(element_type, "f32") == 0 || strcmp(element_type, "f64") == 0)
-	{
-		runtime_name = "adn_array_get_f64";
-	}
-	else if (strcmp(element_type, "object") == 0 || strcmp(element_type, "any") == 0 ||
-	         is_array_type_name(element_type) || is_object_type_name(element_type))
-	{
-		runtime_name = "adn_array_get_ptr";
-	}
-	else
-	{
-		runtime_name = "adn_array_get_i64";
-	}
-	IRFunction* fn = ensure_runtime_function(program, runtime_name);
 	IRValue* args[2] = {array, index};
-	IRValue* value = ir_emit_call(current_block, fn, args, 2);
-	if (element_type && strcmp(element_type, "f32") == 0)
-	{
-		return ir_emit_fpcvt(current_block, value, ir_type_f32());
-	}
-	return value;
+	return lower_collection_runtime_call(program, "array", "get", element_type, args, 2,
+	                                  (size_t)-1, true);
 }
 
 IRValue* lower_expression(Program* program, ASTNode* node)

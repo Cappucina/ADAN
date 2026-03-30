@@ -1,0 +1,25 @@
+function is_empty(values: any[]): bool {
+    return values.length() == 0;
+}
+
+function clone(values: any[]): any[] {
+    set new_arr: any[] = [];
+
+    for set i: i32 = 0; i < values.length(); i++ {
+        new_arr.push(values[i]);
+    }
+
+    return new_arr;
+}
+
+function reverse(values: any[]): any[] {
+    set rev_arr: any[] = [];
+    set i: i32 = values.length() - 1;
+
+    while i >= 0 {
+        rev_arr.push(values[i]);
+        i--;
+    }
+
+    return rev_arr;
+}
