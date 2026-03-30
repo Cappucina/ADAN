@@ -39,8 +39,7 @@ The plan follows the patterns already used by the current standard libraries:
 8. `adan/thread`
 9. `adan/net`
 10. `adan/http`
-11. `adan/imgui`
-12. `adan/ui` (defer until much later)
+11. `adan/ui` (defer until much later)
 
 Why this order:
 
@@ -48,7 +47,6 @@ Why this order:
 - `window` is the real foundation for native UI work.
 - `webview` is the fastest route to practical desktop UI.
 - `thread`, `net`, and `http` are useful, but they are not prerequisites for the first UI story.
-- `imgui` is useful for tooling after `window` exists.
 - `ui` should not be attempted until the lower layers and language ergonomics are stronger.
 
 ---
@@ -787,80 +785,7 @@ Note:
 
 ---
 
-## 11. `adan/imgui`
-
-### Goal
-Immediate-mode UI for tools, editors, profilers, inspectors, and compiler/debug utilities.
-
-### C backend
-Yes.
-
-### Can it be implemented with current libraries?
-No. It should wrap Dear ImGui from C and use `adan/window` for the platform side.
-
-### Files
-
-#### `imgui/imgui.adn`
-Aggregator.
-
-Functions in this file:
-- imports only:
-	- `adan/imgui/frame`
-	- `adan/imgui/widgets`
-	- `adan/imgui/layout`
-
-#### `imgui/frame.adn`
-Frame lifecycle helpers.
-
-Functions:
-- `attach(window: i64): bool`
-- `begin_frame(): void`
-- `end_frame(): void`
-- `shutdown(): void`
-
-#### `imgui/widgets.adn`
-Common widgets.
-
-Functions:
-- `text(value: string): void`
-- `button(label: string): bool`
-- `checkbox(label: string, value: bool): bool`
-- `input_text(label: string, value: string): string`
-- `slider_i32(label: string, value: i32, min: i32, max: i32): i32`
-
-#### `imgui/layout.adn`
-Layout helpers.
-
-Functions:
-- `begin_window(title: string): bool`
-- `end_window(): void`
-- `same_line(): void`
-- `separator(): void`
-
-#### `imgui/imgui.h`
-C backend API.
-
-Functions:
-- `int64_t adn_imgui_attach(int64_t window);`
-- `void adn_imgui_begin_frame(void);`
-- `void adn_imgui_end_frame(void);`
-- `void adn_imgui_shutdown(void);`
-- `void adn_imgui_text(const char* value);`
-- `int64_t adn_imgui_button(const char* label);`
-- `int64_t adn_imgui_checkbox(const char* label, int64_t value);`
-- `char* adn_imgui_input_text(const char* label, const char* value);`
-- `int32_t adn_imgui_slider_i32(const char* label, int32_t value, int32_t min, int32_t max);`
-- `int64_t adn_imgui_begin_window(const char* title);`
-- `void adn_imgui_end_window(void);`
-- `void adn_imgui_same_line(void);`
-- `void adn_imgui_separator(void);`
-
-#### `imgui/imgui.c`
-Implements every declaration from `imgui/imgui.h`.
-
----
-
-## 12. `adan/ui` (deferred)
+## 11. `adan/ui` (deferred)
 
 ### Goal
 A retained-mode, higher-level widget toolkit.
@@ -911,7 +836,6 @@ This library is intentionally not scheduled for implementation now.
 - `adan/thread`
 - `adan/net`
 - `adan/http`
-- `adan/imgui`
 
 ### Do not build yet
 - `adan/ui`
