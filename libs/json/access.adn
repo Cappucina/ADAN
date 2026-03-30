@@ -1,31 +1,88 @@
-function get(value: any, key: string): any {
-    return "";
+import "adan/json/value";
+import "adan/string/compare";
+
+type json_value = {kind:string,string_value:string,number_value:f64,bool_value:i32,array_value:any[],object_keys:string[],object_values:any[]};
+
+function get(node: json_value, key: string): json_value {
+    if value.is_object(node) == false {
+        return value.null_value();
+    }
+
+    for set i: i32 = 0; i < node.object_keys.length(); i++ {
+        if compare.equals(node.object_keys[i], key) {
+            return (json_value)node.object_values[i];
+        }
+    }
+
+    return value.null_value();
 }
 
-function index(value: any, at: i32): any {
-    return "";
+function index(node: json_value, at: i32): json_value {
+    if value.is_array(node) == false or at < 0 or at >= node.array_value.length() {
+        return value.null_value();
+    }
+
+    return (json_value)node.array_value[at];
 }
 
-function get_string(value: any, key: string, fallback: string): string {
+function get_string(node: json_value, key: string, fallback: string): string {
+    set child: json_value = get(node, key);
+    if value.is_string(child) {
+        return child.string_value;
+    }
+
     return fallback;
 }
 
-function get_i32(value: any, key: string, fallback: i32): i32 {
+function get_i32(node: json_value, key: string, fallback: i32): i32 {
+    set child: json_value = get(node, key);
+    if value.is_number(child) {
+        return (i32)((string)child.number_value);
+    }
+
     return fallback;
 }
 
-function get_f64(value: any, key: string, fallback: f64): f64 {
+function get_f64(node: json_value, key: string, fallback: f64): f64 {
+    set child: json_value = get(node, key);
+    if value.is_number(child) {
+        return child.number_value;
+    }
+
     return fallback;
 }
 
-function get_bool(value: any, key: string, fallback: bool): bool {
+function get_bool(node: json_value, key: string, fallback: bool): bool {
+    set child: json_value = get(node, key);
+    if value.is_bool(child) {
+        return child.bool_value !== 0;
+    }
+
     return fallback;
 }
 
-function has(value: any, key: string): bool {
+function has(node: json_value, key: string): bool {
+    if value.is_object(node) == false {
+        return false;
+    }
+
+    for set i: i32 = 0; i < node.object_keys.length(); i++ {
+        if compare.equals(node.object_keys[i], key) {
+            return true;
+        }
+    }
+
     return false;
 }
 
-function len(value: any): i32 {
+function len(node: json_value): i32 {
+    if value.is_array(node) {
+        return node.array_value.length();
+    }
+
+    if value.is_object(node) {
+        return node.object_keys.length();
+    }
+
     return 0;
 }

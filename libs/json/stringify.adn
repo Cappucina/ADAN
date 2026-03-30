@@ -1,11 +1,137 @@
-function stringify(value: any): string {
-    return "";
+import "adan/json/value";
+import "adan/string/internal";
+
+type json_value = {kind:string,string_value:string,number_value:f64,bool_value:i32,array_value:any[],object_keys:string[],object_values:any[]};
+
+function __json_indent(level: i32): string {
+    set result: string = "";
+    for set i: i32 = 0; i < level; i++ {
+        result += "  ";
+    }
+    return result;
 }
 
-function pretty(value: any): string {
-    return "";
+function __json_stringify_inner(node: json_value, level: i32, pretty_mode: bool): string {
+    if value.is_null(node) {
+        return "null";
+    }
+
+    if value.is_bool(node) {
+        if node.bool_value !== 0 {
+            return "true";
+        }
+
+        return "false";
+    }
+
+    if value.is_number(node) {
+        return (string)node.number_value;
+    }
+
+    if value.is_string(node) {
+        return quote(node.string_value);
+    }
+
+    if value.is_array(node) {
+        if node.array_value.length() == 0 {
+            return "[]";
+        }
+
+        set result: string = "[";
+        for set i: i32 = 0; i < node.array_value.length(); i++ {
+            set child: json_value = (json_value)node.array_value[i];
+            if i > 0 {
+                result += ",";
+            }
+
+            if pretty_mode {
+                result += "\n" + __json_indent(level + 1);
+            }
+
+            result += __json_stringify_inner(child, level + 1, pretty_mode);
+        }
+
+        if pretty_mode {
+            result += "\n" + __json_indent(level);
+        }
+
+        return result + "]";
+    }
+
+    if value.is_object(node) {
+        if node.object_keys.length() == 0 {
+            return "{}";
+        }
+
+        set result: string = "{";
+        for set i: i32 = 0; i < node.object_keys.length(); i++ {
+            set child: json_value = (json_value)node.object_values[i];
+            if i > 0 {
+                result += ",";
+            }
+
+            if pretty_mode {
+                result += "\n" + __json_indent(level + 1);
+            }
+
+            result += quote(node.object_keys[i]);
+            if pretty_mode {
+                result += ": ";
+            }
+            else {
+                result += ":";
+            }
+            result += __json_stringify_inner(child, level + 1, pretty_mode);
+        }
+
+        if pretty_mode {
+            result += "\n" + __json_indent(level);
+        }
+
+        return result + "}";
+    }
+
+    return "null";
 }
 
-function quote(value: string): string {
-    return "";
+function stringify(node: json_value): string {
+    return __json_stringify_inner(node, 0, false);
+}
+
+function pretty(node: json_value): string {
+    return __json_stringify_inner(node, 0, true);
+}
+
+function quote(input: string): string {
+    set result: string = "\"";
+    for set i: i32 = 0; i < __string_length(input); i++ {
+        set code: i32 = __string_code(input, i);
+
+        if code == 34 {
+            result += "\\\"";
+        }
+        else if code == 92 {
+            result += "\\\\";
+        }
+        else if code == 8 {
+            result += "\\b";
+        }
+        else if code == 12 {
+            result += "\\f";
+        }
+        else if code == 10 {
+            result += "\\n";
+        }
+        else if code == 13 {
+            result += "\\r";
+        }
+        else if code == 9 {
+            result += "\\t";
+        }
+        else {
+            result += __string_from_code(code);
+        }
+    }
+
+    return result + "\"";
 }

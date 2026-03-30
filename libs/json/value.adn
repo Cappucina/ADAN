@@ -1,27 +1,71 @@
-function is_null(value: any): bool {
-    return false;
+import "adan/string/compare";
+
+type json_value = {kind:string,string_value:string,number_value:f64,bool_value:i32,array_value:any[],object_keys:string[],object_values:any[]};
+
+function __json_make(kind_name: string, text_value: string, numeric_value: f64, boolean_bits: i32, items_value: any[], keys_value: string[], values_value: any[]): json_value {
+    return {
+        kind: kind_name,
+        string_value: text_value,
+        number_value: numeric_value,
+        bool_value: boolean_bits,
+        array_value: items_value,
+        object_keys: keys_value,
+        object_values: values_value,
+    };
 }
 
-function is_bool(value: any): bool {
-    return false;
+function null_value(): json_value {
+    return __json_make("null", "", 0.0, 0, [], [], []);
 }
 
-function is_number(value: any): bool {
-    return false;
+function bool_value(value: bool): json_value {
+    if value {
+        return __json_make("bool", "", 0.0, 1, [], [], []);
+    }
+
+    return __json_make("bool", "", 0.0, 0, [], [], []);
 }
 
-function is_string(value: any): bool {
-    return false;
+function number_value(value: f64): json_value {
+    return __json_make("number", "", value, 0, [], [], []);
 }
 
-function is_array(value: any): bool {
-    return false;
+function string_value(value: string): json_value {
+    return __json_make("string", value, 0.0, 0, [], [], []);
 }
 
-function is_object(value: any): bool {
-    return false;
+function array_value(values: any[]): json_value {
+    return __json_make("array", "", 0.0, 0, values, [], []);
 }
 
-function type_of(value: any): string {
-    return "";
+function object_value(keys: string[], values: any[]): json_value {
+    return __json_make("object", "", 0.0, 0, [], keys, values);
+}
+
+function is_null(value: json_value): bool {
+    return compare.equals(value.kind, "null");
+}
+
+function is_bool(value: json_value): bool {
+    return compare.equals(value.kind, "bool");
+}
+
+function is_number(value: json_value): bool {
+    return compare.equals(value.kind, "number");
+}
+
+function is_string(value: json_value): bool {
+    return compare.equals(value.kind, "string");
+}
+
+function is_array(value: json_value): bool {
+    return compare.equals(value.kind, "array");
+}
+
+function is_object(value: json_value): bool {
+    return compare.equals(value.kind, "object");
+}
+
+function type_of(value: json_value): string {
+    return value.kind;
 }

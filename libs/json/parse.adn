@@ -1,35 +1,304 @@
-function parse(text: string): any {
-    return "";
+import "adan/json/value";
+import "adan/string/internal";
+import "adan/string/access";
+import "adan/string/compare";
+
+type json_value = {kind:string,string_value:string,number_value:f64,bool_value:i32,array_value:any[],object_keys:string[],object_values:any[]};
+type json_parse_result = {value:json_value,next:i32,ok:bool};
+type json_string_result = {value:string,next:i32,ok:bool};
+type json_number_result = {value:f64,next:i32,ok:bool};
+
+function __json_skip_ws(text: string, index: i32): i32 {
+    set current: i32 = index;
+    set length: i32 = __string_length(text);
+
+    while current < length and __string_is_whitespace_code(__string_code(text, current)) {
+        current++;
+    }
+
+    return current;
 }
 
-function parse_object(text: string): any {
-    return "";
+function __json_parse_fail(index: i32): json_parse_result {
+    return { value: value.null_value(), next: index, ok: false };
 }
 
-function parse_array(text: string): any {
-    return "";
+function parse(text: string): json_value {
+    set result: json_parse_result = parse_value(text, 0);
+    if result.ok == false {
+        return value.null_value();
+    }
+
+    if __json_skip_ws(text, result.next) !== __string_length(text) {
+        return value.null_value();
+    }
+
+    return result.value;
+}
+
+function parse_object(text: string): json_value {
+    set parsed: json_value = parse(text);
+    if value.is_object(parsed) {
+        return parsed;
+    }
+
+    return value.null_value();
+}
+
+function parse_array(text: string): json_value {
+    set parsed: json_value = parse(text);
+    if value.is_array(parsed) {
+        return parsed;
+    }
+
+    return value.null_value();
 }
 
 function valid(text: string): bool {
-    return false;
+    set result: json_parse_result = parse_value(text, 0);
+    return result.ok and __json_skip_ws(text, result.next) == __string_length(text);
 }
 
-function parse_value(text: string, index: i32): {value:any,next:i32,ok:bool} {
-    return { value: "", next: index, ok: false };
+function parse_value(text: string, index: i32): json_parse_result {
+    set current: i32 = __json_skip_ws(text, index);
+    set length: i32 = __string_length(text);
+
+    if current >= length {
+        return __json_parse_fail(current);
+    }
+
+    set ch: string = __string_char(text, current);
+
+    if compare.equals(ch, "\"") {
+        set result: json_string_result = parse_string(text, current);
+        if result.ok == false {
+            return __json_parse_fail(current);
+        }
+
+        return { value: value.string_value(result.value), next: result.next, ok: true };
+    }
+
+    if compare.equals(ch, "{") {
+        return parse_object_inner(text, current);
+    }
+
+    if compare.equals(ch, "[") {
+        return parse_array_inner(text, current);
+    }
+
+    if current + 4 <= length and compare.equals(access.slice(text, current, current + 4), "true") {
+        return { value: value.bool_value(true), next: current + 4, ok: true };
+    }
+
+    if current + 5 <= length and compare.equals(access.slice(text, current, current + 5), "false") {
+        return { value: value.bool_value(false), next: current + 5, ok: true };
+    }
+
+    if current + 4 <= length and compare.equals(access.slice(text, current, current + 4), "null") {
+        return { value: value.null_value(), next: current + 4, ok: true };
+    }
+
+    set number_result: json_number_result = parse_number(text, current);
+    if number_result.ok {
+        return { value: value.number_value(number_result.value), next: number_result.next, ok: true };
+    }
+
+    return __json_parse_fail(current);
 }
 
-function parse_string(text: string, index: i32): {value:string,next:i32,ok:bool} {
-    return { value: "", next: index, ok: false };
+function parse_string(text: string, index: i32): json_string_result {
+    set length: i32 = __string_length(text);
+    if index >= length or compare.equals(__string_char(text, index), "\"") == false {
+        return { value: "", next: index, ok: false };
+    }
+
+    set current: i32 = index + 1;
+    set result: string = "";
+
+    while current < length {
+        set ch: string = __string_char(text, current);
+
+        if compare.equals(ch, "\"") {
+            return { value: result, next: current + 1, ok: true };
+        }
+
+        if compare.equals(ch, "\\") {
+            current++;
+            if current >= length {
+                return { value: "", next: current, ok: false };
+            }
+
+            set escaped: string = __string_char(text, current);
+            if compare.equals(escaped, "\"") {
+                result += "\"";
+            }
+            else if compare.equals(escaped, "\\") {
+                result += "\\";
+            }
+            else if compare.equals(escaped, "/") {
+                result += "/";
+            }
+            else if compare.equals(escaped, "b") {
+                result += __string_from_code(8);
+            }
+            else if compare.equals(escaped, "f") {
+                result += __string_from_code(12);
+            }
+            else if compare.equals(escaped, "n") {
+                result += "\n";
+            }
+            else if compare.equals(escaped, "r") {
+                result += "\r";
+            }
+            else if compare.equals(escaped, "t") {
+                result += "\t";
+            }
+            else {
+                return { value: "", next: current, ok: false };
+            }
+        }
+        else {
+            result += ch;
+        }
+
+        current++;
+    }
+
+    return { value: "", next: current, ok: false };
 }
 
-function parse_number(text: string, index: i32): {value:f64,next:i32,ok:bool} {
-    return { value: 0.0, next: index, ok: false };
+function parse_number(text: string, index: i32): json_number_result {
+    set current: i32 = index;
+    set length: i32 = __string_length(text);
+    set saw_digit: bool = false;
+
+    if current < length and compare.equals(__string_char(text, current), "-") {
+        current++;
+    }
+
+    while current < length and __string_is_numeric_code(__string_code(text, current)) {
+        saw_digit = true;
+        current++;
+    }
+
+    if current < length and compare.equals(__string_char(text, current), ".") {
+        current++;
+        while current < length and __string_is_numeric_code(__string_code(text, current)) {
+            saw_digit = true;
+            current++;
+        }
+    }
+
+    if current < length and (compare.equals(__string_char(text, current), "e") or compare.equals(__string_char(text, current), "E")) {
+        set exponent_start: i32 = current;
+        current++;
+
+        if current < length and (compare.equals(__string_char(text, current), "+") or compare.equals(__string_char(text, current), "-")) {
+            current++;
+        }
+
+        set exponent_digits: bool = false;
+        while current < length and __string_is_numeric_code(__string_code(text, current)) {
+            exponent_digits = true;
+            current++;
+        }
+
+        if exponent_digits == false {
+            return { value: 0.0, next: exponent_start, ok: false };
+        }
+    }
+
+    if saw_digit == false {
+        return { value: 0.0, next: index, ok: false };
+    }
+
+    set slice: string = access.slice(text, index, current);
+    return { value: (f64)slice, next: current, ok: true };
 }
 
-function parse_array_inner(text: string, index: i32): {value:any,next:i32,ok:bool} {
-    return { value: [], next: index, ok: false };
+function parse_array_inner(text: string, index: i32): json_parse_result {
+    set length: i32 = __string_length(text);
+    if index >= length or compare.equals(__string_char(text, index), "[") == false {
+        return __json_parse_fail(index);
+    }
+
+    set current: i32 = __json_skip_ws(text, index + 1);
+    set items: any[] = [];
+
+    if current < length and compare.equals(__string_char(text, current), "]") {
+        return { value: value.array_value(items), next: current + 1, ok: true };
+    }
+
+    while current < length {
+        set item: json_parse_result = parse_value(text, current);
+        if item.ok == false {
+            return __json_parse_fail(current);
+        }
+
+        items.push(item.value);
+        current = __json_skip_ws(text, item.next);
+
+        if current < length and compare.equals(__string_char(text, current), ",") {
+            current = __json_skip_ws(text, current + 1);
+            continue;
+        }
+
+        if current < length and compare.equals(__string_char(text, current), "]") {
+            return { value: value.array_value(items), next: current + 1, ok: true };
+        }
+
+        return __json_parse_fail(current);
+    }
+
+    return __json_parse_fail(current);
 }
 
-function parse_object_inner(text: string, index: i32): {value:any,next:i32,ok:bool} {
-    return { value: {}, next: index, ok: false };
+function parse_object_inner(text: string, index: i32): json_parse_result {
+    set length: i32 = __string_length(text);
+    if index >= length or compare.equals(__string_char(text, index), "{") == false {
+        return __json_parse_fail(index);
+    }
+
+    set current: i32 = __json_skip_ws(text, index + 1);
+    set keys: string[] = [];
+    set values: any[] = [];
+
+    if current < length and compare.equals(__string_char(text, current), "}") {
+        return { value: value.object_value(keys, values), next: current + 1, ok: true };
+    }
+
+    while current < length {
+        set key_result: json_string_result = parse_string(text, current);
+        if key_result.ok == false {
+            return __json_parse_fail(current);
+        }
+
+        current = __json_skip_ws(text, key_result.next);
+        if current >= length or compare.equals(__string_char(text, current), ":") == false {
+            return __json_parse_fail(current);
+        }
+
+        current = __json_skip_ws(text, current + 1);
+        set child: json_parse_result = parse_value(text, current);
+        if child.ok == false {
+            return __json_parse_fail(current);
+        }
+
+        keys.push(key_result.value);
+        values.push(child.value);
+        current = __json_skip_ws(text, child.next);
+
+        if current < length and compare.equals(__string_char(text, current), ",") {
+            current = __json_skip_ws(text, current + 1);
+            continue;
+        }
+
+        if current < length and compare.equals(__string_char(text, current), "}") {
+            return { value: value.object_value(keys, values), next: current + 1, ok: true };
+        }
+
+        return __json_parse_fail(current);
+    }
+
+    return __json_parse_fail(current);
 }
