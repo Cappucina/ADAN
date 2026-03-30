@@ -1,0 +1,93 @@
+import "adan/process";
+import "adan/string/internal";
+import "adan/string/access";
+import "adan/string/compare";
+
+function __path_is_sep_char(value: string): bool {
+	return compare.equals(value, "/") or compare.equals(value, "\\");
+}
+
+function __path_has_drive_prefix(value: string): bool {
+	if __string_length(value) < 2 {
+		return false;
+	}
+
+	set first: i32 = __string_code(value, 0);
+	set second: string = __string_char(value, 1);
+
+	return ((first >= 65 and first <= 90) or (first >= 97 and first <= 122)) and compare.equals(second, ":");
+}
+
+function __path_trim_leading_seps(value: string): string {
+	set start: i32 = 0;
+	set length: i32 = __string_length(value);
+
+	while start < length and __path_is_sep_char(__string_char(value, start)) {
+		start++;
+	}
+
+	return access.slice(value, start, length);
+}
+
+function sep(): string {
+	if process.is_windows() {
+		return "\\";
+	}
+
+	return "/";
+}
+
+function list_sep(): string {
+	if process.is_windows() {
+		return ";";
+	}
+
+	return ":";
+}
+
+function is_abs(value: string): bool {
+	set length: i32 = __string_length(value);
+	if length == 0 {
+		return false;
+	}
+
+	if __path_is_sep_char(__string_char(value, 0)) {
+		return true;
+	}
+
+	if __path_has_drive_prefix(value) {
+		return length >= 3 and __path_is_sep_char(__string_char(value, 2));
+	}
+
+	return false;
+}
+
+function is_rel(value: string): bool {
+	return is_abs(value) == false;
+}
+
+function join(base: string, ...parts: string): string {
+	set result: string = "" + base;
+	set native_sep: string = sep();
+
+	for set i: i32 = 0; i < parts.length(); i++ {
+		set part: string = parts[i];
+
+		if __string_length(part) == 0 {
+			continue;
+		}
+
+		if __string_length(result) == 0 or is_abs(part) {
+			result = part;
+			continue;
+		}
+
+		if __path_is_sep_char(__string_char(result, __string_length(result) - 1)) == false {
+			result += native_sep;
+		}
+
+		result += __path_trim_leading_seps(part);
+	}
+
+	return result;
+}

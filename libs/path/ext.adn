@@ -1,0 +1,38 @@
+import "adan/path/parts";
+import "adan/string/internal";
+import "adan/string/access";
+import "adan/string/compare";
+
+function __path_normalize_ext(extension: string): string {
+	if __string_length(extension) == 0 {
+		return "";
+	}
+
+	if compare.equals(__string_char(extension, 0), ".") {
+		return extension;
+	}
+
+	return "." + extension;
+}
+
+function has_ext(value: string): bool {
+	return __string_length(parts.ext(value)) > 0;
+}
+
+function with_ext(value: string, extension: string): string {
+	set normalized_ext: string = __path_normalize_ext(extension);
+	return without_ext(value) + normalized_ext;
+}
+
+function without_ext(value: string): string {
+	set extension: string = parts.ext(value);
+	if __string_length(extension) == 0 {
+		return "" + value;
+	}
+
+	return access.slice(value, 0, __string_length(value) - __string_length(extension));
+}
+
+function matches_ext(value: string, extension: string): bool {
+	return compare.equals(parts.ext(value), __path_normalize_ext(extension));
+}

@@ -1,0 +1,182 @@
+import "adan/path/normalize";
+import "adan/string/internal";
+import "adan/string/access";
+import "adan/string/compare";
+
+function __path_root_length(value: string): i32 {
+	set length: i32 = __string_length(value);
+	if length == 0 {
+		return 0;
+	}
+
+	if length >= 2 {
+		set first: i32 = __string_code(value, 0);
+		if ((first >= 65 and first <= 90) or (first >= 97 and first <= 122)) and compare.equals(__string_char(value, 1), ":") {
+			if length >= 3 and compare.equals(__string_char(value, 2), "/") {
+				return 3;
+			}
+
+			return 2;
+		}
+	}
+
+	if compare.equals(__string_char(value, 0), "/") {
+		if length >= 2 and compare.equals(__string_char(value, 1), "/") {
+			return 2;
+		}
+
+		return 1;
+	}
+
+	return 0;
+}
+
+function __path_effective_end(value: string): i32 {
+	set slash_value: string = normalize.to_slash(value);
+	set root_length: i32 = __path_root_length(slash_value);
+	set end: i32 = __string_length(slash_value);
+
+	while end > root_length and compare.equals(__string_char(slash_value, end - 1), "/") {
+		end--;
+	}
+
+	return end;
+}
+
+function dirname(value: string): string {
+	set slash_value: string = normalize.to_slash(value);
+	set length: i32 = __string_length(slash_value);
+
+	if length == 0 {
+		return ".";
+	}
+
+	set root_length: i32 = __path_root_length(slash_value);
+	set end: i32 = __path_effective_end(slash_value);
+
+	if end == root_length {
+		if root_length == 0 {
+			return ".";
+		}
+
+		return normalize.to_native(access.slice(slash_value, 0, root_length));
+	}
+
+	set i: i32 = end - 1;
+	while i >= root_length {
+		if compare.equals(__string_char(slash_value, i), "/") {
+			if i == 0 {
+				return normalize.to_native("/");
+			}
+
+			return normalize.to_native(access.slice(slash_value, 0, i));
+		}
+
+		i--;
+	}
+
+	if root_length > 0 {
+		return normalize.to_native(access.slice(slash_value, 0, root_length));
+	}
+
+	return ".";
+}
+
+function basename(value: string): string {
+	set slash_value: string = normalize.to_slash(value);
+	set length: i32 = __string_length(slash_value);
+
+	if length == 0 {
+		return "";
+	}
+
+	set root_length: i32 = __path_root_length(slash_value);
+	set end: i32 = __path_effective_end(slash_value);
+
+	if end == root_length and root_length > 0 {
+		return normalize.to_native(access.slice(slash_value, 0, root_length));
+	}
+
+	set i: i32 = end - 1;
+	while i >= root_length {
+		if compare.equals(__string_char(slash_value, i), "/") {
+			return normalize.to_native(access.slice(slash_value, i + 1, end));
+		}
+
+		i--;
+	}
+
+	return normalize.to_native(access.slice(slash_value, root_length, end));
+}
+
+function stem(value: string): string {
+	set name: string = basename(value);
+	set extension: string = ext(name);
+
+	if __string_length(extension) == 0 {
+		return name;
+	}
+
+	return access.slice(name, 0, __string_length(name) - __string_length(extension));
+}
+
+function ext(value: string): string {
+	set name: string = basename(value);
+	set length: i32 = __string_length(name);
+
+	if length <= 1 {
+		return "";
+	}
+
+	set i: i32 = length - 1;
+	while i > 0 {
+		if compare.equals(__string_char(name, i), ".") {
+			return access.slice(name, i, length);
+		}
+
+		i--;
+	}
+
+	return "";
+}
+
+function split(value: string): string[] {
+	set slash_value: string = normalize.to_slash(normalize.trim_trailing_sep(value));
+	set result: string[] = [];
+	set root_length: i32 = __path_root_length(slash_value);
+
+	if __string_length(slash_value) == 0 {
+		return result;
+	}
+
+	if root_length > 0 {
+		result.push(normalize.to_native(access.slice(slash_value, 0, root_length)));
+	}
+
+	set remainder: string = access.slice(slash_value, root_length, __string_length(slash_value));
+	set current: string = "";
+
+	for set i: i32 = 0; i < __string_length(remainder); i++ {
+		set ch: string = __string_char(remainder, i);
+
+		if compare.equals(ch, "/") {
+			if __string_length(current) > 0 {
+				result.push(normalize.to_native(current));
+				current = "";
+			}
+		}
+		else {
+			current += ch;
+		}
+	}
+
+	if __string_length(current) > 0 {
+		result.push(normalize.to_native(current));
+	}
+
+	return result;
+}
+
+function parent(value: string): string {
+	return dirname(value);
+}
