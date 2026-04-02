@@ -33,6 +33,8 @@ $ xmake run           # Compile the default sample with the built compiler
 $ ./samples/testing
 ```
 
+If OpenSSL is installed outside the default search paths, set `OPENSSL_ROOT_DIR` or the pair `OPENSSL_INCLUDE_DIR` and `OPENSSL_LIB_DIR` before running `xmake` or `adan`.
+
 ## XMake Commands
 ```bash
 $ xmake               # Build the ADAN compiler.

@@ -8,6 +8,109 @@ if is_plat("windows") then
 	add_defines("strtok_r=strtok_s", "strdup=_strdup")
 end
 
+local function table_contains(list, value)
+	for _, item in ipairs(list) do
+		if item == value then
+			return true
+		end
+	end
+	return false
+end
+
+local function push_unique_path(list, value)
+	if value and value ~= "" and os.isdir(value) and not table_contains(list, value) then
+		table.insert(list, value)
+	end
+end
+
+local function detect_openssl_config()
+	local include_dirs = {}
+	local link_dirs = {}
+	local libs = {}
+
+	local function add_root(root)
+		if not root or root == "" then
+			return
+		end
+
+		push_unique_path(include_dirs, path.join(root, "include"))
+
+		local lib_candidates = {
+			path.join(root, "lib"),
+			path.join(root, "lib64"),
+		}
+
+		if is_plat("windows") then
+			table.insert(lib_candidates, path.join(root, "lib", "VC", "x64", "MD"))
+			table.insert(lib_candidates, path.join(root, "lib", "VC", "x64", "MT"))
+			table.insert(lib_candidates, path.join(root, "lib", "VC", "x86", "MD"))
+			table.insert(lib_candidates, path.join(root, "lib", "VC", "x86", "MT"))
+			table.insert(lib_candidates, path.join(root, "lib", "VC", "static"))
+			table.insert(lib_candidates, path.join(root, "lib", "MinGW"))
+		end
+
+		for _, candidate in ipairs(lib_candidates) do
+			push_unique_path(link_dirs, candidate)
+		end
+	end
+
+	add_root(os.getenv("OPENSSL_ROOT_DIR"))
+	add_root(os.getenv("OPENSSL_DIR"))
+	push_unique_path(include_dirs, os.getenv("OPENSSL_INCLUDE_DIR"))
+	push_unique_path(link_dirs, os.getenv("OPENSSL_LIB_DIR"))
+
+	if is_plat("macosx") then
+		local brew_prefix = os.getenv("HOMEBREW_PREFIX")
+		if brew_prefix and brew_prefix ~= "" then
+			add_root(path.join(brew_prefix, "opt", "openssl@3"))
+			add_root(path.join(brew_prefix, "opt", "openssl"))
+		end
+
+		add_root("/opt/homebrew/opt/openssl@3")
+		add_root("/opt/homebrew/opt/openssl")
+		add_root("/usr/local/opt/openssl@3")
+		add_root("/usr/local/opt/openssl")
+		add_root("/opt/local/libexec/openssl3")
+		add_root("/opt/local/libexec/openssl11")
+	elseif is_plat("windows") then
+		local program_files = os.getenv("ProgramFiles")
+		local program_files_x86 = os.getenv("ProgramFiles(x86)")
+		local program_w6432 = os.getenv("ProgramW6432")
+		local userprofile = os.getenv("USERPROFILE")
+
+		add_root("C:/OpenSSL-Win64")
+		add_root("C:/OpenSSL-Win32")
+
+		if program_files and program_files ~= "" then
+			add_root(path.join(program_files, "OpenSSL-Win64"))
+			add_root(path.join(program_files, "OpenSSL-Win32"))
+		end
+		if program_files_x86 and program_files_x86 ~= "" then
+			add_root(path.join(program_files_x86, "OpenSSL-Win32"))
+		end
+		if program_w6432 and program_w6432 ~= "" then
+			add_root(path.join(program_w6432, "OpenSSL-Win64"))
+		end
+		if userprofile and userprofile ~= "" then
+			add_root(path.join(userprofile, "scoop", "apps", "openssl", "current"))
+		end
+	end
+
+	if is_plat("windows") then
+		table.insert(libs, "libcrypto")
+	else
+		table.insert(libs, "crypto")
+	end
+
+	return {
+		include_dirs = include_dirs,
+		link_dirs = link_dirs,
+		libs = libs,
+	}
+end
+
+local openssl_config = detect_openssl_config()
+
 target("adan_linker")
 set_kind("static")
 add_files("src/backend/linker/linker.c")
@@ -20,8 +123,14 @@ add_files("libs/**.c")
 add_deps("adan_linker")
 add_includedirs("src", "libs")
 add_includedirs("build/.gens/adan", { public = true })
-if is_plat("linux") or is_plat("macosx") then
-	add_links("crypto")
+if #openssl_config.include_dirs > 0 then
+	add_includedirs(table.unpack(openssl_config.include_dirs))
+end
+if #openssl_config.link_dirs > 0 then
+	add_linkdirs(table.unpack(openssl_config.link_dirs))
+end
+if #openssl_config.libs > 0 then
+	add_links(table.unpack(openssl_config.libs))
 end
 set_rundir(".")
 set_runargs("-f", "samples/testing.adn", "-o", "samples/testing")

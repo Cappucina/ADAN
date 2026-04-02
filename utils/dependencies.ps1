@@ -140,9 +140,9 @@ function Install-DevPackages {
 
 function Get-PackageList {
     switch ($script:PkgMgr) {
-        "choco"  { return @("llvm", "less", "xmake") }
-        "scoop"  { return @("gcc", "llvm", "xmake") }
-        "winget" { return @("LLVM.LLVM", "xmake.xmake") }
+        "choco"  { return @("llvm", "less", "xmake", "openssl") }
+        "scoop"  { return @("gcc", "llvm", "xmake", "openssl") }
+        "winget" { return @("LLVM.LLVM", "xmake.xmake", "ShiningLight.OpenSSL.Light") }
         "brew"   { return @("clang-format", "xmake", "openssl") }
         "apt"    { return @("build-essential", "clang-format", "gdb", "xmake", "libssl-dev") }
         "dnf"    { return @("gcc", "clang-tools-extra", "gdb", "xmake", "openssl-devel") }
@@ -190,6 +190,7 @@ function Test-AllDependencies {
 
             if (-not (Test-Dependency "clang-format"  "clang-format")) { $allPresent = $false }
             if (-not (Test-Dependency "xmake"         "XMake"))        { $allPresent = $false }
+            if (-not (Test-Dependency "openssl"       "OpenSSL"))      { $allPresent = $false }
             if (-not (Test-Dependency "gdb"           "GDB debugger")) {
                 Write-Warn "GDB not found - use Visual Studio debugger or install MinGW"
             }
@@ -198,6 +199,7 @@ function Test-AllDependencies {
             if (-not (Test-Dependency "clang"        "Clang compiler")) { $allPresent = $false }
             if (-not (Test-Dependency "clang-format" "clang-format"))   { $allPresent = $false }
             if (-not (Test-Dependency "xmake"        "XMake"))          { $allPresent = $false }
+            if (-not (Test-Dependency "openssl"      "OpenSSL"))        { $allPresent = $false }
             if (-not (Test-Dependency "lldb"         "LLDB debugger")) {
                 Write-Warn "LLDB is not installed - run: xcode-select --install"
             }
@@ -207,6 +209,7 @@ function Test-AllDependencies {
             if (-not (Test-Dependency "clang-format" "clang-format"))  { $allPresent = $false }
             if (-not (Test-Dependency "xmake"        "XMake"))         { $allPresent = $false }
             if (-not (Test-Dependency "gdb"          "GDB debugger"))  { $allPresent = $false }
+            if (-not (Test-Dependency "openssl"      "OpenSSL"))       { $allPresent = $false }
         }
     }
 

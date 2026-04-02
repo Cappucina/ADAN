@@ -53,6 +53,88 @@ static int path_exists(const char* path)
 #endif
 }
 
+static int is_path_separator(char ch)
+{
+	return ch == '/' || ch == '\\';
+}
+
+static const char* path_basename_ptr(const char* path)
+{
+	const char* base = path;
+
+	if (!path)
+	{
+		return NULL;
+	}
+
+	for (const char* cursor = path; *cursor; ++cursor)
+	{
+		if (is_path_separator(*cursor))
+		{
+			base = cursor + 1;
+		}
+	}
+
+	return base;
+}
+
+static int path_dirname(const char* path, char* buffer, size_t buffer_size)
+{
+	size_t length;
+
+	if (!path || !buffer || buffer_size == 0)
+	{
+		return -1;
+	}
+
+	length = strlen(path);
+	while (length > 0 && !is_path_separator(path[length - 1]))
+	{
+		length--;
+	}
+	while (length > 1 && is_path_separator(path[length - 1]))
+	{
+		length--;
+	}
+
+	if (length == 0)
+	{
+		if (buffer_size < 2)
+		{
+			return -1;
+		}
+		buffer[0] = '.';
+		buffer[1] = '\0';
+		return 0;
+	}
+
+	if (length + 1 > buffer_size)
+	{
+		return -1;
+	}
+
+	memcpy(buffer, path, length);
+	buffer[length] = '\0';
+	return 0;
+}
+
+static int path_join(char* buffer, size_t buffer_size, const char* left,
+	                 const char* right)
+{
+	int written;
+	int has_separator;
+
+	if (!buffer || buffer_size == 0 || !left || !right)
+	{
+		return -1;
+	}
+
+	has_separator = left[0] != '\0' && is_path_separator(left[strlen(left) - 1]);
+	written = snprintf(buffer, buffer_size, has_separator ? "%s%s" : "%s/%s",
+	                  left, right);
+	return written >= 0 && (size_t)written < buffer_size ? 0 : -1;
+}
+
 static int run_cmd(char* const argv[])
 {
 	if (!argv || !argv[0])
@@ -230,6 +312,653 @@ typedef struct
 	size_t count;
 	size_t capacity;
 } arg_list;
+
+static int arg_list_append(arg_list* list, const char* value);
+static void arg_list_free(arg_list* list);
+
+static int arg_list_append_flagged_dir(arg_list* list, const char* flag,
+	                                   const char* path)
+{
+	if (!list || !flag || !path || path[0] == '\0' || !path_is_dir(path))
+	{
+		return 0;
+	}
+
+	if (arg_list_append(list, flag) != 0 || arg_list_append(list, path) != 0)
+	{
+		return -1;
+	}
+
+	return 0;
+}
+
+static int csv_mentions_crypto(const char* csv)
+{
+	char* dup;
+	char* saveptr = NULL;
+	char* tok;
+	int found = 0;
+
+	if (!csv || csv[0] == '\0')
+	{
+		return 0;
+	}
+
+	dup = strdup(csv);
+	if (!dup)
+	{
+		return 0;
+	}
+
+	tok = strtok_r(dup, ",", &saveptr);
+	while (tok)
+	{
+		char* item = trim_whitespace(tok);
+		const char* base = path_basename_ptr(item);
+
+		if (strcmp(item, "crypto") == 0 || strcmp(item, "libcrypto") == 0 ||
+		    strcmp(item, "-lcrypto") == 0 || strcmp(item, "-llibcrypto") == 0 ||
+		    (base && (strcmp(base, "libcrypto.lib") == 0 ||
+		              strcmp(base, "crypto.lib") == 0 ||
+		              strcmp(base, "libcrypto.a") == 0 ||
+		              strcmp(base, "libcrypto.so") == 0 ||
+		              strcmp(base, "libcrypto.dylib") == 0)))
+		{
+			found = 1;
+			break;
+		}
+
+		tok = strtok_r(NULL, ",", &saveptr);
+	}
+
+	free(dup);
+	return found;
+}
+
+static int append_inferred_include_from_search_path(arg_list* list,
+	                                                const char* search_path)
+{
+	char candidate[1024];
+	char parent[1024];
+	const char* base;
+
+	if (!list || !search_path || search_path[0] == '\0' || !path_is_dir(search_path))
+	{
+		return 0;
+	}
+
+	base = path_basename_ptr(search_path);
+	if (base && strcmp(base, "include") == 0)
+	{
+		return arg_list_append_flagged_dir(list, "-I", search_path);
+	}
+
+	if (path_join(candidate, sizeof(candidate), search_path, "include") == 0 &&
+	    arg_list_append_flagged_dir(list, "-I", candidate) != 0)
+	{
+		return -1;
+	}
+
+	if (base && (strcmp(base, "lib") == 0 || strcmp(base, "lib64") == 0 ||
+	             strcmp(base, "Lib") == 0 || strcmp(base, "libs") == 0 ||
+	             strcmp(base, "Libraries") == 0))
+	{
+		if (path_dirname(search_path, parent, sizeof(parent)) == 0 &&
+		    path_join(candidate, sizeof(candidate), parent, "include") == 0 &&
+		    arg_list_append_flagged_dir(list, "-I", candidate) != 0)
+		{
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int arg_list_append_inferred_include_paths(arg_list* list, const char* csv)
+{
+	char* dup;
+	char* saveptr = NULL;
+	char* tok;
+
+	if (!csv || csv[0] == '\0')
+	{
+		return 0;
+	}
+
+	dup = strdup(csv);
+	if (!dup)
+	{
+		return -1;
+	}
+
+	tok = strtok_r(dup, ",", &saveptr);
+	while (tok)
+	{
+		char* path = trim_whitespace(tok);
+		if (path[0] != '\0' && append_inferred_include_from_search_path(list, path) != 0)
+		{
+			free(dup);
+			return -1;
+		}
+		tok = strtok_r(NULL, ",", &saveptr);
+	}
+
+	free(dup);
+	return 0;
+}
+
+static int append_openssl_root_dirs(arg_list* include_args, arg_list* link_args,
+	                                const char* root)
+{
+	char candidate[1024];
+	const char* lib_subdirs[] = {
+		"lib",
+		"lib64",
+#ifdef _WIN32
+		"lib/VC/x64/MD",
+		"lib/VC/x64/MT",
+		"lib/VC/x86/MD",
+		"lib/VC/x86/MT",
+		"lib/VC/static",
+		"lib/MinGW",
+#endif
+	};
+
+	if (!root || root[0] == '\0')
+	{
+		return 0;
+	}
+
+	if (include_args && path_join(candidate, sizeof(candidate), root, "include") == 0 &&
+	    arg_list_append_flagged_dir(include_args, "-I", candidate) != 0)
+	{
+		return -1;
+	}
+
+	if (link_args)
+	{
+		for (size_t i = 0; i < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++i)
+		{
+			if (path_join(candidate, sizeof(candidate), root, lib_subdirs[i]) == 0 &&
+			    arg_list_append_flagged_dir(link_args, "-L", candidate) != 0)
+			{
+				return -1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int append_openssl_detected_dirs(arg_list* include_args, arg_list* link_args)
+{
+	const char* env;
+	char candidate[1024];
+
+	env = getenv("OPENSSL_ROOT_DIR");
+	if (append_openssl_root_dirs(include_args, link_args, env) != 0)
+	{
+		return -1;
+	}
+
+	env = getenv("OPENSSL_DIR");
+	if (append_openssl_root_dirs(include_args, link_args, env) != 0)
+	{
+		return -1;
+	}
+
+	env = getenv("OPENSSL_INCLUDE_DIR");
+	if (include_args && arg_list_append_flagged_dir(include_args, "-I", env) != 0)
+	{
+		return -1;
+	}
+
+	env = getenv("OPENSSL_LIB_DIR");
+	if (link_args && arg_list_append_flagged_dir(link_args, "-L", env) != 0)
+	{
+		return -1;
+	}
+
+#ifdef __APPLE__
+	env = getenv("HOMEBREW_PREFIX");
+	if (env && env[0] != '\0')
+	{
+		if (path_join(candidate, sizeof(candidate), env, "opt/openssl@3") == 0 &&
+		    append_openssl_root_dirs(include_args, link_args, candidate) != 0)
+		{
+			return -1;
+		}
+		if (path_join(candidate, sizeof(candidate), env, "opt/openssl") == 0 &&
+		    append_openssl_root_dirs(include_args, link_args, candidate) != 0)
+		{
+			return -1;
+		}
+	}
+
+	if (append_openssl_root_dirs(include_args, link_args,
+	                            "/opt/homebrew/opt/openssl@3") != 0 ||
+	    append_openssl_root_dirs(include_args, link_args,
+	                            "/opt/homebrew/opt/openssl") != 0 ||
+	    append_openssl_root_dirs(include_args, link_args,
+	                            "/usr/local/opt/openssl@3") != 0 ||
+	    append_openssl_root_dirs(include_args, link_args,
+	                            "/usr/local/opt/openssl") != 0 ||
+	    append_openssl_root_dirs(include_args, link_args,
+	                            "/opt/local/libexec/openssl3") != 0 ||
+	    append_openssl_root_dirs(include_args, link_args,
+	                            "/opt/local/libexec/openssl11") != 0)
+	{
+		return -1;
+	}
+#endif
+
+#ifdef _WIN32
+	env = getenv("ProgramFiles");
+	if (env && env[0] != '\0')
+	{
+		if (path_join(candidate, sizeof(candidate), env, "OpenSSL-Win64") == 0 &&
+		    append_openssl_root_dirs(include_args, link_args, candidate) != 0)
+		{
+			return -1;
+		}
+		if (path_join(candidate, sizeof(candidate), env, "OpenSSL-Win32") == 0 &&
+		    append_openssl_root_dirs(include_args, link_args, candidate) != 0)
+		{
+			return -1;
+		}
+	}
+
+	env = getenv("ProgramFiles(x86)");
+	if (env && env[0] != '\0' &&
+	    path_join(candidate, sizeof(candidate), env, "OpenSSL-Win32") == 0 &&
+	    append_openssl_root_dirs(include_args, link_args, candidate) != 0)
+	{
+		return -1;
+	}
+
+	env = getenv("ProgramW6432");
+	if (env && env[0] != '\0' &&
+	    path_join(candidate, sizeof(candidate), env, "OpenSSL-Win64") == 0 &&
+	    append_openssl_root_dirs(include_args, link_args, candidate) != 0)
+	{
+		return -1;
+	}
+
+	env = getenv("USERPROFILE");
+	if (env && env[0] != '\0' &&
+	    path_join(candidate, sizeof(candidate), env, "scoop/apps/openssl/current") == 0 &&
+	    append_openssl_root_dirs(include_args, link_args, candidate) != 0)
+	{
+		return -1;
+	}
+
+	if (append_openssl_root_dirs(include_args, link_args, "C:/OpenSSL-Win64") != 0 ||
+	    append_openssl_root_dirs(include_args, link_args, "C:/OpenSSL-Win32") != 0)
+	{
+		return -1;
+	}
+#endif
+
+	return 0;
+}
+
+#ifdef _WIN32
+static int find_library_in_directory(const char* directory,
+	                                 const char* const* filenames,
+	                                 size_t filename_count,
+	                                 char* buffer,
+	                                 size_t buffer_size)
+{
+	char candidate[1024];
+
+	if (!directory || directory[0] == '\0' || !path_is_dir(directory))
+	{
+		return 0;
+	}
+
+	for (size_t i = 0; i < filename_count; ++i)
+	{
+		if (path_join(candidate, sizeof(candidate), directory, filenames[i]) == 0 &&
+		    path_exists(candidate))
+		{
+			snprintf(buffer, buffer_size, "%s", candidate);
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static int find_library_in_csv_directories(const char* csv,
+	                                       const char* const* filenames,
+	                                       size_t filename_count,
+	                                       char* buffer,
+	                                       size_t buffer_size)
+{
+	char* dup;
+	char* saveptr = NULL;
+	char* tok;
+
+	if (!csv || csv[0] == '\0')
+	{
+		return 0;
+	}
+
+	dup = strdup(csv);
+	if (!dup)
+	{
+		return 0;
+	}
+
+	tok = strtok_r(dup, ",", &saveptr);
+	while (tok)
+	{
+		char* directory = trim_whitespace(tok);
+		if (directory[0] != '\0' &&
+		    find_library_in_directory(directory, filenames, filename_count, buffer,
+		                             buffer_size))
+		{
+			free(dup);
+			return 1;
+		}
+		tok = strtok_r(NULL, ",", &saveptr);
+	}
+
+	free(dup);
+	return 0;
+}
+
+static int find_windows_openssl_library(const char* search_paths_csv,
+	                                   char* buffer,
+	                                   size_t buffer_size)
+{
+	const char* filenames[] = {"libcrypto.lib", "crypto.lib"};
+	const char* env;
+	char candidate[1024];
+	const char* const roots[] = {
+		"C:/OpenSSL-Win64",
+		"C:/OpenSSL-Win32",
+	};
+
+	if (!buffer || buffer_size == 0)
+	{
+		return 0;
+	}
+
+	if (find_library_in_csv_directories(search_paths_csv, filenames,
+	                                   sizeof(filenames) / sizeof(filenames[0]),
+	                                   buffer, buffer_size))
+	{
+		return 1;
+	}
+
+	env = getenv("OPENSSL_LIB_DIR");
+	if (find_library_in_directory(env, filenames,
+	                              sizeof(filenames) / sizeof(filenames[0]),
+	                              buffer, buffer_size))
+	{
+		return 1;
+	}
+
+	env = getenv("OPENSSL_ROOT_DIR");
+	if (env && append_openssl_root_dirs(NULL, NULL, env) == 0)
+	{
+		const char* lib_subdirs[] = {
+			"lib",
+			"lib64",
+			"lib/VC/x64/MD",
+			"lib/VC/x64/MT",
+			"lib/VC/x86/MD",
+			"lib/VC/x86/MT",
+			"lib/VC/static",
+			"lib/MinGW",
+		};
+		for (size_t i = 0; i < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++i)
+		{
+			if (path_join(candidate, sizeof(candidate), env, lib_subdirs[i]) == 0 &&
+			    find_library_in_directory(candidate, filenames,
+			                          sizeof(filenames) / sizeof(filenames[0]),
+			                          buffer, buffer_size))
+			{
+				return 1;
+			}
+		}
+	}
+
+	env = getenv("OPENSSL_DIR");
+	if (env)
+	{
+		const char* lib_subdirs[] = {
+			"lib",
+			"lib64",
+			"lib/VC/x64/MD",
+			"lib/VC/x64/MT",
+			"lib/VC/x86/MD",
+			"lib/VC/x86/MT",
+			"lib/VC/static",
+			"lib/MinGW",
+		};
+		for (size_t i = 0; i < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++i)
+		{
+			if (path_join(candidate, sizeof(candidate), env, lib_subdirs[i]) == 0 &&
+			    find_library_in_directory(candidate, filenames,
+			                          sizeof(filenames) / sizeof(filenames[0]),
+			                          buffer, buffer_size))
+			{
+				return 1;
+			}
+		}
+	}
+
+	env = getenv("ProgramFiles");
+	if (env)
+	{
+		if (path_join(candidate, sizeof(candidate), env, "OpenSSL-Win64") == 0)
+		{
+			const char* lib_subdirs[] = {
+				"lib",
+				"lib64",
+				"lib/VC/x64/MD",
+				"lib/VC/x64/MT",
+				"lib/VC/x86/MD",
+				"lib/VC/x86/MT",
+				"lib/VC/static",
+				"lib/MinGW",
+			};
+			for (size_t i = 0; i < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++i)
+			{
+				char lib_dir[1024];
+				if (path_join(lib_dir, sizeof(lib_dir), candidate, lib_subdirs[i]) == 0 &&
+				    find_library_in_directory(lib_dir, filenames,
+				                          sizeof(filenames) / sizeof(filenames[0]),
+				                          buffer, buffer_size))
+				{
+					return 1;
+				}
+			}
+		}
+		if (path_join(candidate, sizeof(candidate), env, "OpenSSL-Win32") == 0)
+		{
+			const char* lib_subdirs[] = {
+				"lib",
+				"lib64",
+				"lib/VC/x64/MD",
+				"lib/VC/x64/MT",
+				"lib/VC/x86/MD",
+				"lib/VC/x86/MT",
+				"lib/VC/static",
+				"lib/MinGW",
+			};
+			for (size_t i = 0; i < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++i)
+			{
+				char lib_dir[1024];
+				if (path_join(lib_dir, sizeof(lib_dir), candidate, lib_subdirs[i]) == 0 &&
+				    find_library_in_directory(lib_dir, filenames,
+				                          sizeof(filenames) / sizeof(filenames[0]),
+				                          buffer, buffer_size))
+				{
+					return 1;
+				}
+			}
+		}
+	}
+
+	env = getenv("ProgramFiles(x86)");
+	if (env && path_join(candidate, sizeof(candidate), env, "OpenSSL-Win32") == 0)
+	{
+		const char* lib_subdirs[] = {
+			"lib",
+			"lib64",
+			"lib/VC/x64/MD",
+			"lib/VC/x64/MT",
+			"lib/VC/x86/MD",
+			"lib/VC/x86/MT",
+			"lib/VC/static",
+			"lib/MinGW",
+		};
+		for (size_t i = 0; i < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++i)
+		{
+			char lib_dir[1024];
+			if (path_join(lib_dir, sizeof(lib_dir), candidate, lib_subdirs[i]) == 0 &&
+			    find_library_in_directory(lib_dir, filenames,
+			                          sizeof(filenames) / sizeof(filenames[0]),
+			                          buffer, buffer_size))
+			{
+				return 1;
+			}
+		}
+	}
+
+	env = getenv("ProgramW6432");
+	if (env && path_join(candidate, sizeof(candidate), env, "OpenSSL-Win64") == 0)
+	{
+		const char* lib_subdirs[] = {
+			"lib",
+			"lib64",
+			"lib/VC/x64/MD",
+			"lib/VC/x64/MT",
+			"lib/VC/x86/MD",
+			"lib/VC/x86/MT",
+			"lib/VC/static",
+			"lib/MinGW",
+		};
+		for (size_t i = 0; i < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++i)
+		{
+			char lib_dir[1024];
+			if (path_join(lib_dir, sizeof(lib_dir), candidate, lib_subdirs[i]) == 0 &&
+			    find_library_in_directory(lib_dir, filenames,
+			                          sizeof(filenames) / sizeof(filenames[0]),
+			                          buffer, buffer_size))
+			{
+				return 1;
+			}
+		}
+	}
+
+	env = getenv("USERPROFILE");
+	if (env && path_join(candidate, sizeof(candidate), env, "scoop/apps/openssl/current") == 0)
+	{
+		const char* lib_subdirs[] = {
+			"lib",
+			"lib64",
+			"lib/VC/x64/MD",
+			"lib/VC/x64/MT",
+			"lib/VC/x86/MD",
+			"lib/VC/x86/MT",
+			"lib/VC/static",
+			"lib/MinGW",
+		};
+		for (size_t i = 0; i < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++i)
+		{
+			char lib_dir[1024];
+			if (path_join(lib_dir, sizeof(lib_dir), candidate, lib_subdirs[i]) == 0 &&
+			    find_library_in_directory(lib_dir, filenames,
+			                          sizeof(filenames) / sizeof(filenames[0]),
+			                          buffer, buffer_size))
+			{
+				return 1;
+			}
+		}
+	}
+
+	for (size_t i = 0; i < sizeof(roots) / sizeof(roots[0]); ++i)
+	{
+		const char* lib_subdirs[] = {
+			"lib",
+			"lib64",
+			"lib/VC/x64/MD",
+			"lib/VC/x64/MT",
+			"lib/VC/x86/MD",
+			"lib/VC/x86/MT",
+			"lib/VC/static",
+			"lib/MinGW",
+		};
+		for (size_t j = 0; j < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++j)
+		{
+			if (path_join(candidate, sizeof(candidate), roots[i], lib_subdirs[j]) == 0 &&
+			    find_library_in_directory(candidate, filenames,
+			                          sizeof(filenames) / sizeof(filenames[0]),
+			                          buffer, buffer_size))
+			{
+				return 1;
+			}
+		}
+	}
+
+	return 0;
+}
+#endif
+
+static int run_clang_compile(const char* srcpath, const char* output_path,
+	                        const char* temp_include_dir,
+	                        const char* native_libraries_csv,
+	                        const char* native_search_paths_csv)
+{
+	arg_list argv = {0};
+	int result = -1;
+
+	if (!srcpath || !output_path)
+	{
+		return -1;
+	}
+
+	if (arg_list_append(&argv, "clang") != 0 ||
+	    arg_list_append(&argv, "-c") != 0 ||
+	    arg_list_append(&argv, srcpath) != 0)
+	{
+		goto cleanup;
+	}
+
+	if (temp_include_dir && temp_include_dir[0] != '\0' &&
+	    (arg_list_append(&argv, "-I") != 0 ||
+	     arg_list_append(&argv, temp_include_dir) != 0))
+	{
+		goto cleanup;
+	}
+
+	if (arg_list_append_inferred_include_paths(&argv, native_search_paths_csv) != 0)
+	{
+		goto cleanup;
+	}
+
+	if (csv_mentions_crypto(native_libraries_csv) &&
+	    append_openssl_detected_dirs(&argv, NULL) != 0)
+	{
+		goto cleanup;
+	}
+
+	if (arg_list_append(&argv, "-o") != 0 ||
+	    arg_list_append(&argv, output_path) != 0)
+	{
+		goto cleanup;
+	}
+
+	result = run_cmd(argv.args);
+
+cleanup:
+	arg_list_free(&argv);
+	return result;
+}
 
 static int append_string_item(char*** items, size_t* count, const char* value)
 {
@@ -414,7 +1143,8 @@ static int arg_list_append_search_paths(arg_list* list, const char* csv)
 	return 0;
 }
 
-static int arg_list_append_native_libraries(arg_list* list, const char* csv)
+static int arg_list_append_native_libraries(arg_list* list, const char* csv,
+	                                        const char* search_paths_csv)
 {
 	char* dup;
 	char* saveptr = NULL;
@@ -437,6 +1167,24 @@ static int arg_list_append_native_libraries(arg_list* list, const char* csv)
 		char* item = trim_whitespace(tok);
 		if (item[0] != '\0')
 		{
+#ifdef _WIN32
+			if (strcmp(item, "crypto") == 0 || strcmp(item, "libcrypto") == 0)
+			{
+				char resolved_lib[1024];
+				if (find_windows_openssl_library(search_paths_csv, resolved_lib,
+				                              sizeof(resolved_lib)))
+				{
+					if (arg_list_append(list, resolved_lib) != 0)
+					{
+						free(dup);
+						return -1;
+					}
+					tok = strtok_r(NULL, ",", &saveptr);
+					continue;
+				}
+			}
+#endif
+
 			if (item[0] == '-' || path_exists(item) || strchr(item, '/') ||
 			    strchr(item, '\\') || ends_with(item, ".a") ||
 			    ends_with(item, ".o") || ends_with(item, ".obj") ||
@@ -494,25 +1242,7 @@ static void compile_c_file(const char* srcpath, void* vctx)
 	char tmpobj[4096];
 	snprintf(tmpobj, sizeof(tmpobj), "%s/adan_bundle_%d_%d.o", get_tmp_dir(), ctx->pid,
 	         (*ctx->tmpid)++);
-	size_t cmdlen = strlen(srcpath) + strlen(tmpobj) + 64;
-	char* cmd = malloc(cmdlen);
-	if (!cmd)
-	{
-		ctx->error = 1;
-		return;
-	}
-	snprintf(cmd, cmdlen, "clang -c %s -o %s", srcpath, tmpobj);
-	size_t cmd_argc = 0;
-	char* cmd_storage = NULL;
-	char** cmd_argv = split_args(cmd, &cmd_argc, &cmd_storage);
-	int r = -1;
-	if (cmd_argv)
-	{
-		r = run_cmd(cmd_argv);
-		free(cmd_argv);
-		free(cmd_storage);
-	}
-	free(cmd);
+	int r = run_clang_compile(srcpath, tmpobj, NULL, NULL, NULL);
 	if (r != 0)
 	{
 		ctx->error = 1;
@@ -599,8 +1329,12 @@ static int collect_bundle_link_items(const char* bundle_csv, char*** link_items,
 	return 0;
 }
 
-static int collect_embedded_link_items(const char* modules_csv, char*** link_items,
-	                                   size_t* link_count, char*** temp_objs,
+static int collect_embedded_link_items(const char* modules_csv,
+	                                   const char* native_libraries_csv,
+	                                   const char* native_search_paths_csv,
+	                                   char*** link_items,
+	                                   size_t* link_count,
+	                                   char*** temp_objs,
 	                                   size_t* temp_count)
 {
 	char* dup;
@@ -687,30 +1421,9 @@ static int collect_embedded_link_items(const char* modules_csv, char*** link_ite
 		}
 
 		{
-			size_t cmdlen = strlen(tmp_c) + strlen(tmp_dir) + strlen(tmp_obj) + 64;
-			char* cmd = malloc(cmdlen);
-			size_t cmd_argc = 0;
-			char* cmd_storage = NULL;
-			char** cmd_argv;
-			int r = -1;
-
-			if (!cmd)
-			{
-				unlink(tmp_c);
-				rmdir(tmp_dir);
-				free(dup);
-				return -1;
-			}
-
-			snprintf(cmd, cmdlen, "clang -c %s -I %s -o %s", tmp_c, tmp_dir, tmp_obj);
-			cmd_argv = split_args(cmd, &cmd_argc, &cmd_storage);
-			if (cmd_argv)
-			{
-				r = run_cmd(cmd_argv);
-				free(cmd_argv);
-				free(cmd_storage);
-			}
-			free(cmd);
+			int r = run_clang_compile(tmp_c, tmp_obj, tmp_dir,
+			                        native_libraries_csv,
+			                        native_search_paths_csv);
 			unlink(tmp_c);
 			if (h_filename && h_src)
 			{
@@ -764,8 +1477,11 @@ int linker_link(const char* input_ll_path, const char* output_path,
 		{
 			goto cleanup;
 		}
-		if (collect_embedded_link_items(config->embedded_modules_csv, &link_items,
-		                               &link_count, &temp_objs, &temp_count) != 0)
+		if (collect_embedded_link_items(config->embedded_modules_csv,
+		                               config->native_libraries_csv,
+		                               config->native_search_paths_csv,
+		                               &link_items, &link_count,
+		                               &temp_objs, &temp_count) != 0)
 		{
 			goto cleanup;
 		}
@@ -793,10 +1509,16 @@ int linker_link(const char* input_ll_path, const char* output_path,
 
 	if (config)
 	{
+		if (csv_mentions_crypto(config->native_libraries_csv) &&
+		    append_openssl_detected_dirs(NULL, &argv) != 0)
+		{
+			goto cleanup;
+		}
 		if (arg_list_append_search_paths(&argv,
 		                                config->native_search_paths_csv) != 0 ||
 		    arg_list_append_native_libraries(&argv,
-		                                   config->native_libraries_csv) != 0 ||
+		                                   config->native_libraries_csv,
+		                                   config->native_search_paths_csv) != 0 ||
 		    arg_list_append_raw_args(&argv, config->raw_link_args) != 0)
 		{
 			goto cleanup;

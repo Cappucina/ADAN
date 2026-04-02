@@ -199,14 +199,14 @@ main() {
         check_dependency "clang" "Clang compiler" || NEED_INSTALL=true
         check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
         check_dependency "xmake" "XMake" || { NEED_INSTALL=true; XMAKE_WAS_MISSING=true; }
-        # LLDB is typically installed via Xcode / Command Line Tools on macOS,
-        # not via the package manager, so we only warn here instead of setting NEED_INSTALL=true.
+        check_dependency "openssl" "OpenSSL" || NEED_INSTALL=true
         check_dependency "lldb" "LLDB debugger" || print_warn "LLDB is not installed — run: xcode-select --install"
     else
         check_dependency "gcc" "GCC compiler" || NEED_INSTALL=true
         check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
         check_dependency "xmake" "XMake" || { NEED_INSTALL=true; XMAKE_WAS_MISSING=true; }
         check_dependency "gdb" "GDB debugger" || NEED_INSTALL=true
+        check_dependency "openssl" "OpenSSL" || NEED_INSTALL=true
     fi
 
     echo
