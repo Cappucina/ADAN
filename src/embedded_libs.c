@@ -8,6 +8,8 @@ static const EmbeddedLib REGISTRY[] = {
     {"adan/io", LIB_IO_ADN, LIB_IO_STDOUT_C, "io.h", LIB_IO_H},
 	{"adan/collections/object", LIB_COLLECTIONS_OBJECT_ADN, LIB_COLLECTIONS_OBJECT_C,
 	 "object.h", LIB_COLLECTIONS_OBJECT_H},
+	{"adan/libcrypto", LIB_LIBCRYPTO_ADN, LIB_LIBCRYPTO_C, NULL, NULL},
+	{"adan/libsodium", LIB_LIBSODIUM_ADN, LIB_LIBSODIUM_C, NULL, NULL},
 	{"adan/process", LIB_PROCESS_ADN, LIB_PROCESS_C, "process.h", LIB_PROCESS_H},
 	{"adan/regex", LIB_REGEX_ADN, LIB_REGEX_C, "regex.h", LIB_REGEX_H},
     {"adan/runtime", LIB_RUNTIME_ADN, LIB_RUNTIME_C, "runtime.h", LIB_RUNTIME_H},

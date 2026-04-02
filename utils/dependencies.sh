@@ -144,27 +144,27 @@ get_package_names() {
     apt)
         # apt: build-essential provides gcc/g++, make, and binutils.
         # less is included here for log viewing on Debian/Ubuntu only.
-        PACKAGES=(build-essential clang clang-format gdb less binutils xmake libssl-dev)
+        PACKAGES=(build-essential clang clang-format gdb less binutils xmake libssl-dev libsodium-dev)
         ;;
     dnf | yum)
         # dnf/yum: gcc toolchain plus clang and extra tools.
-        PACKAGES=(gcc clang clang-tools-extra gdb xmake openssl-devel)
+        PACKAGES=(gcc clang clang-tools-extra gdb xmake openssl-devel libsodium-devel)
         ;;
     pacman)
         # pacman: base-devel provides build toolchain (including gcc/make).
-        PACKAGES=(base-devel clang gdb xmake openssl)
+        PACKAGES=(base-devel clang gdb xmake openssl libsodium)
         ;;
     zypper)
         # zypper: gcc toolchain plus clang tools.
-        PACKAGES=(gcc clang clang-tools gdb xmake libopenssl-devel)
+        PACKAGES=(gcc clang clang-tools gdb xmake libopenssl-devel libsodium-devel)
         ;;
     apk)
         # apk: build-base provides build toolchain, clang-extra-tools adds tooling.
-        PACKAGES=(build-base clang-extra-tools gdb xmake openssl-dev)
+        PACKAGES=(build-base clang-extra-tools gdb xmake openssl-dev libsodium-dev)
         ;;
     brew)
         # brew: llvm includes clang; clang-format is separate.
-        PACKAGES=(llvm clang-format xmake openssl)
+        PACKAGES=(llvm clang-format xmake openssl libsodium)
         ;;
     esac
 }
@@ -180,6 +180,34 @@ check_dependency() {
         print_warn "✗ $name is not installed"
         return 1
     fi
+}
+
+path_exists_any() {
+    for candidate in "$@"; do
+        if [ -e "$candidate" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+check_native_library() {
+    local pkg=$1
+    local name=$2
+    shift 2
+
+    if command_exists pkg-config && pkg-config --exists "$pkg"; then
+        print_info "✓ $name is installed"
+        return 0
+    fi
+
+    if path_exists_any "$@"; then
+        print_info "✓ $name is installed"
+        return 0
+    fi
+
+    print_warn "✗ $name is not installed"
+    return 1
 }
 
 main() {
@@ -199,14 +227,33 @@ main() {
         check_dependency "clang" "Clang compiler" || NEED_INSTALL=true
         check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
         check_dependency "xmake" "XMake" || { NEED_INSTALL=true; XMAKE_WAS_MISSING=true; }
-        check_dependency "openssl" "OpenSSL" || NEED_INSTALL=true
+        check_native_library "openssl" "OpenSSL" \
+            "/opt/homebrew/opt/openssl@3/include/openssl/crypto.h" \
+            "/opt/homebrew/opt/openssl/include/openssl/crypto.h" \
+            "/usr/local/opt/openssl@3/include/openssl/crypto.h" \
+            "/usr/local/opt/openssl/include/openssl/crypto.h" \
+            "/opt/local/libexec/openssl3/include/openssl/crypto.h" \
+            "/opt/local/libexec/openssl11/include/openssl/crypto.h" || NEED_INSTALL=true
+        check_native_library "libsodium" "libsodium" \
+            "/opt/homebrew/opt/libsodium/include/sodium.h" \
+            "/usr/local/opt/libsodium/include/sodium.h" \
+            "/opt/local/include/sodium.h" || NEED_INSTALL=true
         check_dependency "lldb" "LLDB debugger" || print_warn "LLDB is not installed — run: xcode-select --install"
     else
         check_dependency "gcc" "GCC compiler" || NEED_INSTALL=true
         check_dependency "clang-format" "clang-format" || NEED_INSTALL=true
         check_dependency "xmake" "XMake" || { NEED_INSTALL=true; XMAKE_WAS_MISSING=true; }
         check_dependency "gdb" "GDB debugger" || NEED_INSTALL=true
-        check_dependency "openssl" "OpenSSL" || NEED_INSTALL=true
+        check_native_library "openssl" "OpenSSL" \
+            "/usr/include/openssl/crypto.h" \
+            "/usr/local/include/openssl/crypto.h" \
+            "/opt/homebrew/opt/openssl@3/include/openssl/crypto.h" \
+            "/usr/local/opt/openssl@3/include/openssl/crypto.h" || NEED_INSTALL=true
+        check_native_library "libsodium" "libsodium" \
+            "/usr/include/sodium.h" \
+            "/usr/local/include/sodium.h" \
+            "/opt/homebrew/opt/libsodium/include/sodium.h" \
+            "/usr/local/opt/libsodium/include/sodium.h" || NEED_INSTALL=true
     fi
 
     echo
@@ -245,12 +292,33 @@ main() {
             check_dependency "clang" "Clang compiler"
             check_dependency "clang-format" "clang-format"
             check_dependency "xmake" "XMake"
+            check_native_library "openssl" "OpenSSL" \
+                "/opt/homebrew/opt/openssl@3/include/openssl/crypto.h" \
+                "/opt/homebrew/opt/openssl/include/openssl/crypto.h" \
+                "/usr/local/opt/openssl@3/include/openssl/crypto.h" \
+                "/usr/local/opt/openssl/include/openssl/crypto.h" \
+                "/opt/local/libexec/openssl3/include/openssl/crypto.h" \
+                "/opt/local/libexec/openssl11/include/openssl/crypto.h"
+            check_native_library "libsodium" "libsodium" \
+                "/opt/homebrew/opt/libsodium/include/sodium.h" \
+                "/usr/local/opt/libsodium/include/sodium.h" \
+                "/opt/local/include/sodium.h"
             check_dependency "lldb" "LLDB debugger" || print_warn "LLDB not found — run: xcode-select --install"
         else
             check_dependency "gcc" "GCC compiler"
             check_dependency "clang-format" "clang-format"
             check_dependency "xmake" "XMake"
             check_dependency "gdb" "GDB debugger"
+            check_native_library "openssl" "OpenSSL" \
+                "/usr/include/openssl/crypto.h" \
+                "/usr/local/include/openssl/crypto.h" \
+                "/opt/homebrew/opt/openssl@3/include/openssl/crypto.h" \
+                "/usr/local/opt/openssl@3/include/openssl/crypto.h"
+            check_native_library "libsodium" "libsodium" \
+                "/usr/include/sodium.h" \
+                "/usr/local/include/sodium.h" \
+                "/opt/homebrew/opt/libsodium/include/sodium.h" \
+                "/usr/local/opt/libsodium/include/sodium.h"
         fi
     else
         print_error "Failed to install some dependencies"

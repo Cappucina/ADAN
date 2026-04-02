@@ -1,20 +1,33 @@
 import "adan/io";
-import "adan/crypto";
+import "adan/libcrypto";
+import "adan/libsodium";
 
 function main(): i32 {
     io.print("The compiler is working as expected!");
-    set digest: string = crypto.sha256_hex("adan");
-    set random_value: string = crypto.random_hex(16);
+    set openssl_digest: string = libcrypto.sha256_hex("adan");
+    set libsodium_digest: string = libsodium.sha256_hex("adan");
+    set openssl_random: string = libcrypto.random_hex(16);
+    set libsodium_random: string = libsodium.random_hex(16);
 
-    io.print("sha256('adan') = %s", digest);
-    io.print("sha512('adan') = %s", crypto.sha512_hex("adan"));
-    io.print("random_hex(16) = %s", random_value);
+    io.print("libcrypto sha256('adan') = %s", openssl_digest);
+    io.print("libsodium sha256('adan') = %s", libsodium_digest);
+    io.print("libcrypto sha512('adan') = %s", libcrypto.sha512_hex("adan"));
+    io.print("libsodium sha512('adan') = %s", libsodium.sha512_hex("adan"));
+    io.print("libcrypto random_hex(16) = %s", openssl_random);
+    io.print("libsodium random_hex(16) = %s", libsodium_random);
 
-    if crypto.secure_equals(digest, crypto.sha256_hex("adan")) {
-        io.print("secure_equals matched the expected digest");
+    if libcrypto.secure_equals(openssl_digest, libcrypto.sha256_hex("adan")) {
+        io.print("libcrypto secure_equals matched the expected digest");
     }
     else {
-        io.error("secure_equals failed for identical digests");
+        io.error("libcrypto secure_equals failed for identical digests");
+    }
+
+    if libsodium.secure_equals(libsodium_digest, libsodium.sha256_hex("adan")) {
+        io.print("libsodium secure_equals matched the expected digest");
+    }
+    else {
+        io.error("libsodium secure_equals failed for identical digests");
     }
 
     return 0;

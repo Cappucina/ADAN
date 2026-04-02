@@ -23,6 +23,14 @@ local function push_unique_path(list, value)
 	end
 end
 
+local function normalized_arch()
+	local arch = (get_config("arch") or ""):lower()
+	if arch == "x64" then
+		return "x86_64"
+	end
+	return arch
+end
+
 local function detect_openssl_config()
 	local include_dirs = {}
 	local link_dirs = {}
@@ -60,16 +68,25 @@ local function detect_openssl_config()
 	push_unique_path(link_dirs, os.getenv("OPENSSL_LIB_DIR"))
 
 	if is_plat("macosx") then
+		local arch = normalized_arch()
 		local brew_prefix = os.getenv("HOMEBREW_PREFIX")
 		if brew_prefix and brew_prefix ~= "" then
 			add_root(path.join(brew_prefix, "opt", "openssl@3"))
 			add_root(path.join(brew_prefix, "opt", "openssl"))
 		end
 
-		add_root("/opt/homebrew/opt/openssl@3")
-		add_root("/opt/homebrew/opt/openssl")
-		add_root("/usr/local/opt/openssl@3")
-		add_root("/usr/local/opt/openssl")
+		if arch == "arm64" then
+			add_root("/opt/homebrew/opt/openssl@3")
+			add_root("/opt/homebrew/opt/openssl")
+		elseif arch == "x86_64" then
+			add_root("/usr/local/opt/openssl@3")
+			add_root("/usr/local/opt/openssl")
+		else
+			add_root("/opt/homebrew/opt/openssl@3")
+			add_root("/opt/homebrew/opt/openssl")
+			add_root("/usr/local/opt/openssl@3")
+			add_root("/usr/local/opt/openssl")
+		end
 		add_root("/opt/local/libexec/openssl3")
 		add_root("/opt/local/libexec/openssl11")
 	elseif is_plat("windows") then
@@ -77,6 +94,8 @@ local function detect_openssl_config()
 		local program_files_x86 = os.getenv("ProgramFiles(x86)")
 		local program_w6432 = os.getenv("ProgramW6432")
 		local userprofile = os.getenv("USERPROFILE")
+		local vcpkg_root = os.getenv("VCPKG_INSTALLATION_ROOT")
+		local arch = normalized_arch()
 
 		add_root("C:/OpenSSL-Win64")
 		add_root("C:/OpenSSL-Win32")
@@ -94,6 +113,10 @@ local function detect_openssl_config()
 		if userprofile and userprofile ~= "" then
 			add_root(path.join(userprofile, "scoop", "apps", "openssl", "current"))
 		end
+		if vcpkg_root and vcpkg_root ~= "" then
+			local triplet = arch == "x86" and "x86-windows" or "x64-windows"
+			add_root(path.join(vcpkg_root, "installed", triplet))
+		end
 	end
 
 	if is_plat("windows") then
@@ -109,7 +132,93 @@ local function detect_openssl_config()
 	}
 end
 
+local function detect_libsodium_config()
+	local link_dirs = {}
+	local libs = {}
+
+	local function add_root(root)
+		if not root or root == "" then
+			return
+		end
+
+		push_unique_path(link_dirs, path.join(root, "lib"))
+		push_unique_path(link_dirs, path.join(root, "lib64"))
+
+		if is_plat("windows") then
+			push_unique_path(link_dirs, path.join(root, "lib", "VC", "x64", "Release", "v143", "static"))
+			push_unique_path(link_dirs, path.join(root, "lib", "VC", "x64", "Release", "v142", "static"))
+			push_unique_path(link_dirs, path.join(root, "lib", "VC", "x64", "Release", "v141", "static"))
+			push_unique_path(link_dirs, path.join(root, "lib", "MinGW", "x64"))
+			push_unique_path(link_dirs, path.join(root, "lib", "MinGW"))
+		end
+	end
+
+	add_root(os.getenv("LIBSODIUM_ROOT_DIR"))
+	add_root(os.getenv("SODIUM_ROOT_DIR"))
+	add_root(os.getenv("LIBSODIUM_DIR"))
+	push_unique_path(link_dirs, os.getenv("LIBSODIUM_LIB_DIR"))
+	push_unique_path(link_dirs, os.getenv("SODIUM_LIB_DIR"))
+
+	if is_plat("macosx") then
+		local arch = normalized_arch()
+		local brew_prefix = os.getenv("HOMEBREW_PREFIX")
+		if brew_prefix and brew_prefix ~= "" then
+			add_root(path.join(brew_prefix, "opt", "libsodium"))
+		end
+
+		if arch == "arm64" then
+			add_root("/opt/homebrew/opt/libsodium")
+		elseif arch == "x86_64" then
+			add_root("/usr/local/opt/libsodium")
+		else
+			add_root("/opt/homebrew/opt/libsodium")
+			add_root("/usr/local/opt/libsodium")
+		end
+
+		add_root("/opt/local")
+	elseif is_plat("windows") then
+		local program_files = os.getenv("ProgramFiles")
+		local program_files_x86 = os.getenv("ProgramFiles(x86)")
+		local userprofile = os.getenv("USERPROFILE")
+		local vcpkg_root = os.getenv("VCPKG_INSTALLATION_ROOT")
+		local arch = normalized_arch()
+
+		add_root("C:/libsodium")
+		add_root("C:/libsodium-win64")
+		add_root("C:/libsodium-win32")
+
+		if program_files and program_files ~= "" then
+			add_root(path.join(program_files, "libsodium"))
+			add_root(path.join(program_files, "libsodium-win64"))
+			add_root(path.join(program_files, "Sodium"))
+		end
+		if program_files_x86 and program_files_x86 ~= "" then
+			add_root(path.join(program_files_x86, "libsodium"))
+			add_root(path.join(program_files_x86, "libsodium-win32"))
+		end
+		if userprofile and userprofile ~= "" then
+			add_root(path.join(userprofile, "scoop", "apps", "libsodium", "current"))
+		end
+		if vcpkg_root and vcpkg_root ~= "" then
+			local triplet = arch == "x86" and "x86-windows" or "x64-windows"
+			add_root(path.join(vcpkg_root, "installed", triplet))
+		end
+	end
+
+	if is_plat("windows") then
+		table.insert(libs, "libsodium")
+	else
+		table.insert(libs, "sodium")
+	end
+
+	return {
+		link_dirs = link_dirs,
+		libs = libs,
+	}
+end
+
 local openssl_config = detect_openssl_config()
+local libsodium_config = detect_libsodium_config()
 
 target("adan_linker")
 set_kind("static")
@@ -131,6 +240,12 @@ if #openssl_config.link_dirs > 0 then
 end
 if #openssl_config.libs > 0 then
 	add_links(table.unpack(openssl_config.libs))
+end
+if #libsodium_config.link_dirs > 0 then
+	add_linkdirs(table.unpack(libsodium_config.link_dirs))
+end
+if #libsodium_config.libs > 0 then
+	add_links(table.unpack(libsodium_config.libs))
 end
 set_rundir(".")
 set_runargs("-f", "samples/testing.adn", "-o", "samples/testing")

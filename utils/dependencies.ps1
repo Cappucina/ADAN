@@ -140,16 +140,16 @@ function Install-DevPackages {
 
 function Get-PackageList {
     switch ($script:PkgMgr) {
-        "choco"  { return @("llvm", "less", "xmake", "openssl") }
-        "scoop"  { return @("gcc", "llvm", "xmake", "openssl") }
+        "choco"  { return @("llvm", "less", "xmake", "openssl", "libsodium") }
+        "scoop"  { return @("gcc", "llvm", "xmake", "openssl", "libsodium") }
         "winget" { return @("LLVM.LLVM", "xmake.xmake", "ShiningLight.OpenSSL.Light") }
-        "brew"   { return @("clang-format", "xmake", "openssl") }
-        "apt"    { return @("build-essential", "clang-format", "gdb", "xmake", "libssl-dev") }
-        "dnf"    { return @("gcc", "clang-tools-extra", "gdb", "xmake", "openssl-devel") }
-        "yum"    { return @("gcc", "clang-tools-extra", "gdb", "xmake", "openssl-devel") }
-        "pacman" { return @("base-devel", "clang", "gdb", "xmake", "openssl") }
-        "zypper" { return @("gcc", "clang-tools", "gdb", "xmake", "libopenssl-devel") }
-        "apk"    { return @("build-base", "clang-extra-tools", "gdb", "xmake", "openssl-dev") }
+        "brew"   { return @("clang-format", "xmake", "openssl", "libsodium") }
+        "apt"    { return @("build-essential", "clang-format", "gdb", "xmake", "libssl-dev", "libsodium-dev") }
+        "dnf"    { return @("gcc", "clang-tools-extra", "gdb", "xmake", "openssl-devel", "libsodium-devel") }
+        "yum"    { return @("gcc", "clang-tools-extra", "gdb", "xmake", "openssl-devel", "libsodium-devel") }
+        "pacman" { return @("base-devel", "clang", "gdb", "xmake", "openssl", "libsodium") }
+        "zypper" { return @("gcc", "clang-tools", "gdb", "xmake", "libopenssl-devel", "libsodium-devel") }
+        "apk"    { return @("build-base", "clang-extra-tools", "gdb", "xmake", "openssl-dev", "libsodium-dev") }
     }
 }
 
@@ -163,8 +163,79 @@ function Test-Dependency {
     return $false
 }
 
+function Test-AnyPathExists {
+    param([string[]]$Paths)
+    foreach ($path in $Paths) {
+        if ($path -and (Test-Path $path)) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Test-NativeLibrary {
+    param([string]$PkgConfigName, [string]$DisplayName, [string[]]$Paths)
+
+    if (Test-CommandExists "pkg-config") {
+        & pkg-config --exists $PkgConfigName 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Info ([char]0x2713 + " $DisplayName is installed")
+            return $true
+        }
+    }
+
+    if (Test-AnyPathExists $Paths) {
+        Write-Info ([char]0x2713 + " $DisplayName is installed")
+        return $true
+    }
+
+    Write-Warn ([char]0x2717 + " $DisplayName is not installed")
+    return $false
+}
+
 function Test-AllDependencies {
     $allPresent = $true
+    $programFiles = $env:ProgramFiles
+    $programFilesX86 = ${env:ProgramFiles(x86)}
+    $userProfile = $env:USERPROFILE
+    $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
+
+    $opensslPaths = @(
+        "C:\OpenSSL-Win64\include\openssl\crypto.h",
+        "C:\OpenSSL-Win32\include\openssl\crypto.h",
+        (Join-Path ($programFiles ?? '') "OpenSSL-Win64\include\openssl\crypto.h"),
+        (Join-Path ($programFiles ?? '') "OpenSSL-Win32\include\openssl\crypto.h"),
+        (Join-Path ($programFilesX86 ?? '') "OpenSSL-Win32\include\openssl\crypto.h"),
+        (Join-Path ($userProfile ?? '') "scoop\apps\openssl\current\include\openssl\crypto.h"),
+        (Join-Path ($vcpkgRoot ?? '') "installed\x64-windows\include\openssl\crypto.h"),
+        (Join-Path ($vcpkgRoot ?? '') "installed\x86-windows\include\openssl\crypto.h"),
+        "/opt/homebrew/opt/openssl@3/include/openssl/crypto.h",
+        "/opt/homebrew/opt/openssl/include/openssl/crypto.h",
+        "/usr/local/opt/openssl@3/include/openssl/crypto.h",
+        "/usr/local/opt/openssl/include/openssl/crypto.h",
+        "/opt/local/libexec/openssl3/include/openssl/crypto.h",
+        "/opt/local/libexec/openssl11/include/openssl/crypto.h",
+        "/usr/include/openssl/crypto.h",
+        "/usr/local/include/openssl/crypto.h"
+    )
+    $libsodiumPaths = @(
+        "C:\libsodium\include\sodium.h",
+        "C:\libsodium-win64\include\sodium.h",
+        "C:\libsodium-win32\include\sodium.h",
+        (Join-Path ($programFiles ?? '') "libsodium\include\sodium.h"),
+        (Join-Path ($programFiles ?? '') "libsodium-win64\include\sodium.h"),
+        (Join-Path ($programFiles ?? '') "Sodium\include\sodium.h"),
+        (Join-Path ($programFilesX86 ?? '') "libsodium\include\sodium.h"),
+        (Join-Path ($programFilesX86 ?? '') "libsodium-win32\include\sodium.h"),
+        (Join-Path ($userProfile ?? '') "scoop\apps\libsodium\current\include\sodium.h"),
+        (Join-Path ($vcpkgRoot ?? '') "installed\x64-windows\include\sodium.h"),
+        (Join-Path ($vcpkgRoot ?? '') "installed\x86-windows\include\sodium.h"),
+        "/opt/homebrew/opt/libsodium/include/sodium.h",
+        "/usr/local/opt/libsodium/include/sodium.h",
+        "/opt/local/include/sodium.h",
+        "/usr/include/sodium.h",
+        "/usr/local/include/sodium.h"
+    )
 
     switch ($script:Platform) {
         "windows" {
@@ -190,7 +261,8 @@ function Test-AllDependencies {
 
             if (-not (Test-Dependency "clang-format"  "clang-format")) { $allPresent = $false }
             if (-not (Test-Dependency "xmake"         "XMake"))        { $allPresent = $false }
-            if (-not (Test-Dependency "openssl"       "OpenSSL"))      { $allPresent = $false }
+            if (-not (Test-NativeLibrary "openssl"    "OpenSSL"   $opensslPaths)) { $allPresent = $false }
+            if (-not (Test-NativeLibrary "libsodium"  "libsodium" $libsodiumPaths)) { $allPresent = $false }
             if (-not (Test-Dependency "gdb"           "GDB debugger")) {
                 Write-Warn "GDB not found - use Visual Studio debugger or install MinGW"
             }
@@ -199,7 +271,8 @@ function Test-AllDependencies {
             if (-not (Test-Dependency "clang"        "Clang compiler")) { $allPresent = $false }
             if (-not (Test-Dependency "clang-format" "clang-format"))   { $allPresent = $false }
             if (-not (Test-Dependency "xmake"        "XMake"))          { $allPresent = $false }
-            if (-not (Test-Dependency "openssl"      "OpenSSL"))        { $allPresent = $false }
+            if (-not (Test-NativeLibrary "openssl"   "OpenSSL"   $opensslPaths)) { $allPresent = $false }
+            if (-not (Test-NativeLibrary "libsodium" "libsodium" $libsodiumPaths)) { $allPresent = $false }
             if (-not (Test-Dependency "lldb"         "LLDB debugger")) {
                 Write-Warn "LLDB is not installed - run: xcode-select --install"
             }
@@ -209,7 +282,8 @@ function Test-AllDependencies {
             if (-not (Test-Dependency "clang-format" "clang-format"))  { $allPresent = $false }
             if (-not (Test-Dependency "xmake"        "XMake"))         { $allPresent = $false }
             if (-not (Test-Dependency "gdb"          "GDB debugger"))  { $allPresent = $false }
-            if (-not (Test-Dependency "openssl"      "OpenSSL"))       { $allPresent = $false }
+            if (-not (Test-NativeLibrary "openssl"   "OpenSSL"   $opensslPaths)) { $allPresent = $false }
+            if (-not (Test-NativeLibrary "libsodium" "libsodium" $libsodiumPaths)) { $allPresent = $false }
         }
     }
 
@@ -274,6 +348,7 @@ function Main {
             Write-Host ""
             Write-Warn "winget cannot install MinGW (gcc / make / gdb)."
             Write-Warn "Install manually or run: choco install mingw  /  scoop install gcc"
+            Write-Warn "winget may also require a manual libsodium installation if it is not already present."
         }
     }
     catch {

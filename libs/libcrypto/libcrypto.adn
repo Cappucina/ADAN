@@ -1,0 +1,26 @@
+link "crypto";
+
+extern function __libcrypto_sha256_hex(value: string): string link "__libcrypto_sha256_hex";
+extern function __libcrypto_sha512_hex(value: string): string link "__libcrypto_sha512_hex";
+extern function __libcrypto_random_hex(byte_count: i32): string link "__libcrypto_random_hex";
+extern function __libcrypto_secure_equals(left: string, right: string): i32 link "__libcrypto_secure_equals";
+
+function sha256_hex(value: string): string {
+	return __libcrypto_sha256_hex(value);
+}
+
+function sha512_hex(value: string): string {
+	return __libcrypto_sha512_hex(value);
+}
+
+function random_hex(byte_count: i32): string {
+	return __libcrypto_random_hex(byte_count);
+}
+
+function secure_equals(left: string, right: string): bool {
+	if __libcrypto_secure_equals(left, right) !== 0 {
+		return true;
+	}
+
+	return false;
+}

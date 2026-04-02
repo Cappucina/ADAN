@@ -375,6 +375,49 @@ static int csv_mentions_crypto(const char* csv)
 	return found;
 }
 
+static int csv_mentions_libsodium(const char* csv)
+{
+	char* dup;
+	char* saveptr = NULL;
+	char* tok;
+	int found = 0;
+
+	if (!csv || csv[0] == '\0')
+	{
+		return 0;
+	}
+
+	dup = strdup(csv);
+	if (!dup)
+	{
+		return 0;
+	}
+
+	tok = strtok_r(dup, ",", &saveptr);
+	while (tok)
+	{
+		char* item = trim_whitespace(tok);
+		const char* base = path_basename_ptr(item);
+
+		if (strcmp(item, "sodium") == 0 || strcmp(item, "libsodium") == 0 ||
+		    strcmp(item, "-lsodium") == 0 || strcmp(item, "-llibsodium") == 0 ||
+		    (base && (strcmp(base, "libsodium.lib") == 0 ||
+		              strcmp(base, "sodium.lib") == 0 ||
+		              strcmp(base, "libsodium.a") == 0 ||
+		              strcmp(base, "libsodium.so") == 0 ||
+		              strcmp(base, "libsodium.dylib") == 0)))
+		{
+			found = 1;
+			break;
+		}
+
+		tok = strtok_r(NULL, ",", &saveptr);
+	}
+
+	free(dup);
+	return found;
+}
+
 static int append_inferred_include_from_search_path(arg_list* list,
 	                                                const char* search_path)
 {
@@ -535,7 +578,19 @@ static int append_openssl_detected_dirs(arg_list* include_args, arg_list* link_a
 		}
 	}
 
-	if (append_openssl_root_dirs(include_args, link_args,
+	if (
+#if defined(__aarch64__) || defined(__arm64__)
+	    append_openssl_root_dirs(include_args, link_args,
+	                            "/opt/homebrew/opt/openssl@3") != 0 ||
+	    append_openssl_root_dirs(include_args, link_args,
+	                            "/opt/homebrew/opt/openssl") != 0 ||
+#elif defined(__x86_64__)
+	    append_openssl_root_dirs(include_args, link_args,
+	                            "/usr/local/opt/openssl@3") != 0 ||
+	    append_openssl_root_dirs(include_args, link_args,
+	                            "/usr/local/opt/openssl") != 0 ||
+#else
+	    append_openssl_root_dirs(include_args, link_args,
 	                            "/opt/homebrew/opt/openssl@3") != 0 ||
 	    append_openssl_root_dirs(include_args, link_args,
 	                            "/opt/homebrew/opt/openssl") != 0 ||
@@ -543,6 +598,7 @@ static int append_openssl_detected_dirs(arg_list* include_args, arg_list* link_a
 	                            "/usr/local/opt/openssl@3") != 0 ||
 	    append_openssl_root_dirs(include_args, link_args,
 	                            "/usr/local/opt/openssl") != 0 ||
+#endif
 	    append_openssl_root_dirs(include_args, link_args,
 	                            "/opt/local/libexec/openssl3") != 0 ||
 	    append_openssl_root_dirs(include_args, link_args,
@@ -592,8 +648,193 @@ static int append_openssl_detected_dirs(arg_list* include_args, arg_list* link_a
 		return -1;
 	}
 
+	env = getenv("VCPKG_INSTALLATION_ROOT");
+	if (env && env[0] != '\0')
+	{
+		char installed_root[1024];
+#if defined(_M_IX86)
+		const char* triplet = "x86-windows";
+#else
+		const char* triplet = "x64-windows";
+#endif
+		if (path_join(installed_root, sizeof(installed_root), env, "installed") == 0 &&
+		    path_join(candidate, sizeof(candidate), installed_root, triplet) == 0 &&
+		    append_openssl_root_dirs(include_args, link_args, candidate) != 0)
+		{
+			return -1;
+		}
+	}
+
 	if (append_openssl_root_dirs(include_args, link_args, "C:/OpenSSL-Win64") != 0 ||
 	    append_openssl_root_dirs(include_args, link_args, "C:/OpenSSL-Win32") != 0)
+	{
+		return -1;
+	}
+#endif
+
+	return 0;
+}
+
+static int append_libsodium_root_dirs(arg_list* link_args, const char* root)
+{
+	char candidate[1024];
+	const char* lib_subdirs[] = {
+		"lib",
+		"lib64",
+#ifdef _WIN32
+		"lib/VC/x64/Release/v143/static",
+		"lib/VC/x64/Release/v142/static",
+		"lib/VC/x64/Release/v141/static",
+		"lib/MinGW/x64",
+		"lib/MinGW",
+#endif
+	};
+
+	if (!root || root[0] == '\0' || !link_args)
+	{
+		return 0;
+	}
+
+	for (size_t i = 0; i < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++i)
+	{
+		if (path_join(candidate, sizeof(candidate), root, lib_subdirs[i]) == 0 &&
+		    arg_list_append_flagged_dir(link_args, "-L", candidate) != 0)
+		{
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int append_libsodium_detected_dirs(arg_list* link_args)
+{
+	const char* env;
+	char candidate[1024];
+
+	if (!link_args)
+	{
+		return 0;
+	}
+
+	env = getenv("LIBSODIUM_ROOT_DIR");
+	if (append_libsodium_root_dirs(link_args, env) != 0)
+	{
+		return -1;
+	}
+
+	env = getenv("SODIUM_ROOT_DIR");
+	if (append_libsodium_root_dirs(link_args, env) != 0)
+	{
+		return -1;
+	}
+
+	env = getenv("LIBSODIUM_DIR");
+	if (append_libsodium_root_dirs(link_args, env) != 0)
+	{
+		return -1;
+	}
+
+	env = getenv("LIBSODIUM_LIB_DIR");
+	if (arg_list_append_flagged_dir(link_args, "-L", env) != 0)
+	{
+		return -1;
+	}
+
+	env = getenv("SODIUM_LIB_DIR");
+	if (arg_list_append_flagged_dir(link_args, "-L", env) != 0)
+	{
+		return -1;
+	}
+
+#ifdef __APPLE__
+	env = getenv("HOMEBREW_PREFIX");
+	if (env && env[0] != '\0' &&
+	    path_join(candidate, sizeof(candidate), env, "opt/libsodium") == 0 &&
+	    append_libsodium_root_dirs(link_args, candidate) != 0)
+	{
+		return -1;
+	}
+
+	if (
+#if defined(__aarch64__) || defined(__arm64__)
+	    append_libsodium_root_dirs(link_args, "/opt/homebrew/opt/libsodium") != 0 ||
+#elif defined(__x86_64__)
+	    append_libsodium_root_dirs(link_args, "/usr/local/opt/libsodium") != 0 ||
+#else
+	    append_libsodium_root_dirs(link_args, "/opt/homebrew/opt/libsodium") != 0 ||
+	    append_libsodium_root_dirs(link_args, "/usr/local/opt/libsodium") != 0 ||
+#endif
+	    append_libsodium_root_dirs(link_args, "/opt/local") != 0)
+	{
+		return -1;
+	}
+#endif
+
+#ifdef _WIN32
+	env = getenv("ProgramFiles");
+	if (env && env[0] != '\0')
+	{
+		if (path_join(candidate, sizeof(candidate), env, "libsodium") == 0 &&
+		    append_libsodium_root_dirs(link_args, candidate) != 0)
+		{
+			return -1;
+		}
+		if (path_join(candidate, sizeof(candidate), env, "libsodium-win64") == 0 &&
+		    append_libsodium_root_dirs(link_args, candidate) != 0)
+		{
+			return -1;
+		}
+		if (path_join(candidate, sizeof(candidate), env, "Sodium") == 0 &&
+		    append_libsodium_root_dirs(link_args, candidate) != 0)
+		{
+			return -1;
+		}
+	}
+
+	env = getenv("ProgramFiles(x86)");
+	if (env && env[0] != '\0')
+	{
+		if (path_join(candidate, sizeof(candidate), env, "libsodium") == 0 &&
+		    append_libsodium_root_dirs(link_args, candidate) != 0)
+		{
+			return -1;
+		}
+		if (path_join(candidate, sizeof(candidate), env, "libsodium-win32") == 0 &&
+		    append_libsodium_root_dirs(link_args, candidate) != 0)
+		{
+			return -1;
+		}
+	}
+
+	env = getenv("USERPROFILE");
+	if (env && env[0] != '\0' &&
+	    path_join(candidate, sizeof(candidate), env, "scoop/apps/libsodium/current") == 0 &&
+	    append_libsodium_root_dirs(link_args, candidate) != 0)
+	{
+		return -1;
+	}
+
+	env = getenv("VCPKG_INSTALLATION_ROOT");
+	if (env && env[0] != '\0')
+	{
+		char installed_root[1024];
+#if defined(_M_IX86)
+		const char* triplet = "x86-windows";
+#else
+		const char* triplet = "x64-windows";
+#endif
+		if (path_join(installed_root, sizeof(installed_root), env, "installed") == 0 &&
+		    path_join(candidate, sizeof(candidate), installed_root, triplet) == 0 &&
+		    append_libsodium_root_dirs(link_args, candidate) != 0)
+		{
+			return -1;
+		}
+	}
+
+	if (append_libsodium_root_dirs(link_args, "C:/libsodium") != 0 ||
+	    append_libsodium_root_dirs(link_args, "C:/libsodium-win64") != 0 ||
+	    append_libsodium_root_dirs(link_args, "C:/libsodium-win32") != 0)
 	{
 		return -1;
 	}
@@ -907,6 +1148,230 @@ static int find_windows_openssl_library(const char* search_paths_csv,
 
 	return 0;
 }
+
+static int find_windows_libsodium_library(const char* search_paths_csv,
+	                                   char* buffer,
+	                                   size_t buffer_size)
+{
+	const char* filenames[] = {"libsodium.lib", "sodium.lib"};
+	const char* env;
+	char candidate[1024];
+	const char* const roots[] = {
+		"C:/libsodium",
+		"C:/libsodium-win64",
+		"C:/libsodium-win32",
+	};
+
+	if (!buffer || buffer_size == 0)
+	{
+		return 0;
+	}
+
+	if (find_library_in_csv_directories(search_paths_csv, filenames,
+	                                   sizeof(filenames) / sizeof(filenames[0]),
+	                                   buffer, buffer_size))
+	{
+		return 1;
+	}
+
+	env = getenv("LIBSODIUM_LIB_DIR");
+	if (find_library_in_directory(env, filenames,
+	                              sizeof(filenames) / sizeof(filenames[0]),
+	                              buffer, buffer_size))
+	{
+		return 1;
+	}
+
+	env = getenv("SODIUM_LIB_DIR");
+	if (find_library_in_directory(env, filenames,
+	                              sizeof(filenames) / sizeof(filenames[0]),
+	                              buffer, buffer_size))
+	{
+		return 1;
+	}
+
+	{
+		const char* root_envs[] = {"LIBSODIUM_ROOT_DIR", "SODIUM_ROOT_DIR", "LIBSODIUM_DIR"};
+		const char* lib_subdirs[] = {
+			"lib",
+			"lib64",
+			"lib/VC/x64/Release/v143/static",
+			"lib/VC/x64/Release/v142/static",
+			"lib/VC/x64/Release/v141/static",
+			"lib/MinGW/x64",
+			"lib/MinGW",
+		};
+		for (size_t env_index = 0; env_index < sizeof(root_envs) / sizeof(root_envs[0]); ++env_index)
+		{
+			env = getenv(root_envs[env_index]);
+			if (!env || env[0] == '\0')
+			{
+				continue;
+			}
+			for (size_t subdir_index = 0;
+			     subdir_index < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]);
+			     ++subdir_index)
+			{
+				if (path_join(candidate, sizeof(candidate), env, lib_subdirs[subdir_index]) == 0 &&
+				    find_library_in_directory(candidate, filenames,
+				                          sizeof(filenames) / sizeof(filenames[0]),
+				                          buffer, buffer_size))
+				{
+					return 1;
+				}
+			}
+		}
+	}
+
+	env = getenv("ProgramFiles");
+	if (env)
+	{
+		const char* root_names[] = {"libsodium", "libsodium-win64", "Sodium"};
+		const char* lib_subdirs[] = {
+			"lib",
+			"lib64",
+			"lib/VC/x64/Release/v143/static",
+			"lib/VC/x64/Release/v142/static",
+			"lib/VC/x64/Release/v141/static",
+			"lib/MinGW/x64",
+			"lib/MinGW",
+		};
+		for (size_t root_index = 0; root_index < sizeof(root_names) / sizeof(root_names[0]); ++root_index)
+		{
+			if (path_join(candidate, sizeof(candidate), env, root_names[root_index]) != 0)
+			{
+				continue;
+			}
+			for (size_t subdir_index = 0;
+			     subdir_index < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]);
+			     ++subdir_index)
+			{
+				char lib_dir[1024];
+				if (path_join(lib_dir, sizeof(lib_dir), candidate, lib_subdirs[subdir_index]) == 0 &&
+				    find_library_in_directory(lib_dir, filenames,
+				                          sizeof(filenames) / sizeof(filenames[0]),
+				                          buffer, buffer_size))
+				{
+					return 1;
+				}
+			}
+		}
+	}
+
+	env = getenv("ProgramFiles(x86)");
+	if (env)
+	{
+		const char* root_names[] = {"libsodium", "libsodium-win32"};
+		const char* lib_subdirs[] = {
+			"lib",
+			"lib64",
+			"lib/VC/x64/Release/v143/static",
+			"lib/VC/x64/Release/v142/static",
+			"lib/VC/x64/Release/v141/static",
+			"lib/MinGW/x64",
+			"lib/MinGW",
+		};
+		for (size_t root_index = 0; root_index < sizeof(root_names) / sizeof(root_names[0]); ++root_index)
+		{
+			if (path_join(candidate, sizeof(candidate), env, root_names[root_index]) != 0)
+			{
+				continue;
+			}
+			for (size_t subdir_index = 0;
+			     subdir_index < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]);
+			     ++subdir_index)
+			{
+				char lib_dir[1024];
+				if (path_join(lib_dir, sizeof(lib_dir), candidate, lib_subdirs[subdir_index]) == 0 &&
+				    find_library_in_directory(lib_dir, filenames,
+				                          sizeof(filenames) / sizeof(filenames[0]),
+				                          buffer, buffer_size))
+				{
+					return 1;
+				}
+			}
+		}
+	}
+
+	env = getenv("USERPROFILE");
+	if (env && path_join(candidate, sizeof(candidate), env, "scoop/apps/libsodium/current") == 0)
+	{
+		const char* lib_subdirs[] = {
+			"lib",
+			"lib64",
+			"lib/VC/x64/Release/v143/static",
+			"lib/VC/x64/Release/v142/static",
+			"lib/VC/x64/Release/v141/static",
+			"lib/MinGW/x64",
+			"lib/MinGW",
+		};
+		for (size_t subdir_index = 0;
+		     subdir_index < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]);
+		     ++subdir_index)
+		{
+			char lib_dir[1024];
+			if (path_join(lib_dir, sizeof(lib_dir), candidate, lib_subdirs[subdir_index]) == 0 &&
+			    find_library_in_directory(lib_dir, filenames,
+			                          sizeof(filenames) / sizeof(filenames[0]),
+			                          buffer, buffer_size))
+			{
+				return 1;
+			}
+		}
+	}
+
+	env = getenv("VCPKG_INSTALLATION_ROOT");
+	if (env)
+	{
+		char installed_root[1024];
+#if defined(_M_IX86)
+		const char* triplet = "x86-windows";
+#else
+		const char* triplet = "x64-windows";
+#endif
+		if (path_join(installed_root, sizeof(installed_root), env, "installed") == 0 &&
+		    path_join(candidate, sizeof(candidate), installed_root, triplet) == 0)
+		{
+			const char* lib_subdirs[] = {"lib", "lib64"};
+			for (size_t i = 0; i < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++i)
+			{
+				char lib_dir[1024];
+				if (path_join(lib_dir, sizeof(lib_dir), candidate, lib_subdirs[i]) == 0 &&
+				    find_library_in_directory(lib_dir, filenames,
+				                          sizeof(filenames) / sizeof(filenames[0]),
+				                          buffer, buffer_size))
+				{
+					return 1;
+				}
+			}
+		}
+	}
+
+	for (size_t i = 0; i < sizeof(roots) / sizeof(roots[0]); ++i)
+	{
+		const char* lib_subdirs[] = {
+			"lib",
+			"lib64",
+			"lib/VC/x64/Release/v143/static",
+			"lib/VC/x64/Release/v142/static",
+			"lib/VC/x64/Release/v141/static",
+			"lib/MinGW/x64",
+			"lib/MinGW",
+		};
+		for (size_t j = 0; j < sizeof(lib_subdirs) / sizeof(lib_subdirs[0]); ++j)
+		{
+			if (path_join(candidate, sizeof(candidate), roots[i], lib_subdirs[j]) == 0 &&
+			    find_library_in_directory(candidate, filenames,
+			                          sizeof(filenames) / sizeof(filenames[0]),
+			                          buffer, buffer_size))
+			{
+				return 1;
+			}
+		}
+	}
+
+	return 0;
+}
 #endif
 
 static int run_clang_compile(const char* srcpath, const char* output_path,
@@ -937,12 +1402,6 @@ static int run_clang_compile(const char* srcpath, const char* output_path,
 	}
 
 	if (arg_list_append_inferred_include_paths(&argv, native_search_paths_csv) != 0)
-	{
-		goto cleanup;
-	}
-
-	if (csv_mentions_crypto(native_libraries_csv) &&
-	    append_openssl_detected_dirs(&argv, NULL) != 0)
 	{
 		goto cleanup;
 	}
@@ -1172,6 +1631,21 @@ static int arg_list_append_native_libraries(arg_list* list, const char* csv,
 			{
 				char resolved_lib[1024];
 				if (find_windows_openssl_library(search_paths_csv, resolved_lib,
+				                              sizeof(resolved_lib)))
+				{
+					if (arg_list_append(list, resolved_lib) != 0)
+					{
+						free(dup);
+						return -1;
+					}
+					tok = strtok_r(NULL, ",", &saveptr);
+					continue;
+				}
+			}
+			if (strcmp(item, "sodium") == 0 || strcmp(item, "libsodium") == 0)
+			{
+				char resolved_lib[1024];
+				if (find_windows_libsodium_library(search_paths_csv, resolved_lib,
 				                              sizeof(resolved_lib)))
 				{
 					if (arg_list_append(list, resolved_lib) != 0)
@@ -1511,6 +1985,11 @@ int linker_link(const char* input_ll_path, const char* output_path,
 	{
 		if (csv_mentions_crypto(config->native_libraries_csv) &&
 		    append_openssl_detected_dirs(NULL, &argv) != 0)
+		{
+			goto cleanup;
+		}
+		if (csv_mentions_libsodium(config->native_libraries_csv) &&
+		    append_libsodium_detected_dirs(&argv) != 0)
 		{
 			goto cleanup;
 		}
