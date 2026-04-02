@@ -174,60 +174,94 @@ void ir_print_module(IRModule* mod, FILE* out)
 	fprintf(stderr, "Module printed to output. (Info)\n");
 }
 
-IRType* ir_type_i64(void)
+static IRType* ir_type_create_scalar(IRTypeKind kind, int width, const char* debug_name)
 {
 	IRType* t = malloc(sizeof(IRType));
 	if (!t)
 	{
-		fprintf(stderr, "Failed to allocate IRType (i64). (Error)\n");
+		fprintf(stderr, "Failed to allocate IRType (%s). (Error)\n", debug_name);
 		return NULL;
 	}
-	t->kind = IR_T_I64;
+	t->kind = kind;
 	t->pointee = NULL;
-	fprintf(stderr, "IRType i64 created. (Info)\n");
+	t->width = width;
+	fprintf(stderr, "IRType %s created. (Info)\n", debug_name);
 	return t;
+}
+
+IRType* ir_type_i1(void)
+{
+	return ir_type_create_scalar(IR_T_I1, 1, "i1");
+}
+
+IRType* ir_type_i8(void)
+{
+	return ir_type_create_scalar(IR_T_I8, 8, "i8");
+}
+
+IRType* ir_type_u8(void)
+{
+	return ir_type_create_scalar(IR_T_U8, 8, "u8");
+}
+
+IRType* ir_type_i16(void)
+{
+	return ir_type_create_scalar(IR_T_I16, 16, "i16");
+}
+
+IRType* ir_type_u16(void)
+{
+	return ir_type_create_scalar(IR_T_U16, 16, "u16");
+}
+
+IRType* ir_type_i32(void)
+{
+	return ir_type_create_scalar(IR_T_I32, 32, "i32");
+}
+
+IRType* ir_type_u32(void)
+{
+	return ir_type_create_scalar(IR_T_U32, 32, "u32");
+}
+
+IRType* ir_type_i64(void)
+{
+	return ir_type_create_scalar(IR_T_I64, 64, "i64");
+	}
+
+IRType* ir_type_u64(void)
+{
+	return ir_type_create_scalar(IR_T_U64, 64, "u64");
+	}
+
+IRType* ir_type_intptr(void)
+{
+	return ir_type_create_scalar(IR_T_INTPTR, (int)(sizeof(void*) * 8), "intptr");
+	}
+
+IRType* ir_type_uintptr(void)
+{
+	return ir_type_create_scalar(IR_T_UINTPTR, (int)(sizeof(void*) * 8), "uintptr");
+	}
+
+IRType* ir_type_bool(void)
+{
+	return ir_type_create_scalar(IR_T_BOOL, 1, "bool");
 }
 
 IRType* ir_type_f64(void)
 {
-	IRType* t = malloc(sizeof(IRType));
-	if (!t)
-	{
-		fprintf(stderr, "Failed to allocate IRType (f64). (Error)\n");
-		return NULL;
-	}
-	t->kind = IR_T_F64;
-	t->pointee = NULL;
-	fprintf(stderr, "IRType f64 created. (Info)\n");
-	return t;
+	return ir_type_create_scalar(IR_T_F64, 64, "f64");
 }
 
 IRType* ir_type_f32(void)
 {
-	IRType* t = malloc(sizeof(IRType));
-	if (!t)
-	{
-		fprintf(stderr, "Failed to allocate IRType (f32). (Error)\n");
-		return NULL;
-	}
-	t->kind = IR_T_F32;
-	t->pointee = NULL;
-	fprintf(stderr, "IRType f32 created. (Info)\n");
-	return t;
+	return ir_type_create_scalar(IR_T_F32, 32, "f32");
 }
 
 IRType* ir_type_void(void)
 {
-	IRType* t = malloc(sizeof(IRType));
-	if (!t)
-	{
-		fprintf(stderr, "Failed to allocate IRType (void). (Error)\n");
-		return NULL;
-	}
-	t->kind = IR_T_VOID;
-	t->pointee = NULL;
-	fprintf(stderr, "IRType void created. (Info)\n");
-	return t;
+	return ir_type_create_scalar(IR_T_VOID, 0, "void");
 }
 
 IRType* ir_type_ptr(IRType* pointee)
@@ -262,6 +296,13 @@ IRFunction* ir_function_create(const char* name, IRType* return_type)
 	f->blocks = NULL;
 	f->params = NULL;
 	f->next = NULL;
+	// FFI/extern metadata
+	f->is_extern = 0;
+	f->abi = NULL;
+	f->link_name = NULL;
+	f->library_name = NULL;
+	f->visibility = NULL;
+	f->is_export = 0;
 	fprintf(stderr, "IRFunction '%s' created. (Info)\n", name);
 	return f;
 }

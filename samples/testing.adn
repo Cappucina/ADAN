@@ -1,7 +1,21 @@
 import "adan/io";
+import "adan/crypto";
 
 function main(): i32 {
     io.print("The compiler is working as expected!");
+    set digest: string = crypto.sha256_hex("adan");
+    set random_value: string = crypto.random_hex(16);
+
+    io.print("sha256('adan') = %s", digest);
+    io.print("sha512('adan') = %s", crypto.sha512_hex("adan"));
+    io.print("random_hex(16) = %s", random_value);
+
+    if crypto.secure_equals(digest, crypto.sha256_hex("adan")) {
+        io.print("secure_equals matched the expected digest");
+    }
+    else {
+        io.error("secure_equals failed for identical digests");
+    }
 
     return 0;
 }

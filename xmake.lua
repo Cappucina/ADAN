@@ -20,6 +20,9 @@ add_files("libs/**.c")
 add_deps("adan_linker")
 add_includedirs("src", "libs")
 add_includedirs("build/.gens/adan", { public = true })
+if is_plat("linux") or is_plat("macosx") then
+	add_links("crypto")
+end
 set_rundir(".")
 set_runargs("-f", "samples/testing.adn", "-o", "samples/testing")
 

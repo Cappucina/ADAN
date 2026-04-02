@@ -95,9 +95,15 @@ static ASTNode* parse_type_declaration(Parser* parser);
 
 static ASTNode* parse_import_statement(Parser* parser);
 
+static ASTNode* parse_link_directive(Parser* parser);
+
 static ASTNode* parse_break_statement(Parser* parser);
 
 static ASTNode* parse_continue_statement(Parser* parser);
+
+static char* clone_metadata_value(Parser* parser);
+
+static void parse_function_metadata(Parser* parser, ASTNode* function_decl);
 
 static ASTNode* parse_expression(Parser* parser);
 
@@ -1273,6 +1279,133 @@ static ASTNode* parse_import_statement(Parser* parser)
 	return import;
 }
 
+static char* clone_metadata_value(Parser* parser)
+{
+	Token* token = peek_current(parser);
+	char* cloned;
+	size_t length;
+
+	if (!token || (token->type != TOKEN_STRING && token->type != TOKEN_IDENT))
+	{
+		error_expected(parser, "metadata value");
+		enter_recovery_mode(parser);
+		return NULL;
+	}
+
+	length = strlen(token->lexeme);
+	if (token->type == TOKEN_STRING && length >= 2 &&
+	    ((token->lexeme[0] == '"' && token->lexeme[length - 1] == '"') ||
+	     (token->lexeme[0] == '\'' && token->lexeme[length - 1] == '\'') ||
+	     (token->lexeme[0] == '`' && token->lexeme[length - 1] == '`')))
+	{
+		cloned = clone_string(token->lexeme + 1, length - 2);
+	}
+	else
+	{
+		cloned = clone_string(token->lexeme, length);
+	}
+
+	advance_token(parser);
+	return cloned;
+}
+
+static void parse_function_metadata(Parser* parser, ASTNode* function_decl)
+{
+	while (!parser->recovery_mode)
+	{
+		Token* token = peek_current(parser);
+		char* value = NULL;
+
+		if (!token)
+		{
+			return;
+		}
+
+		if (token->type == TOKEN_LINK)
+		{
+			advance_token(parser);
+			value = clone_metadata_value(parser);
+			if (!value)
+			{
+				return;
+			}
+			free(function_decl->func_decl.link_name);
+			function_decl->func_decl.link_name = value;
+			continue;
+		}
+
+		if (token->type != TOKEN_IDENT)
+		{
+			return;
+		}
+
+		if (strcmp(token->lexeme, "abi") == 0)
+		{
+			advance_token(parser);
+			value = clone_metadata_value(parser);
+			if (!value)
+			{
+				return;
+			}
+			free(function_decl->func_decl.abi);
+			function_decl->func_decl.abi = value;
+			continue;
+		}
+		if (strcmp(token->lexeme, "library") == 0)
+		{
+			advance_token(parser);
+			value = clone_metadata_value(parser);
+			if (!value)
+			{
+				return;
+			}
+			free(function_decl->func_decl.library_name);
+			function_decl->func_decl.library_name = value;
+			continue;
+		}
+		if (strcmp(token->lexeme, "visibility") == 0)
+		{
+			advance_token(parser);
+			value = clone_metadata_value(parser);
+			if (!value)
+			{
+				return;
+			}
+			free(function_decl->func_decl.visibility);
+			function_decl->func_decl.visibility = value;
+			continue;
+		}
+
+		return;
+	}
+}
+
+static ASTNode* parse_link_directive(Parser* parser)
+{
+	bool is_search_path = match(parser, TOKEN_LINK_SEARCH);
+	size_t tok_line = peek_current(parser)->line;
+	size_t tok_column = peek_current(parser)->column;
+	char* value;
+	ASTNode* directive;
+
+	if (is_search_path)
+	{
+		consume(parser, TOKEN_LINK_SEARCH,
+		        "Expected 'link_search' keyword for link search directive.");
+	}
+	else
+	{
+		consume(parser, TOKEN_LINK, "Expected 'link' keyword for link directive.");
+	}
+
+	value = clone_metadata_value(parser);
+	consume(parser, TOKEN_SEMICOLON, "Expected ';' after link directive.");
+	directive = value ? ast_create_link_directive(value, is_search_path, tok_line, tok_column)
+	                  : NULL;
+	free(value);
+	return directive;
+}
+
 static ASTNode* parse_variable_declaration(Parser* parser)
 {
 	bool is_mutable = match(parser, TOKEN_SET);
@@ -1374,12 +1507,22 @@ static ASTNode* parse_type_declaration(Parser* parser)
 
 static ASTNode* parse_function_declaration(Parser* parser)
 {
+	bool is_extern = false;
+	bool is_export = false;
+	if (match(parser, TOKEN_EXPORT)) {
+		consume(parser, TOKEN_EXPORT, "Expected 'export' keyword for function declaration.");
+		is_export = true;
+	}
+	if (match(parser, TOKEN_EXTERN)) {
+		consume(parser, TOKEN_EXTERN, "Expected 'extern' keyword for extern function declaration.");
+		is_extern = true;
+	}
 	consume(parser, TOKEN_FUN, "Expected 'function' keyword for function declaration.");
 
 	size_t tok_line = peek_current(parser)->line;
 	size_t tok_column = peek_current(parser)->column;
 	char* name =
-	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
+		clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 	consume(parser, TOKEN_IDENT, "Expected function name after 'function' keyword.");
 
 	consume(parser, TOKEN_LPAREN, "Expected '(' after function name.");
@@ -1388,13 +1531,13 @@ static ASTNode* parse_function_declaration(Parser* parser)
 	char* variadic_name = NULL;
 	ASTNode* variadic_type = NULL;
 	ASTNode** params = parse_parameter_list(parser, &param_count, &is_variadic, &variadic_name,
-	                                        &variadic_type);
+											&variadic_type);
 	consume(parser, TOKEN_RPAREN, "Expected ')' after parameter list.");
 
 	consume(parser, TOKEN_COLON, "Expected ':' after parameter list for return type.");
 
 	char* return_type_name =
-	    clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
+		clone_string(peek_current(parser)->lexeme, strlen(peek_current(parser)->lexeme));
 	ASTNode* return_type = parse_type(parser);
 
 	if (name && return_type_name && !parser->recovery_mode)
@@ -1403,10 +1546,33 @@ static ASTNode* parse_function_declaration(Parser* parser)
 	}
 	free(return_type_name);
 
-	ASTNode* body = parse_block(parser);
-	ASTNode* func_decl = ast_create_function_declaration(name, params, param_count, return_type,
-	                                                     body, is_variadic, variadic_name,
-	                                                     variadic_type, tok_line, tok_column);
+	ASTNode* body = NULL;
+	ASTNode* func_decl = NULL;
+	if (!is_extern) {
+		func_decl = ast_create_function_declaration(name, params, param_count, return_type,
+											 body, is_variadic, variadic_name,
+											 variadic_type, tok_line, tok_column, is_extern);
+		if (func_decl)
+		{
+			func_decl->func_decl.is_export = is_export;
+			parse_function_metadata(parser, func_decl);
+		}
+		body = parse_block(parser);
+	} else {
+		func_decl = ast_create_function_declaration(name, params, param_count, return_type,
+											 body, is_variadic, variadic_name,
+											 variadic_type, tok_line, tok_column, is_extern);
+		if (func_decl)
+		{
+			func_decl->func_decl.is_export = is_export;
+			parse_function_metadata(parser, func_decl);
+		}
+		consume(parser, TOKEN_SEMICOLON, "Expected ';' after extern function declaration.");
+	}
+	if (func_decl && !is_extern)
+	{
+		func_decl->func_decl.body = body;
+	}
 	free(variadic_name);
 	free(name);
 	return func_decl;
@@ -1477,8 +1643,14 @@ static ASTNode* parse_statement(Parser* parser)
 	}
 	switch (peek_current(parser)->type)
 	{
+		case TOKEN_EXPORT:
+		case TOKEN_EXTERN:
+			return parse_function_declaration(parser);
 		case TOKEN_FUN:
 			return parse_function_declaration(parser);
+		case TOKEN_LINK:
+		case TOKEN_LINK_SEARCH:
+			return parse_link_directive(parser);
 		case TOKEN_TYPE:
 			return parse_type_declaration(parser);
 		case TOKEN_IMPORT:

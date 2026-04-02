@@ -224,44 +224,255 @@ static int ends_with(const char* s, const char* suffix)
 	return ls >= lsu && strcmp(s + ls - lsu, suffix) == 0;
 }
 
-int linker_link_with_clang(const char* input_ll_path, const char* output_path, const char* libs)
+typedef struct
 {
-	if (!input_ll_path || !output_path)
-		return -1;
-	int r;
-	if (libs && libs[0])
+	char** args;
+	size_t count;
+	size_t capacity;
+} arg_list;
+
+static int append_string_item(char*** items, size_t* count, const char* value)
+{
+	char** resized;
+	char* copy;
+
+	if (!items || !count || !value)
 	{
-		size_t lib_count = 0;
-		char* lib_storage = NULL;
-		char** lib_args = split_args(libs, &lib_count, &lib_storage);
-		if (!lib_args)
-			return -1;
-		size_t argc = 4 + lib_count + 1;
-		char** argv = (char**)malloc(argc * sizeof(char*));
-		if (!argv)
+		return -1;
+	}
+
+	resized = realloc(*items, sizeof(char*) * (*count + 1));
+	if (!resized)
+	{
+		return -1;
+	}
+
+	copy = strdup(value);
+	if (!copy)
+	{
+		return -1;
+	}
+
+	*items = resized;
+	(*items)[(*count)++] = copy;
+	return 0;
+}
+
+static void free_string_items(char** items, size_t count)
+{
+	if (!items)
+	{
+		return;
+	}
+
+	for (size_t i = 0; i < count; ++i)
+	{
+		free(items[i]);
+	}
+	free(items);
+}
+
+static void cleanup_temp_objects(char** temp_objs, size_t temp_count)
+{
+	if (!temp_objs)
+	{
+		return;
+	}
+
+	for (size_t i = 0; i < temp_count; ++i)
+	{
+		if (temp_objs[i])
 		{
-			free(lib_storage);
-			free(lib_args);
+			unlink(temp_objs[i]);
+			free(temp_objs[i]);
+		}
+	}
+	free(temp_objs);
+}
+
+static int arg_list_append(arg_list* list, const char* value)
+{
+	char** resized;
+	char* copy;
+	size_t new_capacity;
+
+	if (!list || !value)
+	{
+		return -1;
+	}
+
+	if (list->count + 2 > list->capacity)
+	{
+		new_capacity = list->capacity == 0 ? 8 : list->capacity * 2;
+		while (new_capacity < list->count + 2)
+		{
+			new_capacity *= 2;
+		}
+		resized = realloc(list->args, sizeof(char*) * new_capacity);
+		if (!resized)
+		{
 			return -1;
 		}
-		argv[0] = "clang";
-		argv[1] = (char*)input_ll_path;
-		argv[2] = "-o";
-		argv[3] = (char*)output_path;
-		for (size_t i = 0; i < lib_count; ++i)
-			argv[4 + i] = lib_args[i];
-		argv[argc - 1] = NULL;
-		r = run_cmd(argv);
-		free(argv);
-		free(lib_storage);
-		free(lib_args);
+		list->args = resized;
+		list->capacity = new_capacity;
 	}
-	else
+
+	copy = strdup(value);
+	if (!copy)
 	{
-		char* argv[] = {"clang", (char*)input_ll_path, "-o", (char*)output_path, NULL};
-		r = run_cmd(argv);
+		return -1;
 	}
-	return r;
+
+	list->args[list->count++] = copy;
+	list->args[list->count] = NULL;
+	return 0;
+}
+
+static void arg_list_free(arg_list* list)
+{
+	if (!list)
+	{
+		return;
+	}
+
+	for (size_t i = 0; i < list->count; ++i)
+	{
+		free(list->args[i]);
+	}
+	free(list->args);
+	list->args = NULL;
+	list->count = 0;
+	list->capacity = 0;
+}
+
+static int arg_list_append_raw_args(arg_list* list, const char* raw_args)
+{
+	size_t arg_count = 0;
+	char* storage = NULL;
+	char** split = NULL;
+
+	if (!raw_args || raw_args[0] == '\0')
+	{
+		return 0;
+	}
+
+	split = split_args(raw_args, &arg_count, &storage);
+	if (!split)
+	{
+		return -1;
+	}
+
+	for (size_t i = 0; i < arg_count; ++i)
+	{
+		if (arg_list_append(list, split[i]) != 0)
+		{
+			free(split);
+			free(storage);
+			return -1;
+		}
+	}
+
+	free(split);
+	free(storage);
+	return 0;
+}
+
+static int arg_list_append_search_paths(arg_list* list, const char* csv)
+{
+	char* dup;
+	char* saveptr = NULL;
+	char* tok;
+
+	if (!csv || csv[0] == '\0')
+	{
+		return 0;
+	}
+
+	dup = strdup(csv);
+	if (!dup)
+	{
+		return -1;
+	}
+
+	tok = strtok_r(dup, ",", &saveptr);
+	while (tok)
+	{
+		char* path = trim_whitespace(tok);
+		if (path[0] != '\0')
+		{
+			if (arg_list_append(list, "-L") != 0 ||
+			    arg_list_append(list, path) != 0)
+			{
+				free(dup);
+				return -1;
+			}
+		}
+		tok = strtok_r(NULL, ",", &saveptr);
+	}
+
+	free(dup);
+	return 0;
+}
+
+static int arg_list_append_native_libraries(arg_list* list, const char* csv)
+{
+	char* dup;
+	char* saveptr = NULL;
+	char* tok;
+
+	if (!csv || csv[0] == '\0')
+	{
+		return 0;
+	}
+
+	dup = strdup(csv);
+	if (!dup)
+	{
+		return -1;
+	}
+
+	tok = strtok_r(dup, ",", &saveptr);
+	while (tok)
+	{
+		char* item = trim_whitespace(tok);
+		if (item[0] != '\0')
+		{
+			if (item[0] == '-' || path_exists(item) || strchr(item, '/') ||
+			    strchr(item, '\\') || ends_with(item, ".a") ||
+			    ends_with(item, ".o") || ends_with(item, ".obj") ||
+			    ends_with(item, ".lib") || ends_with(item, ".so") ||
+			    ends_with(item, ".dylib"))
+			{
+				if (arg_list_append(list, item) != 0)
+				{
+					free(dup);
+					return -1;
+				}
+			}
+			else
+			{
+				size_t flag_len = strlen(item) + 3;
+				char* lib_flag = malloc(flag_len);
+				if (!lib_flag)
+				{
+					free(dup);
+					return -1;
+				}
+				snprintf(lib_flag, flag_len, "-l%s", item);
+				if (arg_list_append(list, lib_flag) != 0)
+				{
+					free(lib_flag);
+					free(dup);
+					return -1;
+				}
+				free(lib_flag);
+			}
+		}
+		tok = strtok_r(NULL, ",", &saveptr);
+	}
+
+	free(dup);
+	return 0;
 }
 
 typedef struct
@@ -307,33 +518,36 @@ static void compile_c_file(const char* srcpath, void* vctx)
 		ctx->error = 1;
 		return;
 	}
-	*ctx->link_items = realloc(*ctx->link_items, sizeof(char*) * (*ctx->link_count + 1));
-	(*ctx->link_items)[(*ctx->link_count)++] = strdup(tmpobj);
-	*ctx->temp_objs = realloc(*ctx->temp_objs, sizeof(char*) * (*ctx->temp_count + 1));
-	(*ctx->temp_objs)[(*ctx->temp_count)++] = strdup(tmpobj);
+	if (append_string_item(ctx->link_items, ctx->link_count, tmpobj) != 0 ||
+	    append_string_item(ctx->temp_objs, ctx->temp_count, tmpobj) != 0)
+	{
+		ctx->error = 1;
+	}
 }
 
-int linker_link_and_bundle(const char* input_ll_path, const char* output_path, const char* libs,
-                           const char* bundle_csv)
+static int collect_bundle_link_items(const char* bundle_csv, char*** link_items,
+	                                 size_t* link_count, char*** temp_objs,
+	                                 size_t* temp_count)
 {
-	if (!input_ll_path || !output_path)
-		return -1;
-	if (!bundle_csv || bundle_csv[0] == '\0')
-		return linker_link_with_clang(input_ll_path, output_path, libs);
-
-	char* dup = strdup(bundle_csv);
-	if (!dup)
-		return -1;
+	char* dup;
 	char* saveptr = NULL;
-	char* tok = strtok_r(dup, ",", &saveptr);
-	char** link_items = NULL;
-	size_t link_count = 0;
-	char** temp_objs = NULL;
-	size_t temp_count = 0;
-	int pid = (int)getpid(), tmpid = 0;
+	char* tok;
+	int pid = (int)getpid();
+	int tmpid = 0;
+	bundle_ctx ctx = {link_items, link_count, temp_objs, temp_count, &tmpid, pid, 0};
 
-	bundle_ctx ctx = {&link_items, &link_count, &temp_objs, &temp_count, &tmpid, pid, 0};
+	if (!bundle_csv || bundle_csv[0] == '\0')
+	{
+		return 0;
+	}
 
+	dup = strdup(bundle_csv);
+	if (!dup)
+	{
+		return -1;
+	}
+
+	tok = strtok_r(dup, ",", &saveptr);
 	while (tok)
 	{
 		char* path = trim_whitespace(tok);
@@ -347,136 +561,94 @@ int linker_link_and_bundle(const char* input_ll_path, const char* output_path, c
 		{
 			foreach_c_file_in_dir(path, compile_c_file, &ctx);
 			if (ctx.error)
-				goto cleanup_error;
+			{
+				free(dup);
+				return -1;
+			}
 		}
 		else if (ends_with(path, ".c"))
 		{
 			compile_c_file(path, &ctx);
 			if (ctx.error)
-				goto cleanup_error;
+			{
+				free(dup);
+				return -1;
+			}
 		}
-		else if (ends_with(path, ".o") || ends_with(path, ".a"))
+		else if (ends_with(path, ".o") || ends_with(path, ".a") ||
+		         ends_with(path, ".obj") || ends_with(path, ".lib") ||
+		         path_exists(path))
 		{
-			link_items = realloc(link_items, sizeof(char*) * (link_count + 1));
-			link_items[link_count++] = strdup(path);
+			if (append_string_item(link_items, link_count, path) != 0)
+			{
+				free(dup);
+				return -1;
+			}
 		}
 		else
 		{
-			if (path_exists(path))
-			{
-				link_items = realloc(link_items, sizeof(char*) * (link_count + 1));
-				link_items[link_count++] = strdup(path);
-			}
-			else
-			{
-				fprintf(stderr, "linker: unknown bundle path '%s'\n", path);
-				goto cleanup_error;
-			}
+			fprintf(stderr, "linker: unknown bundle path '%s'\n", path);
+			free(dup);
+			return -1;
 		}
+
 		tok = strtok_r(NULL, ",", &saveptr);
 	}
 
-	{
-		size_t len =
-		    strlen(input_ll_path) + strlen(output_path) + 64 + (libs ? strlen(libs) : 0);
-		for (size_t i = 0; i < link_count; ++i)
-			len += strlen(link_items[i]) + 3;
-		char* linkcmd = malloc(len + 1);
-		if (!linkcmd)
-			goto cleanup_error;
-		strcpy(linkcmd, "clang ");
-		strcat(linkcmd, input_ll_path);
-		for (size_t i = 0; i < link_count; ++i)
-		{
-			strcat(linkcmd, " ");
-			strcat(linkcmd, link_items[i]);
-		}
-		strcat(linkcmd, " -o ");
-		strcat(linkcmd, output_path);
-		if (libs && libs[0])
-		{
-			strcat(linkcmd, " ");
-			strcat(linkcmd, libs);
-		}
-		size_t cmd_argc = 0;
-		char* cmd_storage = NULL;
-		char** cmd_argv = split_args(linkcmd, &cmd_argc, &cmd_storage);
-		int r = -1;
-		if (cmd_argv)
-		{
-			r = run_cmd(cmd_argv);
-			free(cmd_argv);
-			free(cmd_storage);
-		}
-		free(linkcmd);
-		for (size_t i = 0; i < temp_count; ++i)
-		{
-			unlink(temp_objs[i]);
-			free(temp_objs[i]);
-		}
-		for (size_t i = 0; i < link_count; ++i)
-			free(link_items[i]);
-		free(temp_objs);
-		free(link_items);
-		free(dup);
-		return r;
-	}
-
-cleanup_error:
-	if (temp_objs)
-	{
-		for (size_t i = 0; i < temp_count; ++i)
-		{
-			unlink(temp_objs[i]);
-			free(temp_objs[i]);
-		}
-	}
-	if (link_items)
-	{
-		for (size_t i = 0; i < link_count; ++i)
-			free(link_items[i]);
-	}
-	free(temp_objs);
-	free(link_items);
 	free(dup);
-	return -1;
+	return 0;
 }
 
-int linker_link_and_bundle_embedded(const char* input_ll_path, const char* output_path,
-                                    const char* libs, const char* modules_csv)
+static int collect_embedded_link_items(const char* modules_csv, char*** link_items,
+	                                   size_t* link_count, char*** temp_objs,
+	                                   size_t* temp_count)
 {
-	if (!input_ll_path || !output_path)
-		return -1;
-	if (!modules_csv || modules_csv[0] == '\0')
-		return linker_link_with_clang(input_ll_path, output_path, libs);
-
-	char* dup = strdup(modules_csv);
-	if (!dup)
-		return -1;
-	int pid = (int)getpid(), tmpid = 0;
-	char** objs = NULL;
-	size_t obj_count = 0;
+	char* dup;
 	char* saveptr = NULL;
-	char* tok = strtok_r(dup, ",", &saveptr);
+	char* tok;
+	int pid = (int)getpid();
+	int tmpid = 0;
 
+	if (!modules_csv || modules_csv[0] == '\0')
+	{
+		return 0;
+	}
+
+	dup = strdup(modules_csv);
+	if (!dup)
+	{
+		return -1;
+	}
+
+	tok = strtok_r(dup, ",", &saveptr);
 	while (tok)
 	{
 		char* module = trim_whitespace(tok);
+		const char* c_src;
+		const char* h_filename;
+		const char* h_src;
+		char tmp_dir[256];
+		char tmp_c[300];
+		char tmp_obj[256];
+		FILE* f;
+
 		if (!module[0])
 		{
 			tok = strtok_r(NULL, ",", &saveptr);
 			continue;
 		}
 
-		const char* c_src = embedded_lib_get_c_source(module);
+		c_src = embedded_lib_get_c_source(module);
 		if (!c_src)
 		{
-			fprintf(stderr, "linker: no embedded C source for module '%s'.\n", module);
-			goto cleanup_embedded_error;
+			fprintf(stderr, "linker: no embedded C source for module '%s'.\n",
+			        module);
+			free(dup);
+			return -1;
 		}
 
-		char tmp_dir[256], tmp_c[300], tmp_obj[256];
-		snprintf(tmp_dir, sizeof(tmp_dir), "%s/adan_emb_%d_%d", get_tmp_dir(), pid, tmpid);
+		snprintf(tmp_dir, sizeof(tmp_dir), "%s/adan_emb_%d_%d", get_tmp_dir(), pid,
+		         tmpid);
 		snprintf(tmp_c, sizeof(tmp_c), "%s/source.c", tmp_dir);
 		snprintf(tmp_obj, sizeof(tmp_obj), "%s/adan_emb_%d_%d.o", get_tmp_dir(), pid,
 		         tmpid++);
@@ -484,22 +656,24 @@ int linker_link_and_bundle_embedded(const char* input_ll_path, const char* outpu
 		if (mkdir(tmp_dir, 0700) != 0)
 		{
 			fprintf(stderr, "linker: failed to create temp dir for '%s'.\n", module);
-			goto cleanup_embedded_error;
+			free(dup);
+			return -1;
 		}
 
-		FILE* f = fopen(tmp_c, "w");
+		f = fopen(tmp_c, "w");
 		if (!f)
 		{
 			fprintf(stderr, "linker: failed to write embedded source for '%s'.\n",
 			        module);
 			rmdir(tmp_dir);
-			goto cleanup_embedded_error;
+			free(dup);
+			return -1;
 		}
 		fputs(c_src, f);
 		fclose(f);
 
-		const char* h_filename = embedded_lib_get_h_filename(module);
-		const char* h_src = embedded_lib_get_h_source(module);
+		h_filename = embedded_lib_get_h_filename(module);
+		h_src = embedded_lib_get_h_source(module);
 		if (h_filename && h_src)
 		{
 			char tmp_h[512];
@@ -512,98 +686,155 @@ int linker_link_and_bundle_embedded(const char* input_ll_path, const char* outpu
 			}
 		}
 
-		size_t cmdlen = strlen(tmp_c) + strlen(tmp_dir) + strlen(tmp_obj) + 64;
-		char* cmd = malloc(cmdlen);
-		if (!cmd)
 		{
+			size_t cmdlen = strlen(tmp_c) + strlen(tmp_dir) + strlen(tmp_obj) + 64;
+			char* cmd = malloc(cmdlen);
+			size_t cmd_argc = 0;
+			char* cmd_storage = NULL;
+			char** cmd_argv;
+			int r = -1;
+
+			if (!cmd)
+			{
+				unlink(tmp_c);
+				rmdir(tmp_dir);
+				free(dup);
+				return -1;
+			}
+
+			snprintf(cmd, cmdlen, "clang -c %s -I %s -o %s", tmp_c, tmp_dir, tmp_obj);
+			cmd_argv = split_args(cmd, &cmd_argc, &cmd_storage);
+			if (cmd_argv)
+			{
+				r = run_cmd(cmd_argv);
+				free(cmd_argv);
+				free(cmd_storage);
+			}
+			free(cmd);
 			unlink(tmp_c);
-			goto cleanup_embedded_error;
+			if (h_filename && h_src)
+			{
+				char tmp_h[512];
+				snprintf(tmp_h, sizeof(tmp_h), "%s/%s", tmp_dir, h_filename);
+				unlink(tmp_h);
+			}
+			rmdir(tmp_dir);
+			if (r != 0)
+			{
+				unlink(tmp_obj);
+				free(dup);
+				return -1;
+			}
 		}
-		snprintf(cmd, cmdlen, "clang -c %s -I %s -o %s", tmp_c, tmp_dir, tmp_obj);
-		size_t cmd_argc = 0;
-		char* cmd_storage = NULL;
-		char** cmd_argv = split_args(cmd, &cmd_argc, &cmd_storage);
-		int r = -1;
-		if (cmd_argv)
-		{
-			r = run_cmd(cmd_argv);
-			free(cmd_argv);
-			free(cmd_storage);
-		}
-		free(cmd);
-		unlink(tmp_c);
-		if (h_filename && h_src)
-		{
-			char tmp_h[512];
-			snprintf(tmp_h, sizeof(tmp_h), "%s/%s", tmp_dir, h_filename);
-			unlink(tmp_h);
-		}
-		rmdir(tmp_dir);
-		if (r != 0)
+
+		if (append_string_item(link_items, link_count, tmp_obj) != 0 ||
+		    append_string_item(temp_objs, temp_count, tmp_obj) != 0)
 		{
 			unlink(tmp_obj);
-			goto cleanup_embedded_error;
+			free(dup);
+			return -1;
 		}
-		objs = realloc(objs, sizeof(char*) * (obj_count + 1));
-		objs[obj_count++] = strdup(tmp_obj);
+
 		tok = strtok_r(NULL, ",", &saveptr);
 	}
 
+	free(dup);
+	return 0;
+}
+
+int linker_link(const char* input_ll_path, const char* output_path,
+	            const LinkerConfig* config)
+{
+	char** link_items = NULL;
+	size_t link_count = 0;
+	char** temp_objs = NULL;
+	size_t temp_count = 0;
+	arg_list argv = {0};
+	int result = -1;
+
+	if (!input_ll_path || !output_path)
 	{
-		size_t llen =
-		    strlen(input_ll_path) + strlen(output_path) + 64 + (libs ? strlen(libs) : 0);
-		for (size_t i = 0; i < obj_count; ++i)
-			llen += strlen(objs[i]) + 2;
-		char* linkcmd = malloc(llen + 1);
-		if (!linkcmd)
-			goto cleanup_embedded_error;
-		strcpy(linkcmd, "clang ");
-		strcat(linkcmd, input_ll_path);
-		for (size_t i = 0; i < obj_count; ++i)
-		{
-			strcat(linkcmd, " ");
-			strcat(linkcmd, objs[i]);
-		}
-		strcat(linkcmd, " -o ");
-		strcat(linkcmd, output_path);
-		if (libs && libs[0])
-		{
-			strcat(linkcmd, " ");
-			strcat(linkcmd, libs);
-		}
-		size_t cmd_argc = 0;
-		char* cmd_storage = NULL;
-		char** cmd_argv = split_args(linkcmd, &cmd_argc, &cmd_storage);
-		int r = -1;
-		if (cmd_argv)
-		{
-			r = run_cmd(cmd_argv);
-			free(cmd_argv);
-			free(cmd_storage);
-		}
-		free(linkcmd);
-		for (size_t i = 0; i < obj_count; ++i)
-		{
-			unlink(objs[i]);
-			free(objs[i]);
-		}
-		free(objs);
-		free(dup);
-		return r;
+		return -1;
 	}
 
-cleanup_embedded_error:
-	if (objs)
+	if (config)
 	{
-		for (size_t i = 0; i < obj_count; ++i)
+		if (collect_bundle_link_items(config->bundle_csv, &link_items, &link_count,
+		                             &temp_objs, &temp_count) != 0)
 		{
-			unlink(objs[i]);
-			free(objs[i]);
+			goto cleanup;
 		}
-		free(objs);
+		if (collect_embedded_link_items(config->embedded_modules_csv, &link_items,
+		                               &link_count, &temp_objs, &temp_count) != 0)
+		{
+			goto cleanup;
+		}
 	}
-	free(dup);
-	return -1;
+
+	if (arg_list_append(&argv, "clang") != 0 ||
+	    arg_list_append(&argv, input_ll_path) != 0)
+	{
+		goto cleanup;
+	}
+
+	for (size_t i = 0; i < link_count; ++i)
+	{
+		if (arg_list_append(&argv, link_items[i]) != 0)
+		{
+			goto cleanup;
+		}
+	}
+
+	if (arg_list_append(&argv, "-o") != 0 ||
+	    arg_list_append(&argv, output_path) != 0)
+	{
+		goto cleanup;
+	}
+
+	if (config)
+	{
+		if (arg_list_append_search_paths(&argv,
+		                                config->native_search_paths_csv) != 0 ||
+		    arg_list_append_native_libraries(&argv,
+		                                   config->native_libraries_csv) != 0 ||
+		    arg_list_append_raw_args(&argv, config->raw_link_args) != 0)
+		{
+			goto cleanup;
+		}
+	}
+
+	result = run_cmd(argv.args);
+
+cleanup:
+	cleanup_temp_objects(temp_objs, temp_count);
+	free_string_items(link_items, link_count);
+	arg_list_free(&argv);
+	return result;
+}
+
+int linker_link_with_clang(const char* input_ll_path, const char* output_path, const char* libs)
+{
+	LinkerConfig config = {0};
+	config.raw_link_args = libs;
+	return linker_link(input_ll_path, output_path, &config);
+}
+
+int linker_link_and_bundle(const char* input_ll_path, const char* output_path, const char* libs,
+	                       const char* bundle_csv)
+{
+	LinkerConfig config = {0};
+	config.raw_link_args = libs;
+	config.bundle_csv = bundle_csv;
+	return linker_link(input_ll_path, output_path, &config);
+}
+
+int linker_link_and_bundle_embedded(const char* input_ll_path, const char* output_path,
+	                                const char* libs, const char* modules_csv)
+{
+	LinkerConfig config = {0};
+	config.raw_link_args = libs;
+	config.embedded_modules_csv = modules_csv;
+	return linker_link(input_ll_path, output_path, &config);
 }
 
 int linker_emit_bitcode_from_ll(const char* ll_path, const char* bc_path)

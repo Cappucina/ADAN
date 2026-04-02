@@ -143,13 +143,13 @@ function Get-PackageList {
         "choco"  { return @("llvm", "less", "xmake") }
         "scoop"  { return @("gcc", "llvm", "xmake") }
         "winget" { return @("LLVM.LLVM", "xmake.xmake") }
-        "brew"   { return @("clang-format", "xmake") }
-        "apt"    { return @("build-essential", "clang-format", "gdb", "xmake") }
-        "dnf"    { return @("gcc", "clang-tools-extra", "gdb", "xmake") }
-        "yum"    { return @("gcc", "clang-tools-extra", "gdb", "xmake") }
-        "pacman" { return @("base-devel", "clang", "gdb", "xmake") }
-        "zypper" { return @("gcc", "clang-tools", "gdb", "xmake") }
-        "apk"    { return @("build-base", "clang-extra-tools", "gdb", "xmake") }
+        "brew"   { return @("clang-format", "xmake", "openssl") }
+        "apt"    { return @("build-essential", "clang-format", "gdb", "xmake", "libssl-dev") }
+        "dnf"    { return @("gcc", "clang-tools-extra", "gdb", "xmake", "openssl-devel") }
+        "yum"    { return @("gcc", "clang-tools-extra", "gdb", "xmake", "openssl-devel") }
+        "pacman" { return @("base-devel", "clang", "gdb", "xmake", "openssl") }
+        "zypper" { return @("gcc", "clang-tools", "gdb", "xmake", "libopenssl-devel") }
+        "apk"    { return @("build-base", "clang-extra-tools", "gdb", "xmake", "openssl-dev") }
     }
 }
 

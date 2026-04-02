@@ -59,11 +59,33 @@ ADAN's compiler provides flags to modify default compilation behaviors:
 - `-f <file>` / `--file <file>`: Source file to compile (`.adn` or `.adan`). This argument is required.
 - `-o <path>` / `--output <path>`: Specifies the output executable path. If `<path>` is a directory, the binary is placed inside it named after the source file. Defaults to the input source file name in the current directory if not provided.
 - `-r` / `--rawir`: Emits the LLVM IR (`.ll` file) instead of compiling into an executable binary.
+- `-l <name>` / `--link-lib <name>`: Adds a native library to the final linker invocation.
+- `-L <path>` / `--link-search <path>`: Adds a native library search path to the final linker invocation.
+- `--link-arg <arg>`: Passes a raw argument directly to the system linker.
 - `-h` / `--help`: Show the help message and exit.
 
 ```powershell
 $ ./adan -f main.adn -r    # Output 'main.ll' LLVM IR.
 $ ./adan --file main.adn   # Outputs a 'main' executable.
+```
+
+## Native Linking
+
+ADAN now supports source-level native-linking metadata for FFI declarations and top-level linker directives:
+
+```adan
+link "m";
+link_search "/usr/lib";
+
+extern function puts(text: string): i32 link "puts" library "c" abi "c";
+```
+
+You can also export a definition from ADAN for the generated object code:
+
+```adan
+export function add(a: i32, b: i32): i32 {
+  return a + b;
+}
 ```
 
 <br>

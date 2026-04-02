@@ -144,27 +144,27 @@ get_package_names() {
     apt)
         # apt: build-essential provides gcc/g++, make, and binutils.
         # less is included here for log viewing on Debian/Ubuntu only.
-        PACKAGES=(build-essential clang clang-format gdb less binutils xmake)
+        PACKAGES=(build-essential clang clang-format gdb less binutils xmake libssl-dev)
         ;;
     dnf | yum)
         # dnf/yum: gcc toolchain plus clang and extra tools.
-        PACKAGES=(gcc clang clang-tools-extra gdb xmake)
+        PACKAGES=(gcc clang clang-tools-extra gdb xmake openssl-devel)
         ;;
     pacman)
         # pacman: base-devel provides build toolchain (including gcc/make).
-        PACKAGES=(base-devel clang gdb xmake)
+        PACKAGES=(base-devel clang gdb xmake openssl)
         ;;
     zypper)
         # zypper: gcc toolchain plus clang tools.
-        PACKAGES=(gcc clang clang-tools gdb xmake)
+        PACKAGES=(gcc clang clang-tools gdb xmake libopenssl-devel)
         ;;
     apk)
         # apk: build-base provides build toolchain, clang-extra-tools adds tooling.
-        PACKAGES=(build-base clang-extra-tools gdb xmake)
+        PACKAGES=(build-base clang-extra-tools gdb xmake openssl-dev)
         ;;
     brew)
         # brew: llvm includes clang; clang-format is separate.
-        PACKAGES=(llvm clang-format xmake)
+        PACKAGES=(llvm clang-format xmake openssl)
         ;;
     esac
 }

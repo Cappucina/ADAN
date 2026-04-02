@@ -17,7 +17,175 @@
 
 #define MAX_BUNDLE_PATH_SIZE 2048
 
-static const char* libs = "";
+static char* trim_whitespace_inplace(char* text)
+{
+	char* end;
+
+	if (!text)
+	{
+		return text;
+	}
+
+	while (*text == ' ' || *text == '\t' || *text == '\n' || *text == '\r')
+	{
+		text++;
+	}
+
+	end = text + strlen(text);
+	while (end > text && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' ||
+	                     end[-1] == '\r'))
+	{
+		end--;
+	}
+	*end = '\0';
+	return text;
+}
+
+static bool csv_contains_value(const char* csv, const char* value)
+{
+	const char* cursor;
+	size_t value_len;
+
+	if (!csv || !value || value[0] == '\0')
+	{
+		return false;
+	}
+
+	value_len = strlen(value);
+	cursor = csv;
+	while (*cursor)
+	{
+		const char* end = strchr(cursor, ',');
+		size_t token_len = end ? (size_t)(end - cursor) : strlen(cursor);
+		if (token_len == value_len && strncmp(cursor, value, value_len) == 0)
+		{
+			return true;
+		}
+		if (!end)
+		{
+			break;
+		}
+		cursor = end + 1;
+	}
+
+	return false;
+}
+
+static bool append_csv_value(char** csv, const char* value)
+{
+	char* resized;
+	size_t current_len;
+	size_t value_len;
+
+	if (!csv || !value || value[0] == '\0')
+	{
+		return true;
+	}
+
+	if (*csv && csv_contains_value(*csv, value))
+	{
+		return true;
+	}
+
+	current_len = *csv ? strlen(*csv) : 0;
+	value_len = strlen(value);
+	resized = realloc(*csv, current_len + value_len + (current_len ? 2 : 1));
+	if (!resized)
+	{
+		return false;
+	}
+
+	*csv = resized;
+	if (current_len)
+	{
+		(*csv)[current_len++] = ',';
+	}
+	memcpy(*csv + current_len, value, value_len + 1);
+	return true;
+}
+
+static bool append_csv_values(char** csv, const char* values)
+{
+	char* copy;
+	char* token;
+
+	if (!values || values[0] == '\0')
+	{
+		return true;
+	}
+
+	copy = clone_string(values, strlen(values));
+	if (!copy)
+	{
+		return false;
+	}
+
+	token = strtok(copy, ",");
+	while (token)
+	{
+		char* trimmed = trim_whitespace_inplace(token);
+		if (trimmed[0] != '\0' && !append_csv_value(csv, trimmed))
+		{
+			free(copy);
+			return false;
+		}
+		token = strtok(NULL, ",");
+	}
+
+	free(copy);
+	return true;
+}
+
+static bool append_space_value(char** text, const char* value)
+{
+	char* resized;
+	size_t current_len;
+	size_t value_len;
+
+	if (!text || !value || value[0] == '\0')
+	{
+		return true;
+	}
+
+	current_len = *text ? strlen(*text) : 0;
+	value_len = strlen(value);
+	resized = realloc(*text, current_len + value_len + (current_len ? 2 : 1));
+	if (!resized)
+	{
+		return false;
+	}
+
+	*text = resized;
+	if (current_len)
+	{
+		(*text)[current_len++] = ' ';
+	}
+	memcpy(*text + current_len, value, value_len + 1);
+	return true;
+}
+
+static bool build_combined_bundle_paths(const char* bundle_paths, char* output,
+	                                    size_t output_size)
+{
+	int written;
+
+	if (!output || output_size == 0)
+	{
+		return false;
+	}
+
+	if (bundle_paths && bundle_paths[0] != '\0')
+	{
+		written = snprintf(output, output_size, "src/backend/runtime,%s",
+		                   bundle_paths);
+	}
+	else
+	{
+		written = snprintf(output, output_size, "src/backend/runtime");
+	}
+
+	return written >= 0 && (size_t)written < output_size;
+}
 
 bool has_valid_extension(const char* filename)
 {
@@ -53,6 +221,9 @@ void print_help(const char* program_name)
 	printf("  -o, --output <path>        Output path for the linked binary.\n");
 	printf("                             If <path> is a directory, the binary is placed\n");
 	printf("                             inside it named after the source file.\n");
+	printf("  -l, --link-lib <name>      Link a native library name or path. Repeatable.\n");
+	printf("  -L, --link-search <path>   Add a native library search path. Repeatable.\n");
+	printf("      --link-arg <arg>       Pass a raw argument through to the final clang link.\n");
 	printf("  -r, --rawir                Stop after emitting LLVM IR (.ll file)\n");
 	printf("  -h, --help                 Show this help message and exit\n");
 }
@@ -61,6 +232,9 @@ int main(int argc, char* argv[])
 {
 	char* file_path = NULL;
 	char* out_path = NULL;
+	char* cli_link_args = NULL;
+	char* cli_link_libraries = NULL;
+	char* cli_link_search_paths = NULL;
 	bool stop_at_ir = false;
 
 	if (argc < 2)
@@ -104,6 +278,78 @@ int main(int argc, char* argv[])
 				return 1;
 			}
 		}
+		else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--link-lib") == 0)
+		{
+			if (i + 1 < argc)
+			{
+				if (!append_csv_value(&cli_link_libraries, argv[i + 1]))
+				{
+					fprintf(stderr, "Error: failed to store linker library option\n");
+					free(cli_link_args);
+					free(cli_link_libraries);
+					free(cli_link_search_paths);
+					return 1;
+				}
+				i++;
+			}
+			else
+			{
+				fprintf(stderr, "Error: -l/--link-lib requires a library argument\n");
+				print_usage(argv[0]);
+				free(cli_link_args);
+				free(cli_link_libraries);
+				free(cli_link_search_paths);
+				return 1;
+			}
+		}
+		else if (strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--link-search") == 0)
+		{
+			if (i + 1 < argc)
+			{
+				if (!append_csv_value(&cli_link_search_paths, argv[i + 1]))
+				{
+					fprintf(stderr, "Error: failed to store linker search path\n");
+					free(cli_link_args);
+					free(cli_link_libraries);
+					free(cli_link_search_paths);
+					return 1;
+				}
+				i++;
+			}
+			else
+			{
+				fprintf(stderr, "Error: -L/--link-search requires a path argument\n");
+				print_usage(argv[0]);
+				free(cli_link_args);
+				free(cli_link_libraries);
+				free(cli_link_search_paths);
+				return 1;
+			}
+		}
+		else if (strcmp(argv[i], "--link-arg") == 0)
+		{
+			if (i + 1 < argc)
+			{
+				if (!append_space_value(&cli_link_args, argv[i + 1]))
+				{
+					fprintf(stderr, "Error: failed to store raw linker argument\n");
+					free(cli_link_args);
+					free(cli_link_libraries);
+					free(cli_link_search_paths);
+					return 1;
+				}
+				i++;
+			}
+			else
+			{
+				fprintf(stderr, "Error: --link-arg requires an argument\n");
+				print_usage(argv[0]);
+				free(cli_link_args);
+				free(cli_link_libraries);
+				free(cli_link_search_paths);
+				return 1;
+			}
+		}
 		else if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--rawir") == 0)
 		{
 			stop_at_ir = true;
@@ -114,12 +360,18 @@ int main(int argc, char* argv[])
 	{
 		fprintf(stderr, "Error: No file specified\n");
 		print_usage(argv[0]);
+		free(cli_link_args);
+		free(cli_link_libraries);
+		free(cli_link_search_paths);
 		return 1;
 	}
 
 	if (!has_valid_extension(file_path))
 	{
 		fprintf(stderr, "Error: File must have .adn or .adan extension\n");
+		free(cli_link_args);
+		free(cli_link_libraries);
+		free(cli_link_search_paths);
 		return 1;
 	}
 
@@ -127,6 +379,9 @@ int main(int argc, char* argv[])
 	if (!source)
 	{
 		fprintf(stderr, "Failed to read source file! (Error)\n");
+		free(cli_link_args);
+		free(cli_link_libraries);
+		free(cli_link_search_paths);
 		return 2;
 	}
 
@@ -195,6 +450,8 @@ int main(int argc, char* argv[])
 
 				if (ll_path && emit_res == 0 && !stop_at_ir)
 				{
+					char* merged_link_libraries = NULL;
+					char* merged_link_search_paths = NULL;
 					char default_out[PATH_MAX];
 					const char* final_out = out_path;
 
@@ -247,44 +504,44 @@ int main(int argc, char* argv[])
 					const char* outp = resolved_out;
 					int lres;
 					const char* bundle_paths = semantic_get_bundle_paths();
+					const char* embedded_modules = semantic_get_embedded_modules();
+					const char* native_libraries = semantic_get_native_libraries();
+					const char* native_search_paths = semantic_get_native_search_paths();
 					char combined_bundle_paths[MAX_BUNDLE_PATH_SIZE];
 					bool paths_ok = true;
-					if (bundle_paths && bundle_paths[0] != '\0')
+					if (!append_csv_values(&merged_link_libraries, cli_link_libraries) ||
+					    !append_csv_values(&merged_link_libraries, native_libraries) ||
+					    !append_csv_values(&merged_link_search_paths,
+					                      cli_link_search_paths) ||
+					    !append_csv_values(&merged_link_search_paths,
+					                      native_search_paths))
 					{
-						int n = snprintf(combined_bundle_paths,
-						                 sizeof(combined_bundle_paths),
-						                 "src/backend/runtime,%s",
-						                 bundle_paths);
-						if (n < 0 ||
-						    (size_t)n >= sizeof(combined_bundle_paths))
-						{
-							fprintf(stderr,
-							        "Error: bundle paths string is too "
-							        "long.\n");
-							exit_code = 5;
-							paths_ok = false;
-						}
+						fprintf(stderr,
+						        "Error: failed to build native linker configuration.\n");
+						exit_code = 5;
+						paths_ok = false;
 					}
-					else
+					if (paths_ok &&
+					    !build_combined_bundle_paths(bundle_paths,
+					                              combined_bundle_paths,
+					                              sizeof(combined_bundle_paths)))
 					{
-						int n = snprintf(combined_bundle_paths,
-						                 sizeof(combined_bundle_paths),
-						                 "src/backend/runtime");
-						if (n < 0 ||
-						    (size_t)n >= sizeof(combined_bundle_paths))
-						{
-							fprintf(stderr,
-							        "Error: bundle paths string is too "
-							        "long.\n");
-							exit_code = 5;
-							paths_ok = false;
-						}
+						fprintf(stderr,
+						        "Error: bundle paths string is too long.\n");
+						exit_code = 5;
+						paths_ok = false;
 					}
 					if (paths_ok)
 					{
-						lres = linker_link_and_bundle(
-						    ll_path, outp, libs ? libs : "",
-						    combined_bundle_paths);
+						LinkerConfig link_config = {0};
+						link_config.raw_link_args = cli_link_args;
+						link_config.bundle_csv = combined_bundle_paths;
+						link_config.embedded_modules_csv = embedded_modules;
+						link_config.native_libraries_csv = merged_link_libraries;
+						link_config.native_search_paths_csv =
+						    merged_link_search_paths;
+
+						lres = linker_link(ll_path, outp, &link_config);
 
 						if (lres == 0)
 						{
@@ -298,6 +555,9 @@ int main(int argc, char* argv[])
 							exit_code = 5;
 						}
 					}
+
+					free(merged_link_libraries);
+					free(merged_link_search_paths);
 				}
 
 				if (ll_path)
@@ -317,6 +577,9 @@ int main(int argc, char* argv[])
 	}
 	sts_free(global_stack);
 	free(source);
+	free(cli_link_args);
+	free(cli_link_libraries);
+	free(cli_link_search_paths);
 
 	return exit_code;
 }

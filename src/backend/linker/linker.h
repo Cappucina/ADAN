@@ -3,6 +3,18 @@
 
 #include <stddef.h>
 
+typedef struct LinkerConfig
+{
+    const char* raw_link_args;
+    const char* bundle_csv;
+    const char* embedded_modules_csv;
+    const char* native_libraries_csv;
+    const char* native_search_paths_csv;
+} LinkerConfig;
+
+int linker_link(const char* input_ll_path, const char* output_path,
+                const LinkerConfig* config);
+
 int linker_link_with_clang(const char* input_ll_path, const char* output_path, const char* libs);
 
 int linker_link_and_bundle(const char* input_ll_path, const char* output_path, const char* libs,

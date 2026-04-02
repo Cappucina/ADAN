@@ -11,6 +11,7 @@ typedef enum ASTNodeType
 	AST_VARIABLE_DECLARATION,
 	AST_TYPE_DECLARATION,
 	AST_IMPORT_STATEMENT,
+	AST_LINK_DIRECTIVE,
 	AST_IF_STATEMENT,
 	AST_PARAMETER,
 	AST_BLOCK,
@@ -54,6 +55,12 @@ typedef struct
 	ASTNode* variadic_type;
 	ASTNode* return_type;
 	ASTNode* body;
+	bool is_extern;
+	char* abi;           // e.g. "c", "stdcall", "fastcall"
+	char* link_name;     // symbol name in native library
+	char* library_name;  // which library to link from
+	char* visibility;    // "public", "private", etc.
+	bool is_export;      // export this function from the binary
 } ASTFuncDecl;
 
 typedef struct
@@ -130,6 +137,12 @@ typedef struct
 {
 	char* path;
 } ASTImport;
+
+typedef struct
+{
+	char* value;
+	bool is_search_path;
+} ASTLinkDirective;
 
 typedef struct
 {
@@ -211,6 +224,7 @@ struct ASTNode
 		ASTVarDecl var_decl;
 		ASTTypeDecl type_decl;
 		ASTImport import;
+		ASTLinkDirective link_directive;
 		ASTIfStmt if_stmt;
 		ASTParam param;
 		ASTBlock block;
@@ -243,9 +257,9 @@ ASTNode* ast_create_return(ASTNode* expr, size_t line, size_t column);
 ASTNode* ast_create_program(ASTNode** decls, size_t count, size_t line, size_t column);
 
 ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, size_t param_count,
-                                         ASTNode* return_type, ASTNode* body, bool is_variadic,
-                                         const char* variadic_name, ASTNode* variadic_type,
-                                         size_t line, size_t column);
+										 ASTNode* return_type, ASTNode* body, bool is_variadic,
+										 const char* variadic_name, ASTNode* variadic_type,
+										 size_t line, size_t column, bool is_extern);
 
 ASTNode* ast_create_variable_declaration(const char* name, ASTNode* type, ASTNode* initializer,
                                          bool is_mutable, size_t line, size_t column);
@@ -254,6 +268,9 @@ ASTNode* ast_create_type_declaration(const char* name, ASTNode* value_type, size
                                      size_t column);
 
 ASTNode* ast_create_import(const char* path, size_t line, size_t column);
+
+ASTNode* ast_create_link_directive(const char* value, bool is_search_path, size_t line,
+	                               size_t column);
 
 ASTNode* ast_create_parameter(const char* name, ASTNode* type, size_t line, size_t column);
 

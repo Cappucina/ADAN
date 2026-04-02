@@ -25,6 +25,12 @@ bool semantic_analyze(SemanticAnalyzer* analyzer);
 
 const char* semantic_get_bundle_paths(void);
 
+const char* semantic_get_embedded_modules(void);
+
+const char* semantic_get_native_libraries(void);
+
+const char* semantic_get_native_search_paths(void);
+
 bool semantic_types_compatible(const char* expected, const char* actual);
 
 void semantic_error(SemanticAnalyzer* analyzer, ASTNode* node, const char* message);

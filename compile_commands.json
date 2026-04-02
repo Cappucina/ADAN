@@ -1,0 +1,126 @@
+[
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan_linker/linux/x86_64/release/src/backend/linker/linker.c.o", "src/backend/linker/linker.c"],
+  "file": "src/backend/linker/linker.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/backend/backend.c.o", "src/backend/backend.c"],
+  "file": "src/backend/backend.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/backend/ir/emitter.c.o", "src/backend/ir/emitter.c"],
+  "file": "src/backend/ir/emitter.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/backend/ir/ir.c.o", "src/backend/ir/ir.c"],
+  "file": "src/backend/ir/ir.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/backend/ir/opt.c.o", "src/backend/ir/opt.c"],
+  "file": "src/backend/ir/opt.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/backend/llvm/llvm_emitter.c.o", "src/backend/llvm/llvm_emitter.c"],
+  "file": "src/backend/llvm/llvm_emitter.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/backend/llvm/llvm_types.c.o", "src/backend/llvm/llvm_types.c"],
+  "file": "src/backend/llvm/llvm_types.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/backend/llvm/llvm_utils.c.o", "src/backend/llvm/llvm_utils.c"],
+  "file": "src/backend/llvm/llvm_utils.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/backend/lower.c.o", "src/backend/lower.c"],
+  "file": "src/backend/lower.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/backend/runtime/runtime.c.o", "src/backend/runtime/runtime.c"],
+  "file": "src/backend/runtime/runtime.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/embedded_libs.c.o", "src/embedded_libs.c"],
+  "file": "src/embedded_libs.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/frontend/ast/tree.c.o", "src/frontend/ast/tree.c"],
+  "file": "src/frontend/ast/tree.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/frontend/parser/parser.c.o", "src/frontend/parser/parser.c"],
+  "file": "src/frontend/parser/parser.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/frontend/parser/parser_utils.c.o", "src/frontend/parser/parser_utils.c"],
+  "file": "src/frontend/parser/parser_utils.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/frontend/scanner/scanner.c.o", "src/frontend/scanner/scanner.c"],
+  "file": "src/frontend/scanner/scanner.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/frontend/scanner/token.c.o", "src/frontend/scanner/token.c"],
+  "file": "src/frontend/scanner/token.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/frontend/semantics/semantic.c.o", "src/frontend/semantics/semantic.c"],
+  "file": "src/frontend/semantics/semantic.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/frontend/semantics/validator.c.o", "src/frontend/semantics/validator.c"],
+  "file": "src/frontend/semantics/validator.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/helper.c.o", "src/helper.c"],
+  "file": "src/helper.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/main.c.o", "src/main.c"],
+  "file": "src/main.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/src/stm.c.o", "src/stm.c"],
+  "file": "src/stm.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/libs/collections/object.c.o", "libs/collections/object.c"],
+  "file": "libs/collections/object.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/libs/io/stdout.c.o", "libs/io/stdout.c"],
+  "file": "libs/io/stdout.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/libs/process/process.c.o", "libs/process/process.c"],
+  "file": "libs/process/process.c"
+},
+{
+  "directory": "/mnt/c/Users/makri/Desktop/ADAN",
+  "arguments": ["/usr/sbin/gcc", "-c", "-m64", "-std=c11", "-Ilibs", "-Ibuild/.gens/adan", "-Isrc", "-Isrc/backend/linker", "-D_GNU_SOURCE", "-o", "build/.objs/adan/linux/x86_64/release/libs/regex/regex.c.o", "libs/regex/regex.c"],
+  "file": "libs/regex/regex.c"
+}]

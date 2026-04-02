@@ -40,6 +40,10 @@ void ast_free(ASTNode* node)
 		case AST_FUNCTION_DECLARATION:
 			free(node->func_decl.name);
 			free(node->func_decl.variadic_name);
+			free(node->func_decl.abi);
+			free(node->func_decl.link_name);
+			free(node->func_decl.library_name);
+			free(node->func_decl.visibility);
 			for (size_t i = 0; i < node->func_decl.param_count; i++)
 			{
 				ast_free(node->func_decl.params[i]);
@@ -78,6 +82,9 @@ void ast_free(ASTNode* node)
 			break;
 		case AST_IMPORT_STATEMENT:
 			free(node->import.path);
+			break;
+		case AST_LINK_DIRECTIVE:
+			free(node->link_directive.value);
 			break;
 		case AST_PARAMETER:
 			free(node->param.name);
@@ -188,9 +195,9 @@ ASTNode* ast_create_program(ASTNode** decls, size_t count, size_t line, size_t c
 }
 
 ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, size_t param_count,
-                                         ASTNode* return_type, ASTNode* body, bool is_variadic,
-                                         const char* variadic_name, ASTNode* variadic_type,
-                                         size_t line, size_t column)
+										 ASTNode* return_type, ASTNode* body, bool is_variadic,
+										 const char* variadic_name, ASTNode* variadic_type,
+										 size_t line, size_t column, bool is_extern)
 {
 	ASTNode* node = ast_init(AST_FUNCTION_DECLARATION, line, column);
 	if (!node)
@@ -218,6 +225,12 @@ ASTNode* ast_create_function_declaration(const char* name, ASTNode** params, siz
 	}
 	node->func_decl.return_type = return_type;
 	node->func_decl.body = body;
+	node->func_decl.is_extern = is_extern;
+	node->func_decl.abi = NULL;
+	node->func_decl.link_name = NULL;
+	node->func_decl.library_name = NULL;
+	node->func_decl.visibility = NULL;
+	node->func_decl.is_export = false;
 	return node;
 }
 
@@ -278,6 +291,26 @@ ASTNode* ast_create_import(const char* path, size_t line, size_t column)
 		ast_free(node);
 		return NULL;
 	}
+	return node;
+}
+
+ASTNode* ast_create_link_directive(const char* value, bool is_search_path, size_t line,
+	                               size_t column)
+{
+	ASTNode* node = ast_init(AST_LINK_DIRECTIVE, line, column);
+	if (!node)
+	{
+		fprintf(stderr, "Failed to create AST link directive node! (Error)\n");
+		return NULL;
+	}
+
+	node->link_directive.value = clone_string(value, strlen(value));
+	if (!node->link_directive.value)
+	{
+		ast_free(node);
+		return NULL;
+	}
+	node->link_directive.is_search_path = is_search_path;
 	return node;
 }
 
@@ -725,6 +758,11 @@ void ast_print(ASTNode* node, int indent)
 			break;
 		case AST_IMPORT_STATEMENT:
 			printf("Import: %s\n", node->import.path);
+			break;
+		case AST_LINK_DIRECTIVE:
+			printf("%s: %s\n",
+			       node->link_directive.is_search_path ? "Link Search" : "Link",
+			       node->link_directive.value ? node->link_directive.value : "<null>");
 			break;
 		case AST_PARAMETER:
 			printf("Parameter: %s\n", node->param.name);

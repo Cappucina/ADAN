@@ -25,16 +25,28 @@ typedef enum
 typedef enum
 {
 	IR_T_VOID,
+	IR_T_I1,
+	IR_T_I8,
+	IR_T_I16,
+	IR_T_I32,
 	IR_T_I64,
+	IR_T_U8,
+	IR_T_U16,
+	IR_T_U32,
+	IR_T_U64,
 	IR_T_F32,
 	IR_T_F64,
 	IR_T_PTR,
+	IR_T_INTPTR, // pointer-sized int
+	IR_T_UINTPTR, // pointer-sized uint
+	IR_T_BOOL
 } IRTypeKind;
 
 typedef struct IRType
 {
 	IRTypeKind kind;
 	struct IRType* pointee;
+	int width; // in bits, for iN/uN/fN types
 } IRType;
 
 typedef struct IRValue
@@ -84,6 +96,13 @@ typedef struct IRFunction
 	IRBlock* blocks;
 	IRValue* params;
 	struct IRFunction* next;
+	// FFI/extern metadata
+	int is_extern;
+	char* abi;
+	char* link_name;
+	char* library_name;
+	char* visibility;
+	int is_export;
 } IRFunction;
 
 typedef struct IRModule
@@ -110,7 +129,29 @@ void ir_function_add_block(IRFunction* fn, IRBlock* b);
 
 void ir_print_module(IRModule* m, FILE* out);
 
+IRType* ir_type_i1(void);
+
+IRType* ir_type_i8(void);
+
+IRType* ir_type_u8(void);
+
+IRType* ir_type_i16(void);
+
+IRType* ir_type_u16(void);
+
+IRType* ir_type_i32(void);
+
+IRType* ir_type_u32(void);
+
 IRType* ir_type_i64(void);
+
+IRType* ir_type_u64(void);
+
+IRType* ir_type_intptr(void);
+
+IRType* ir_type_uintptr(void);
+
+IRType* ir_type_bool(void);
 
 IRType* ir_type_f32(void);
 

@@ -27,6 +27,8 @@ void validate_variable_declaration(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_import_statement(SemanticAnalyzer* analyzer, ASTNode* node);
 
+void validate_link_directive(SemanticAnalyzer* analyzer, ASTNode* node);
+
 void validate_parameter(SemanticAnalyzer* analyzer, ASTNode* node);
 
 void validate_block(SemanticAnalyzer* analyzer, ASTNode* node);
@@ -97,6 +99,9 @@ void validate_node(SemanticAnalyzer* analyzer, ASTNode* node)
 			break;
 		case AST_IMPORT_STATEMENT:
 			validate_import_statement(analyzer, node);
+			break;
+		case AST_LINK_DIRECTIVE:
+			validate_link_directive(analyzer, node);
 			break;
 		case AST_PARAMETER:
 			validate_parameter(analyzer, node);
@@ -175,6 +180,16 @@ static size_t embedded_modules_count = 0;
 static size_t embedded_modules_capacity = 0;
 static char* embedded_modules_csv = NULL;
 
+static char** native_libraries = NULL;
+static size_t native_library_count = 0;
+static size_t native_library_capacity = 0;
+static char* native_libraries_csv = NULL;
+
+static char** native_search_paths = NULL;
+static size_t native_search_path_count = 0;
+static size_t native_search_path_capacity = 0;
+static char* native_search_paths_csv = NULL;
+
 typedef struct
 {
 	char* name;
@@ -183,6 +198,12 @@ typedef struct
 	bool is_variadic;
 	char* variadic_type;
 	char* return_type;
+	bool is_extern;
+	char* abi;
+	char* link_name;
+	char* library_name;
+	char* visibility;
+	bool is_export;
 } FunctionSignature;
 
 typedef struct
@@ -234,6 +255,28 @@ void validator_cleanup()
 	free(bundle_paths_csv);
 	bundle_paths_csv = NULL;
 
+	for (size_t i = 0; i < native_library_count; i++)
+	{
+		free(native_libraries[i]);
+	}
+	free(native_libraries);
+	native_libraries = NULL;
+	native_library_count = 0;
+	native_library_capacity = 0;
+	free(native_libraries_csv);
+	native_libraries_csv = NULL;
+
+	for (size_t i = 0; i < native_search_path_count; i++)
+	{
+		free(native_search_paths[i]);
+	}
+	free(native_search_paths);
+	native_search_paths = NULL;
+	native_search_path_count = 0;
+	native_search_path_capacity = 0;
+	free(native_search_paths_csv);
+	native_search_paths_csv = NULL;
+
 	for (size_t i = 0; i < function_signature_count; i++)
 	{
 		FunctionSignature* sig = &function_signatures[i];
@@ -263,6 +306,26 @@ void validator_cleanup()
 			}
 			free(sig->param_types);
 			sig->param_types = NULL;
+		}
+		if (sig->abi)
+		{
+			free(sig->abi);
+			sig->abi = NULL;
+		}
+		if (sig->link_name)
+		{
+			free(sig->link_name);
+			sig->link_name = NULL;
+		}
+		if (sig->library_name)
+		{
+			free(sig->library_name);
+			sig->library_name = NULL;
+		}
+		if (sig->visibility)
+		{
+			free(sig->visibility);
+			sig->visibility = NULL;
 		}
 		sig->param_count = 0;
 	}
@@ -365,6 +428,53 @@ const char* validator_get_bundle_paths()
 	return bundle_paths_csv;
 }
 
+static const char* build_csv_cache(char*** items, size_t count, char** cache)
+{
+	size_t total = 0;
+	free(*cache);
+	*cache = NULL;
+
+	if (count == 0)
+	{
+		return NULL;
+	}
+
+	for (size_t i = 0; i < count; i++)
+	{
+		total += strlen((*items)[i]) + 1;
+	}
+
+	*cache = malloc(total + 1);
+	if (!*cache)
+	{
+		return NULL;
+	}
+
+	(*cache)[0] = '\0';
+	for (size_t i = 0; i < count; i++)
+	{
+		if (i > 0)
+		{
+			strcat(*cache, ",");
+		}
+		strcat(*cache, (*items)[i]);
+	}
+
+	return *cache;
+}
+
+const char* validator_get_native_libraries()
+{
+	return build_csv_cache(&native_libraries, native_library_count,
+	                      &native_libraries_csv);
+}
+
+const char* validator_get_native_search_paths()
+{
+	return build_csv_cache(&native_search_paths, native_search_path_count,
+	                      &native_search_paths_csv);
+}
+
 static FunctionSignature* find_function_signature(const char* name)
 {
 	if (!name)
@@ -425,6 +535,13 @@ static void register_function_signature(ASTNode* decl)
 	signature->variadic_type = NULL;
 	signature->param_types = NULL;
 
+	// FFI/extern metadata
+	signature->is_extern = decl->func_decl.is_extern;
+	signature->abi = decl->func_decl.abi ? clone_string(decl->func_decl.abi, strlen(decl->func_decl.abi)) : NULL;
+	signature->link_name = decl->func_decl.link_name ? clone_string(decl->func_decl.link_name, strlen(decl->func_decl.link_name)) : NULL;
+	signature->library_name = decl->func_decl.library_name ? clone_string(decl->func_decl.library_name, strlen(decl->func_decl.library_name)) : NULL;
+	signature->visibility = decl->func_decl.visibility ? clone_string(decl->func_decl.visibility, strlen(decl->func_decl.visibility)) : NULL;
+	signature->is_export = decl->func_decl.is_export;
 	if (!signature->name || !signature->return_type)
 	{
 		if (signature->name)
@@ -902,6 +1019,68 @@ static void mark_bundle_path(const char* path)
 	}
 
 	bundle_paths[bundle_path_count++] = clone_string(path, strlen(path));
+}
+
+static void mark_native_library(const char* library)
+{
+	if (!library || library[0] == '\0')
+	{
+		return;
+	}
+
+	for (size_t i = 0; i < native_library_count; i++)
+	{
+		if (strcmp(native_libraries[i], library) == 0)
+		{
+			return;
+		}
+	}
+
+	if (native_library_count + 1 > native_library_capacity)
+	{
+		size_t next_capacity = native_library_capacity == 0 ? 8 : native_library_capacity * 2;
+		char** resized = realloc(native_libraries, sizeof(char*) * next_capacity);
+		if (!resized)
+		{
+			return;
+		}
+		native_libraries = resized;
+		native_library_capacity = next_capacity;
+	}
+
+	native_libraries[native_library_count++] = clone_string(library, strlen(library));
+}
+
+static void mark_native_search_path(const char* path)
+{
+	if (!path || path[0] == '\0')
+	{
+		return;
+	}
+
+	for (size_t i = 0; i < native_search_path_count; i++)
+	{
+		if (strcmp(native_search_paths[i], path) == 0)
+		{
+			return;
+		}
+	}
+
+	if (native_search_path_count + 1 > native_search_path_capacity)
+	{
+		size_t next_capacity =
+		    native_search_path_capacity == 0 ? 8 : native_search_path_capacity * 2;
+		char** resized =
+		    realloc(native_search_paths, sizeof(char*) * next_capacity);
+		if (!resized)
+		{
+			return;
+		}
+		native_search_paths = resized;
+		native_search_path_capacity = next_capacity;
+	}
+
+	native_search_paths[native_search_path_count++] = clone_string(path, strlen(path));
 }
 
 static bool build_lib_dir(const char* import_path, char* output, size_t output_size)
@@ -2260,11 +2439,19 @@ void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 		semantic_error(analyzer, node, "Function declaration missing name or return type.");
 		return;
 	}
+	if (node->func_decl.is_extern && node->func_decl.library_name &&
+	    node->func_decl.library_name[0] != '\0')
+	{
+		mark_native_library(node->func_decl.library_name);
+	}
 
 	validate_type_node(analyzer, node->func_decl.return_type);
 	declare_symbol(analyzer, node, node->func_decl.name,
-	               node->func_decl.return_type->type_node.name, false);
+				   node->func_decl.return_type->type_node.name, false);
 	register_function_signature(node);
+	if (node->func_decl.is_extern) {
+		return;
+	}
 	sts_push_scope(analyzer->symbol_table_stack);
 
 	if (node->func_decl.params)
@@ -2275,12 +2462,12 @@ void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 		}
 	}
 	if (node->func_decl.is_variadic && node->func_decl.variadic_name &&
-	    node->func_decl.variadic_type && node->func_decl.variadic_type->type_node.name)
+		node->func_decl.variadic_type && node->func_decl.variadic_type->type_node.name)
 	{
 		char array_type[256];
 		validate_type_node(analyzer, node->func_decl.variadic_type);
 		snprintf(array_type, sizeof(array_type), "array<%s>",
-		         node->func_decl.variadic_type->type_node.name);
+				 node->func_decl.variadic_type->type_node.name);
 		declare_symbol(analyzer, node, node->func_decl.variadic_name, array_type, false);
 	}
 
@@ -2288,11 +2475,29 @@ void validate_function_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
 	{
 		const char* previous = analyzer->current_function_return_type;
 		analyzer->current_function_return_type =
-		    node->func_decl.return_type->type_node.name;
+			node->func_decl.return_type->type_node.name;
 		validate_block(analyzer, node->func_decl.body);
 		analyzer->current_function_return_type = previous;
 	}
 	sts_pop_scope(analyzer->symbol_table_stack);
+}
+
+void validate_link_directive(SemanticAnalyzer* analyzer, ASTNode* node)
+{
+	(void)analyzer;
+	if (!node || node->type != AST_LINK_DIRECTIVE || !node->link_directive.value)
+	{
+		return;
+	}
+
+	if (node->link_directive.is_search_path)
+	{
+		mark_native_search_path(node->link_directive.value);
+	}
+	else
+	{
+		mark_native_library(node->link_directive.value);
+	}
 }
 
 void validate_type_declaration(SemanticAnalyzer* analyzer, ASTNode* node)
@@ -2611,7 +2816,7 @@ void validate_import_statement(SemanticAnalyzer* analyzer, ASTNode* node)
 	}
 
 	char bundle_path[512];
-	if (build_lib_dir(normalized, bundle_path, sizeof(bundle_path)) &&
+	if (!embedded && build_lib_dir(normalized, bundle_path, sizeof(bundle_path)) &&
 	    bundle_path_exists(bundle_path))
 	{
 		mark_bundle_path(bundle_path);

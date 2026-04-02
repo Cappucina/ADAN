@@ -9,7 +9,13 @@
 #include "scanner.h"
 
 const Keyword keywords[] = {
-    {"function", TOKEN_FUN},
+	{"function", TOKEN_FUN},
+	{"extern", TOKEN_EXTERN},
+	{"export", TOKEN_EXPORT},
+	{"link", TOKEN_LINK},
+	{"link_search", TOKEN_LINK_SEARCH},
+	{"opaque", TOKEN_OPAQUE},
+	{"repr", TOKEN_REPR},
     {"import", TOKEN_IMPORT},
     {"set", TOKEN_SET},
     {"const", TOKEN_CONST},

@@ -54,6 +54,21 @@ const char* semantic_get_bundle_paths(void)
 	return validator_get_bundle_paths();
 }
 
+const char* semantic_get_embedded_modules(void)
+{
+	return validator_get_embedded_modules();
+}
+
+const char* semantic_get_native_libraries(void)
+{
+	return validator_get_native_libraries();
+}
+
+const char* semantic_get_native_search_paths(void)
+{
+	return validator_get_native_search_paths();
+}
+
 bool is_integer_type(const char* name)
 {
 	if (!name)

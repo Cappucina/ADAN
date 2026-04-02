@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "llvm_emitter.h"
 #include "../../macros.h"
@@ -78,6 +79,152 @@ static void es_emit_value_rep(EmitterState* s, FILE* outf, IRValue* v)
 	else
 	{
 		fprintf(outf, "<val>");
+	}
+}
+
+static const char* llvm_calling_convention_name(const IRFunction* function)
+{
+	if (!function || !function->abi || function->abi[0] == '\0' ||
+	    strcmp(function->abi, "c") == 0)
+	{
+		return NULL;
+	}
+
+	if (strcmp(function->abi, "stdcall") == 0)
+	{
+		return "x86_stdcallcc";
+	}
+	if (strcmp(function->abi, "fastcall") == 0)
+	{
+		return "x86_fastcallcc";
+	}
+	if (strcmp(function->abi, "vectorcall") == 0)
+	{
+		return "x86_vectorcallcc";
+	}
+	if (strcmp(function->abi, "win64") == 0)
+	{
+		return "win64cc";
+	}
+	if (strcmp(function->abi, "sysv64") == 0)
+	{
+		return "x86_64_sysvcc";
+	}
+
+	return NULL;
+}
+
+static const char* llvm_visibility_name(const IRFunction* function)
+{
+	if (!function || !function->visibility || function->visibility[0] == '\0' ||
+	    strcmp(function->visibility, "default") == 0 ||
+	    strcmp(function->visibility, "public") == 0)
+	{
+		return NULL;
+	}
+
+	if (strcmp(function->visibility, "hidden") == 0 ||
+	    strcmp(function->visibility, "protected") == 0 ||
+	    strcmp(function->visibility, "private") == 0 ||
+	    strcmp(function->visibility, "internal") == 0)
+	{
+		return function->visibility;
+	}
+
+	return NULL;
+}
+
+static char* llvm_function_symbol_name(const IRFunction* function)
+{
+	const char* name;
+
+	if (!function)
+	{
+		return NULL;
+	}
+
+	name = (function->is_extern && function->link_name && function->link_name[0] != '\0')
+	           ? function->link_name
+	           : (function->name ? function->name : "<anon>");
+
+	if (function->is_extern && function->link_name && function->link_name[0] != '\0')
+	{
+		return strdup(name);
+	}
+
+	return llvm_utils_mangle_name(name);
+}
+
+static int llvm_name_needs_quotes(const char* name)
+{
+	if (!name || name[0] == '\0')
+	{
+		return 1;
+	}
+
+	for (const unsigned char* cursor = (const unsigned char*)name; *cursor; ++cursor)
+	{
+		if (!(isalnum(*cursor) || *cursor == '_' || *cursor == '.' || *cursor == '$'))
+		{
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static void llvm_emit_symbol_name(FILE* out, const char* name)
+{
+	if (!out)
+	{
+		return;
+	}
+
+	if (!llvm_name_needs_quotes(name))
+	{
+		fprintf(out, "%s", name ? name : "<anon>");
+		return;
+	}
+
+	fputc('"', out);
+	if (name)
+	{
+		for (const char* cursor = name; *cursor; ++cursor)
+		{
+			if (*cursor == '\\' || *cursor == '"')
+			{
+				fputc('\\', out);
+			}
+			fputc(*cursor, out);
+		}
+	}
+	else
+	{
+		fputs("<anon>", out);
+	}
+	fputc('"', out);
+}
+
+static void llvm_emit_function_prefix(FILE* out, const IRFunction* function)
+{
+	const char* visibility;
+	const char* calling_convention;
+
+	if (!out || !function)
+	{
+		return;
+	}
+
+	visibility = llvm_visibility_name(function);
+	if (visibility)
+	{
+		fprintf(out, "%s ", visibility);
+	}
+
+	calling_convention = llvm_calling_convention_name(function);
+	if (calling_convention)
+	{
+		fprintf(out, "%s ", calling_convention);
 	}
 }
 
@@ -203,7 +350,7 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 	for (IRFunction* f = m->functions; f; f = f->next)
 	{
 		char* rett = llvm_type_to_string(f->return_type ? f->return_type : ir_type_void());
-		char* fname = llvm_utils_mangle_name(f->name ? f->name : "<anon>");
+		char* fname = llvm_function_symbol_name(f);
 		for (IRValue* pv = f->params; pv; pv = pv->next)
 		{
 			(void)es_get_val_name(&st, pv);
@@ -211,8 +358,11 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 
 		if (!f->blocks)
 		{
-			fprintf(out, "declare %s @%s(", rett ? rett : "void",
-			        fname ? fname : "<anon>");
+			fprintf(out, "declare ");
+			llvm_emit_function_prefix(out, f);
+			fprintf(out, "%s @", rett ? rett : "void");
+			llvm_emit_symbol_name(out, fname ? fname : "<anon>");
+			fprintf(out, "(");
 			int firstp = 1;
 			for (IRValue* pv = f->params; pv; pv = pv->next)
 			{
@@ -232,7 +382,11 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 			continue;
 		}
 
-		fprintf(out, "define %s @%s(", rett ? rett : "void", fname ? fname : "<anon>");
+		fprintf(out, "define ");
+		llvm_emit_function_prefix(out, f);
+		fprintf(out, "%s @", rett ? rett : "void");
+		llvm_emit_symbol_name(out, fname ? fname : "<anon>");
+		fprintf(out, "(");
 		int firstp = 1;
 		for (IRValue* pv = f->params; pv; pv = pv->next)
 		{
@@ -415,8 +569,9 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 					{
 						IRFunction* callee =
 						    (IRFunction*)(void*)ins->operands[2];
-						char* callee_name = llvm_utils_mangle_name(
-						    callee->name ? callee->name : "<anon>");
+						const char* calling_convention =
+						    llvm_calling_convention_name(callee);
+						char* callee_name = llvm_function_symbol_name(callee);
 						char* rettype = llvm_type_to_string(
 						    callee->return_type ? callee->return_type
 						                        : ir_type_void());
@@ -425,18 +580,27 @@ int llvm_emitter_emit_module(LLVMEEmitter* e, IRModule* m, FILE* out)
 						{
 							char* dname =
 							    es_get_val_name(&st, ins->dest);
-							fprintf(
-							    out, "  %s = call %s @%s(",
-							    dname ? dname : "<dst>",
-							    rettype ? rettype : "void",
-							    callee_name ? callee_name : "<anon>");
+							fprintf(out, "  %s = call ", dname ? dname : "<dst>");
+							if (calling_convention)
+							{
+								fprintf(out, "%s ", calling_convention);
+							}
+							fprintf(out, "%s @", rettype ? rettype : "void");
+							llvm_emit_symbol_name(out,
+							                     callee_name ? callee_name : "<anon>");
+							fprintf(out, "(");
 						}
 						else
 						{
-							fprintf(
-							    out, "  call %s @%s(",
-							    rettype ? rettype : "void",
-							    callee_name ? callee_name : "<anon>");
+							fprintf(out, "  call ");
+							if (calling_convention)
+							{
+								fprintf(out, "%s ", calling_convention);
+							}
+							fprintf(out, "%s @", rettype ? rettype : "void");
+							llvm_emit_symbol_name(out,
+							                     callee_name ? callee_name : "<anon>");
+							fprintf(out, "(");
 						}
 						int first = 1;
 						if (ins->call_args && ins->call_nargs)

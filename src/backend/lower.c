@@ -68,11 +68,96 @@ static IRValue* lower_array_access(Program* program, ASTNode* node);
 static IRValue* lower_variadic_pack_array(Program* program, ASTNode** arg_nodes,
                                           IRValue** arg_values, size_t start, size_t end);
 
+static bool ir_type_is_integer_like(IRType* type);
+
+static bool ir_type_is_float_like(IRType* type);
+
+static IRValue* coerce_value_to_type(IRValue* value, IRType* target_type);
+
 static bool block_is_terminated(IRBlock* block)
 {
 	return block && block->last &&
 	       (block->last->kind == IR_RET || block->last->kind == IR_BR ||
 	        block->last->kind == IR_CBR);
+}
+
+static bool ir_type_is_integer_like(IRType* type)
+{
+	if (!type)
+	{
+		return false;
+	}
+
+	switch (type->kind)
+	{
+		case IR_T_I1:
+		case IR_T_I8:
+		case IR_T_I16:
+		case IR_T_I32:
+		case IR_T_I64:
+		case IR_T_U8:
+		case IR_T_U16:
+		case IR_T_U32:
+		case IR_T_U64:
+		case IR_T_INTPTR:
+		case IR_T_UINTPTR:
+		case IR_T_BOOL:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static bool ir_type_is_float_like(IRType* type)
+{
+	return type && (type->kind == IR_T_F32 || type->kind == IR_T_F64);
+}
+
+static IRValue* coerce_value_to_type(IRValue* value, IRType* target_type)
+{
+	if (!value || !target_type || !value->type ||
+	    value->type->kind == target_type->kind)
+	{
+		return value;
+	}
+
+	if (value->kind == IRV_CONST)
+	{
+		if (ir_type_is_integer_like(target_type) &&
+		    ir_type_is_integer_like(value->type))
+		{
+			value->type = target_type;
+			return value;
+		}
+		if (target_type->kind == IR_T_F32)
+		{
+			double numeric = ir_type_is_float_like(value->type)
+			                     ? value->u.f64
+			                     : (double)value->u.i64;
+			return ir_const_f32((float)numeric);
+		}
+		if (target_type->kind == IR_T_F64)
+		{
+			double numeric = ir_type_is_float_like(value->type)
+			                     ? value->u.f64
+			                     : (double)value->u.i64;
+			return ir_const_f64(numeric);
+		}
+	}
+
+	if (current_block && ir_type_is_integer_like(value->type) &&
+	    ir_type_is_float_like(target_type))
+	{
+		return ir_emit_itofp(current_block, value, target_type);
+	}
+
+	if (current_block && ir_type_is_float_like(value->type) &&
+	    ir_type_is_float_like(target_type))
+	{
+		return ir_emit_fpcvt(current_block, value, target_type);
+	}
+
+	return value;
 }
 
 static bool starts_with(const char* text, const char* prefix)
@@ -1319,6 +1404,7 @@ static void collect_called_functions(Program* program, ASTNode* node,
 			break;
 		case AST_TYPE_DECLARATION:
 		case AST_IMPORT_STATEMENT:
+		case AST_LINK_DIRECTIVE:
 		case AST_PARAMETER:
 		case AST_IDENTIFIER:
 		case AST_STRING_LITERAL:
@@ -1346,7 +1432,8 @@ static ReachableFunctionName* collect_reachable_functions(Program* program)
 	{
 		ASTNode* decl = root->program.decls[i];
 		if (!decl || decl->type == AST_FUNCTION_DECLARATION ||
-		    decl->type == AST_IMPORT_STATEMENT || decl->type == AST_TYPE_DECLARATION)
+		    decl->type == AST_IMPORT_STATEMENT || decl->type == AST_TYPE_DECLARATION ||
+		    decl->type == AST_LINK_DIRECTIVE)
 		{
 			continue;
 		}
@@ -1359,29 +1446,43 @@ static ReachableFunctionName* collect_reachable_functions(Program* program)
 static IRType* lower_type_name(const char* type_name)
 {
 	if (!type_name)
-	{
 		return NULL;
-	}
-	if (strcmp(type_name, "i64") == 0 || strcmp(type_name, "i32") == 0 ||
-	    strcmp(type_name, "u32") == 0 || strcmp(type_name, "u64") == 0 ||
-	    strcmp(type_name, "bool") == 0 || strcmp(type_name, "i8") == 0 ||
-	    strcmp(type_name, "u8") == 0)
-	{
+	if (strcmp(type_name, "i1") == 0 || strcmp(type_name, "bool") == 0)
+		return ir_type_i1();
+	if (strcmp(type_name, "i8") == 0)
+		return ir_type_i8();
+	if (strcmp(type_name, "u8") == 0)
+		return ir_type_u8();
+	if (strcmp(type_name, "i16") == 0)
+		return ir_type_i16();
+	if (strcmp(type_name, "u16") == 0)
+		return ir_type_u16();
+	if (strcmp(type_name, "i32") == 0)
+		return ir_type_i32();
+	if (strcmp(type_name, "u32") == 0)
+		return ir_type_u32();
+	if (strcmp(type_name, "i64") == 0)
 		return ir_type_i64();
-	}
-	if (strcmp(type_name, "f64") == 0)
-	{
-		return ir_type_f64();
-	}
+	if (strcmp(type_name, "u64") == 0)
+		return ir_type_u64();
+	if (strcmp(type_name, "intptr") == 0)
+		return ir_type_intptr();
+	if (strcmp(type_name, "uintptr") == 0)
+		return ir_type_uintptr();
 	if (strcmp(type_name, "f32") == 0)
-	{
 		return ir_type_f32();
-	}
+	if (strcmp(type_name, "f64") == 0)
+		return ir_type_f64();
 	if (strcmp(type_name, "void") == 0)
-	{
 		return ir_type_void();
-	}
-	return ir_type_ptr(ir_type_i64());
+	// pointer types: ends with * or explicit ptr
+	size_t len = strlen(type_name);
+	if (len > 1 && type_name[len-1] == '*')
+		return ir_type_ptr(NULL);
+	if (strcmp(type_name, "ptr") == 0)
+		return ir_type_ptr(NULL);
+	// fallback: treat as pointer
+	return ir_type_ptr(NULL);
 }
 
 static IRFunction* ensure_program_function(Program* program, const char* name)
@@ -2369,6 +2470,11 @@ void lower_statement(Program* program, ASTNode* node)
 			if (node->ret.expr)
 			{
 				ret_val = lower_expression(program, node->ret.expr);
+				if (current_function)
+				{
+					ret_val =
+					    coerce_value_to_type(ret_val, current_function->return_type);
+				}
 			}
 			if (current_block)
 			{
@@ -2397,6 +2503,7 @@ void lower_statement(Program* program, ASTNode* node)
 			break;
 		}
 		case AST_TYPE_DECLARATION:
+		case AST_LINK_DIRECTIVE:
 			break;
 		case AST_IF_STATEMENT:
 		{
@@ -2817,8 +2924,7 @@ void lower_program(Program* program)
 				    decl->var_decl.initializer->type == AST_NUMBER_LITERAL ||
 				    decl->var_decl.initializer->type == AST_BOOLEAN_LITERAL)
 				{
-					initial =
-					    lower_expression(program, decl->var_decl.initializer);
+					initial = lower_expression(program, decl->var_decl.initializer);
 				}
 			}
 			IRValue* global =
@@ -2966,6 +3072,48 @@ void lower_program(Program* program)
 				        "Failed to create IR function '%s'. "
 				        "(Error)\n",
 				        func_name);
+				continue;
+			}
+			ir_func->is_extern = decl->func_decl.is_extern ? 1 : 0;
+			if (ir_func->abi)
+			{
+				free(ir_func->abi);
+				ir_func->abi = NULL;
+			}
+			if (decl->func_decl.abi)
+			{
+				ir_func->abi = strdup(decl->func_decl.abi);
+			}
+			if (ir_func->link_name)
+			{
+				free(ir_func->link_name);
+				ir_func->link_name = NULL;
+			}
+			if (decl->func_decl.link_name)
+			{
+				ir_func->link_name = strdup(decl->func_decl.link_name);
+			}
+			if (ir_func->library_name)
+			{
+				free(ir_func->library_name);
+				ir_func->library_name = NULL;
+			}
+			if (decl->func_decl.library_name)
+			{
+				ir_func->library_name = strdup(decl->func_decl.library_name);
+			}
+			if (ir_func->visibility)
+			{
+				free(ir_func->visibility);
+				ir_func->visibility = NULL;
+			}
+			if (decl->func_decl.visibility)
+			{
+				ir_func->visibility = strdup(decl->func_decl.visibility);
+			}
+			ir_func->is_export = decl->func_decl.is_export ? 1 : 0;
+			if (decl->func_decl.is_extern)
+			{
 				continue;
 			}
 			current_function = ir_func;

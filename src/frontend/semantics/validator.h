@@ -12,4 +12,8 @@ const char* validator_get_embedded_modules();
 
 const char* validator_get_bundle_paths();
 
+const char* validator_get_native_libraries();
+
+const char* validator_get_native_search_paths();
+
 #endif
